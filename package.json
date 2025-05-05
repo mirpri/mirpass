@@ -1,0 +1,15 @@
+{
+  "name": "mirpass",
+  "version": "1.0.0",
+  "description": "Mirpri authentication system",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Mirpri",
+  "license": "ISC",
+  "dependencies": {
+    "better-sqlite3": "^11.9.1",
+    "express": "^4.21.2"
+  }
+}
