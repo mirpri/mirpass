@@ -10,7 +10,12 @@ Mirpass is an authentication and login system built using Node.js, Express, and 
 - **Responsive Design**: Optimized for both desktop and mobile devices.
 
 ### Advanced
-- **Password Encryption**: Password is encrypted with bcrypt.
+- **Password Validation**: Enforces strong password policies, requiring a mix of letters and numbers with a length between 8-20 characters.
+- **Password Encryption**: Passwords are securely hashed using bcrypt before being stored in the database.
+- **Session Management**: User sessions are securely managed using `express-session`, ensuring login state is preserved across requests.
+- **Fetch User Info**: Provides an endpoint to retrieve user details (e.g., email and registration date) for authenticated sessions.
+- **Time Zone Handling**: Ensures timestamps are stored in UTC and converted to the local time zone for accurate display.
+- **Error Handling**: Comprehensive error handling for registration, login, and session-related operations.
 
 ## Installation
 
@@ -62,4 +67,4 @@ Mirpass is an authentication and login system built using Node.js, Express, and 
   - `src/`: Contains Vue.js components and assets.
   - `public/`: Static files like `favicon.ico`.
   - `vite.config.js`: Configuration file for Vite.
-
+- **success.html**: An example of how sites apply the auth-login system.
