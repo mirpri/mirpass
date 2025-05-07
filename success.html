@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Success</title>
+</head>
+<body>
+    <div class="success-container">
+        <h1>Welcome, <span id="username"></span>!</h1>
+        <p>Your email: <span id="email"></span></p>
+        <p>Signed up at: <span id="createdat"></span></p>
+        <button onclick="logout()">Logout</button>
+    </div>
+
+    <script>
+        // Fetch username and email from the server
+        fetch('/user-info')
+            .then(response => {
+                if (response.status === 401) {
+                    throw new Error('Session expired. Please log in again.');
+                }
+                return response.json();
+            })
+            .then(data => {
+                document.getElementById('username').textContent = data.username;
+                document.getElementById('email').textContent = data.email;
+                document.getElementById('createdat').textContent = new Date(data.registrationDate+'Z').toLocaleString();//convert UTC to local time
+            })
+            .catch(error => {
+                alert(error.message);
+                window.location.href = '/';
+            });
+
+        // Logout function
+        function logout() {
+            fetch('/logout', { method: 'POST' })
+                .then(() => {
+                    window.location.href = '/';
+                })
+                .catch(error => {
+                    alert('Logout error. Please try again.');
+                });
+        }
+    </script>
+</body>
+</html>
