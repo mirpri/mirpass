@@ -29,9 +29,6 @@ app.use(session({
   cookie: { secure: false } // Set to true if using HTTPS
 }));
 
-// Serve static files from Vue build directory
-app.use(express.static(path.join(__dirname, 'mirpass-front/dist')));
-
 // Register endpoint
 app.post('/register', async (req, res) => {
   const { username, email, password } = req.body;
@@ -84,6 +81,7 @@ app.post('/login', async (req, res) => {
 
     if (isPasswordValid) {
       req.session.username = username; // Store username in session
+      console.log('redirect to:', req.session.from);
       return res.json({ message: 'Login successful' });
     } else {
       return res.status(400).json({ message: 'Invalid username or password' });
@@ -131,20 +129,28 @@ app.get('/user-info', (req, res) => {
   }
 });
 
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'mirpass-front/dist/index.html'));
-});
 
 // for successful login
 app.get('/success', (req, res) => {
   res.sendFile(path.join(__dirname, 'success.html'));
 });
 
+app.get('/', (req, res, next) => {
+  const from=req.query.from || 'done';
+  req.session.from = from; // Store the redirect URL in the session
+  console.log('from:', from);
+  res.sendFile(path.join(__dirname, 'mirpass-front/dist/index.html'));
+});
+
+// Serve static files from Vue build directory
+app.use(express.static(path.join(__dirname, 'mirpass-front/dist')));
+
 // Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
 
 // Close database on exit
 process.on('SIGINT', () => {
