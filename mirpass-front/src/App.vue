@@ -43,7 +43,7 @@ const login = async() => {
     if (response.ok) {
       showbubble(data.message); // Show success message
       // Redirect to the main page or perform any other action
-      window.location.href = '/success'; // Change this to your main page URL
+      window.location.href = '/success';
     } else {
       showbubble(data.message); // Show error message
     }

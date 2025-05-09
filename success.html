@@ -15,7 +15,8 @@
 
     <script>
         // Fetch username and email from the server
-        fetch('/user-info')
+        const serverroot='http://localhost:4000';
+        fetch(serverroot+'/user-info',{credentials: 'include'})
             .then(response => {
                 if (response.status === 401) {
                     throw new Error('Session expired. Please log in again.');
@@ -29,14 +30,14 @@
             })
             .catch(error => {
                 alert(error.message);
-                window.location.href = '/?from=success';
+                window.location.href = serverroot+'/?from='+encodeURIComponent(window.location.href);
             });
 
         // Logout function
         function logout() {
-            fetch('/logout', { method: 'POST' })
+            fetch(serverroot+'/logout', { method: 'POST', credentials: 'include' })
                 .then(() => {
-                    window.location.href = '/';
+                    window.location.href = serverroot+'/';
                 })
                 .catch(error => {
                     alert('Logout error. Please try again.');

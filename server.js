@@ -4,6 +4,7 @@ const app = express();
 const Database = require('better-sqlite3');
 const session = require('express-session');
 
+const cors = require('cors');
 const bcrypt = require('bcrypt');
 
 // Connect to database
@@ -21,12 +22,33 @@ db.exec(`CREATE TABLE IF NOT EXISTS users (
 // Parse JSON request body
 app.use(express.json());
 
+app.use(cors({
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    const allowedOrigins = ['http://127.0.0.1:3000', 'http://localhost:3000', 'http://localhost:4000', 'null'];
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log('Origin blocked by CORS:', origin);
+      callback(null, true); // Allow all origins in development
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'OPTIONS', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 // Add session middleware
 app.use(session({
   secret: '123456', // Replace with a strong secret key
-  resave: false,
+  resave: true, // Changed to true to ensure session is saved
   saveUninitialized: true,
-  cookie: { secure: false } // Set to true if using HTTPS
+  cookie: { 
+    secure: false, // Set to true if using HTTPS
+    sameSite: 'lax',
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
 }));
 
 // Register endpoint
@@ -81,7 +103,6 @@ app.post('/login', async (req, res) => {
 
     if (isPasswordValid) {
       req.session.username = username; // Store username in session
-      console.log('redirect to:', req.session.from);
       return res.json({ message: 'Login successful' });
     } else {
       return res.status(400).json({ message: 'Invalid username or password' });
@@ -132,11 +153,12 @@ app.get('/user-info', (req, res) => {
 
 // for successful login
 app.get('/success', (req, res) => {
-  res.sendFile(path.join(__dirname, 'success.html'));
+  console.log('redirect to:', req.session.from);
+  res.redirect(req.session.from);
 });
 
 app.get('/', (req, res, next) => {
-  const from=req.query.from || 'done';
+  const from = req.query.from || 'manage'; //TODO:add manage page
   req.session.from = from; // Store the redirect URL in the session
   console.log('from:', from);
   res.sendFile(path.join(__dirname, 'mirpass-front/dist/index.html'));
@@ -146,7 +168,7 @@ app.get('/', (req, res, next) => {
 app.use(express.static(path.join(__dirname, 'mirpass-front/dist')));
 
 // Start server
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
