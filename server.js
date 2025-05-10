@@ -161,7 +161,11 @@ app.get('/', (req, res, next) => {
   const from = req.query.from || 'dashboard.html';
   req.session.from = from; // Store the redirect URL in the session
   console.log('from:', from);
-  res.sendFile(path.join(__dirname, 'mirpass-front/dist/index.html'));
+  if(req.session.username) {
+    res.redirect('/success');
+  }else{
+    res.sendFile(path.join(__dirname, 'mirpass-front/dist/index.html'));
+  }
 });
 
 // Serve static files from Vue build directory
