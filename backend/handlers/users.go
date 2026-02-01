@@ -3,8 +3,10 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"log"
 	"mirpass-backend/db"
 	"net/http"
+	"strings"
 
 	"mirpass-backend/utils"
 
@@ -28,6 +30,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		if err == sql.ErrNoRows {
 			WriteErrorResponse(w, 401, "Invalid username or password")
 		} else {
+			log.Printf("GetUserByUsername error: %v", err)
 			WriteErrorResponse(w, 500, "Database error")
 		}
 		return
@@ -49,6 +52,8 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func RegisterHandler(w http.ResponseWriter, r *http.Request) {
+	log.Default().Println("RegisterHandler called")
+
 	var req struct {
 		Username string `json:"username"`
 		Email    string `json:"email"`
@@ -74,6 +79,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 	userID, err := db.CreateUser(req.Username, req.Email, string(hashedPassword))
 	if err != nil {
+		log.Printf("CreateUser error: %v", err)
 		WriteErrorResponse(w, 500, "Error creating user")
 		return
 	}
@@ -82,6 +88,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	token := utils.GenerateRandomToken()
 	err = db.CreateVerification(userID, token)
 	if err != nil {
+		log.Printf("CreateVerification error: %v", err)
 		WriteErrorResponse(w, 500, "Error creating verification")
 		return
 	}
@@ -105,6 +112,12 @@ func VerifyEmailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Redirect to login page on frontend
-	http.Redirect(w, r, "http://localhost:5173/login?verified=true", http.StatusSeeOther)
+	// If the request is coming from fetch/axios (expects JSON), return JSON instead of redirect
+	acceptsJSON := strings.Contains(r.Header.Get("Accept"), "application/json") ||
+		r.Header.Get("X-Requested-With") == "XMLHttpRequest"
+
+	if acceptsJSON {
+		WriteSuccessResponse(w, "Email verified", nil)
+		return
+	}
 }

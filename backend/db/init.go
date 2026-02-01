@@ -28,24 +28,24 @@ func loadConfig() {
 func InitDB() error {
 	inicfg := cfg
 	inicfg.DBName = ""
-	db, err := sql.Open("mysql", inicfg.FormatDSN())
+	adminConn, err := sql.Open("mysql", inicfg.FormatDSN())
+	if err != nil {
+		return fmt.Errorf("open admin connection: %w", err)
+	}
+	defer adminConn.Close()
 
 	// Create the database if it doesn't exist
-	_, err = db.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci", cfg.DBName))
-	if err != nil {
-		log.Fatal("Error creating database: ", err)
-		return err
+	if _, err = adminConn.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci", cfg.DBName)); err != nil {
+		return fmt.Errorf("create database: %w", err)
 	}
 
-	// Select the database
-	_, err = db.Exec("USE " + cfg.DBName)
-	if err != nil {
-		log.Fatal("Error selecting database: ", err)
-		return err
+	// Use the new database
+	if _, err = adminConn.Exec("USE `" + cfg.DBName + "`"); err != nil {
+		return fmt.Errorf("select database: %w", err)
 	}
 
 	// Create users table
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS users (
+	if _, err = adminConn.Exec(`CREATE TABLE IF NOT EXISTS users (
 	       id INT AUTO_INCREMENT PRIMARY KEY,
 	       username VARCHAR(255) NOT NULL UNIQUE,
 	       email VARCHAR(255) NOT NULL UNIQUE,
@@ -53,35 +53,29 @@ func InitDB() error {
 	       is_verified BOOLEAN DEFAULT FALSE,
 	       last_login TIMESTAMP NULL,
 	       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-       )`)
-	if err != nil {
-		log.Fatal("Error creating users table: ", err)
-		return err
+	   )`); err != nil {
+		return fmt.Errorf("create users table: %w", err)
 	}
 
 	// Create verifications table
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS verifications (
+	if _, err = adminConn.Exec(`CREATE TABLE IF NOT EXISTS verifications (
 	       id INT AUTO_INCREMENT PRIMARY KEY,
 	       user_id INT NOT NULL,
 	       token VARCHAR(255) NOT NULL,
 	       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 	       FOREIGN KEY (user_id) REFERENCES users(id)
-       )`)
-	if err != nil {
-		log.Fatal("Error creating verifications table: ", err)
-		return err
+	   )`); err != nil {
+		return fmt.Errorf("create verifications table: %w", err)
 	}
 
 	// Create admins table
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS admins (
+	if _, err = adminConn.Exec(`CREATE TABLE IF NOT EXISTS admins (
 	       id INT AUTO_INCREMENT PRIMARY KEY,
 	       username VARCHAR(255) NOT NULL UNIQUE,
 	       role VARCHAR(100) NOT NULL,
 	       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-       )`)
-	if err != nil {
-		log.Fatal("Error creating admins table: ", err)
-		return err
+	   )`); err != nil {
+		return fmt.Errorf("create admins table: %w", err)
 	}
 
 	return nil
@@ -90,17 +84,19 @@ func InitDB() error {
 func ConnectDB() {
 	loadConfig()
 
+	// Ensure DB and tables exist
+	if err := InitDB(); err != nil {
+		log.Fatal("DB init failed: ", err)
+	}
+
+	// Connect to target database
 	db, err := sql.Open("mysql", cfg.FormatDSN())
 	if err != nil {
 		log.Fatal("Error opening database: ", err)
 	}
 
-	err = db.Ping()
-	if err != nil {
-		err = InitDB()
-		if err != nil {
-			log.Fatal("Error initializing database: ", err)
-		}
+	if err = db.Ping(); err != nil {
+		log.Fatal("Error pinging database: ", err)
 	}
 
 	log.Println("Successfully connected to the database")
