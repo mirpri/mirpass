@@ -74,11 +74,11 @@ function LoginPage({ onLogin, isAuthenticated }: Props) {
   }
 
   return (
-    <Flex align="center" justify="center" style={{ minHeight: '100vh', padding: 24 }}>
-      <Card style={{ maxWidth: 420, width: '100%', boxShadow: '0 20px 80px rgba(0,0,0,0.15)' }}>
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+    <Flex align="center" justify="center" className="min-h-screen p-6">
+      <Card className="max-w-[420px] w-full shadow-2xl">
+        <Space direction="vertical" size="large" className="w-full">
           <Space direction="vertical" size={4}>
-            <Title level={3} style={{ margin: 0 }}>
+            <Title level={3} className="m-0">
               Mirpass Login
             </Title>
             <Text type="secondary">Login to continue to your dashboard</Text>

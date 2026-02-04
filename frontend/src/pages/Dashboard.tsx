@@ -9,7 +9,6 @@ import {
   Input,
   Row,
   Space,
-  Tag,
   Typography,
   message,
 } from "antd";
@@ -20,6 +19,8 @@ import {
   IdcardOutlined,
   EditOutlined,
   CheckOutlined,
+  TagOutlined,
+  CloseOutlined,
 } from "@ant-design/icons";
 import api from "../api/client";
 
@@ -74,7 +75,9 @@ function DashboardPage({ onLogout }: Props) {
 
   const fetchProfile = async () => {
     try {
-      const { data } = await api.get<{ status: number; data: Profile }>("/myprofile");
+      const { data } = await api.get<{ status: number; data: Profile }>(
+        "/myprofile",
+      );
       return data.data;
     } catch (error) {
       message.error("Could not fetch profile data");
@@ -139,27 +142,11 @@ function DashboardPage({ onLogout }: Props) {
   };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        padding: "32px 24px",
-        background:
-          "linear-gradient(135deg, #f4f0ff 0%, #f8fbff 60%, #eef2ff 100%)",
-      }}
-    >
-      <Card
-        style={{
-          maxWidth: 1100,
-          margin: "0 auto",
-          borderRadius: 18,
-          background: "rgba(255, 255, 255, 0.95)",
-          boxShadow: "0 30px 120px rgba(76, 29, 149, 0.18)",
-        }}
-        bodyStyle={{ padding: 32 }}
-      >
+    <div className="min-h-screen py-8 px-6 bg-purple-60 flex items-center justify-center">
+      <Card className="mx-auto max-w-4xl w-full rounded-[18px] bg-white/95 shadow-xl p-8">
         <Flex justify="space-between" align="center" wrap>
           <Space direction="vertical" size={4}>
-            <Title level={3} style={{ margin: 0 }}>
+            <Title level={3} className="m-0">
               Dashboard
             </Title>
             <Text type="secondary">Manage your profile and credentials</Text>
@@ -169,36 +156,24 @@ function DashboardPage({ onLogout }: Props) {
           </Button>
         </Flex>
 
-        <Divider style={{ margin: "24px 0" }} />
+        <Divider className="my-6" />
 
         <Row gutter={[24, 24]} align="stretch">
           <Col xs={24} lg={10}>
-            <div
-              style={{
-                background: "#fff",
-                borderRadius: 22,
-                padding: 24,
-                minHeight: 320,
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "space-between",
-                boxShadow: "0 20px 60px rgba(15, 12, 41, 0.12)",
-              }}
-            >
+            <div className="bg-white rounded-2xl p-6 min-h-[280px] flex flex-col justify-between border-solid border-1 border-gray-200">
               <Space direction="vertical" size={16}>
                 <Avatar
                   size={96}
                   src={profile?.avatarUrl}
-                  style={{ backgroundColor: "#ffffff", border: "1px solid #eee" }}
+                  className="shadow-lg"
                 >
                   {profile?.username?.charAt(0).toUpperCase() || "U"}
                 </Avatar>
-                <Text type="secondary">It&apos;s all yours</Text>
-                <Text strong style={{ fontSize: 20 }}>
+                <Text strong className="text-xl">
                   {profile?.nickname || profile?.username || "Loading profile"}
                 </Text>
               </Space>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div className="flex flex-col gap-3">
                 <Space align="center" size={10}>
                   <IdcardOutlined style={{ color: "#5c4bff" }} />
                   <Text>{profile?.username || "—"}</Text>
@@ -211,46 +186,40 @@ function DashboardPage({ onLogout }: Props) {
             </div>
           </Col>
           <Col xs={24} lg={14}>
-            <div
-              style={{
-                background: "#fff",
-                borderRadius: 22,
-                padding: 24,
-                minHeight: 320,
-                boxShadow: "0 20px 60px rgba(15, 12, 41, 0.12)",
-              }}
-            >
-              <Space direction="vertical" size={32} style={{ width: "100%" }}>
+            <div className="bg-white rounded-2xl p-6 min-h-[280px] flex flex-col justify-between border-solid border-1 border-gray-200">
+              <Space direction="vertical" size={32} className="w-full">
                 <div>
                   <Space align="center" size={12}>
-                    <UserOutlined style={{ color: "#5c4bff" }} />
-                    <Text strong style={{ fontSize: 16 }}>
-                      nickname
+                    <TagOutlined style={{ color: "#5c4bff" }} />
+                    <Text strong className="text-base">
+                      Nickname
                     </Text>
                   </Space>
-                  <div style={{ marginTop: 14 }}>
+                  <div className="mt-[14px]">
                     {editing.nickname ? (
-                      <Space wrap align="center">
+                      <Space.Compact>
                         <Input
                           value={nicknameInput}
-                          onChange={(event) => setnicknameInput(event.target.value)}
-                          placeholder="Set a friendly nickname"
-                          style={{ minWidth: 190 }}
+                          onChange={(event) =>
+                            setnicknameInput(event.target.value)
+                          }
+                          placeholder="Set a nickname"
+                          className="min-w-[190px]"
                         />
                         <Button
                           type="primary"
                           icon={<CheckOutlined />}
                           loading={loadingKey === "nickname"}
                           onClick={handlenicknameSave}
-                        >
-                          Save
-                        </Button>
-                        <Button type="default" onClick={() => toggleEditing("nickname", false)}>
-                          Cancel
-                        </Button>
-                      </Space>
+                        />
+                        <Button
+                          icon={<CloseOutlined />}
+                          type="default"
+                          onClick={() => toggleEditing("nickname", false)}
+                        />
+                      </Space.Compact>
                     ) : (
-                      <Space wrap align="center">
+                      <Space align="center">
                         <Text type="secondary">
                           {profile?.nickname || "No nickname yet"}
                         </Text>
@@ -265,41 +234,42 @@ function DashboardPage({ onLogout }: Props) {
                     )}
                   </div>
                 </div>
-                <Divider style={{ margin: 0 }} />
                 <div>
                   <Space align="center" size={12}>
-                    <Avatar size={18} style={{ backgroundColor: "#dbe7ff" }}>
-                      <UserOutlined />
-                    </Avatar>
-                    <Text strong style={{ fontSize: 16 }}>
-                      Avatar URL
+                    <UserOutlined style={{ color: "#5c4bff" }} />
+                    <Text strong className="text-base">
+                      Avatar
                     </Text>
                   </Space>
-                  <div style={{ marginTop: 14 }}>
+                  <div className="mt-[14px]">
                     {editing.avatar ? (
-                      <Space wrap align="center">
+                      <Space.Compact>
                         <Input
                           value={avatarInput}
-                          onChange={(event) => setAvatarInput(event.target.value)}
+                          onChange={(event) =>
+                            setAvatarInput(event.target.value)
+                          }
                           placeholder="https://example.com/avatar.jpg"
-                          style={{ minWidth: 220 }}
+                          className="min-w-[220px]"
                         />
                         <Button
                           type="primary"
                           icon={<CheckOutlined />}
                           loading={loadingKey === "avatar"}
                           onClick={handleAvatarSave}
-                        >
-                          Save
-                        </Button>
-                        <Button type="default" onClick={() => toggleEditing("avatar", false)}>
-                          Cancel
-                        </Button>
-                      </Space>
+                        />
+                        <Button
+                          icon={<CloseOutlined />}
+                          type="default"
+                          onClick={() => toggleEditing("avatar", false)}
+                        />
+                      </Space.Compact>
                     ) : (
                       <Space wrap align="center">
                         <Text type="secondary">
-                          {profile?.avatarUrl ? "Custom URL linked" : "No avatar set"}
+                          {profile?.avatarUrl
+                            ? "Custom URL linked"
+                            : "No avatar set"}
                         </Text>
                         <Button
                           type="link"

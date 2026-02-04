@@ -89,8 +89,8 @@ function VerifyPage() {
   }
 
   return (
-    <Flex align="center" justify="center" style={{ minHeight: '100vh', padding: 24 }}>
-      <Card style={{ maxWidth: 640, width: '100%', boxShadow: '0 20px 80px rgba(0,0,0,0.12)' }}>
+    <Flex align="center" justify="center" className="min-h-screen p-6">
+      <Card className="max-w-[640px] w-full shadow-2xl">
         {content()}
       </Card>
     </Flex>
