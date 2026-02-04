@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { Button, Card, Flex, Result, Spin, Typography, message } from 'antd'
+import { Button, Card, Flex, Result, Spin, message } from 'antd'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '../api/client'
-
-const { Text } = Typography
 
 type VerifyResponse = {
   status: number
@@ -86,9 +84,7 @@ function VerifyPage() {
             Back to register
           </Button>
         }
-      >
-        <Text type="secondary">If you think this is a mistake, request a new verification email.</Text>
-      </Result>
+      />
     )
   }
 

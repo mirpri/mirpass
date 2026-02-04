@@ -18,3 +18,20 @@ func GenerateJWTToken(userID string) string {
 
 	return signedToken
 }
+
+func ValidateJWTToken(tokenString string) (string, error) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		return []byte(config.AppConfig.JWTSecret), nil
+	})
+
+	if err != nil {
+		return "", err
+	}
+
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		userID := claims["user_id"].(string)
+		return userID, nil
+	}
+
+	return "", jwt.ErrSignatureInvalid
+}

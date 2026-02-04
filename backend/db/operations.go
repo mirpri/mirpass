@@ -3,6 +3,8 @@ package db
 import (
 	"database/sql"
 
+	"mirpass-backend/types"
+
 	"github.com/go-sql-driver/mysql"
 )
 
@@ -15,21 +17,17 @@ func DBRun(query string) (sql.Result, error) {
 	return result, err
 }
 
-type User struct {
-	ID           int
-	Username     string
-	Email        string
-	PasswordHash string
-	IsVerified   bool
-}
-
-func GetUserByUsername(username string) (*User, error) {
-	var user User
-	err := database.QueryRow("SELECT id, username, email, password_hash, is_verified FROM users WHERE username = ?", username).
-		Scan(&user.ID, &user.Username, &user.Email, &user.PasswordHash, &user.IsVerified)
+func GetUserByUsername(username string) (*types.User, error) {
+	var user types.User
+	var nickname sql.NullString
+	var avatar sql.NullString
+	err := database.QueryRow("SELECT id, username, email, password_hash, nickname, avatar_url, is_verified FROM users WHERE username = ?", username).
+		Scan(&user.ID, &user.Username, &user.Email, &user.PasswordHash, &nickname, &avatar, &user.IsVerified)
 	if err != nil {
 		return nil, err
 	}
+	user.Nickname = nickname.String
+	user.AvatarURL = avatar.String
 	return &user, nil
 }
 
@@ -72,4 +70,14 @@ func VerifyUserByToken(token string) error {
 	}
 
 	return tx.Commit()
+}
+
+func UpdateUserNickname(username, nickname string) error {
+	_, err := database.Exec("UPDATE users SET nickname = ? WHERE username = ?", nickname, username)
+	return err
+}
+
+func UpdateUserAvatar(username, avatarUrl string) error {
+	_, err := database.Exec("UPDATE users SET avatar_url = ? WHERE username = ?", avatarUrl, username)
+	return err
 }

@@ -50,6 +50,8 @@ func InitDB() error {
 	       username VARCHAR(255) NOT NULL UNIQUE,
 	       email VARCHAR(255) NOT NULL UNIQUE,
 	       password_hash VARCHAR(255) NOT NULL,
+	       nickname VARCHAR(255) DEFAULT NULL,
+	       avatar_url VARCHAR(511) DEFAULT NULL,
 	       is_verified BOOLEAN DEFAULT FALSE,
 	       last_login TIMESTAMP NULL,
 	       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -97,6 +99,10 @@ func ConnectDB() {
 
 	if err = db.Ping(); err != nil {
 		log.Fatal("Error pinging database: ", err)
+	}
+
+	if err = runMigration(db); err != nil {
+		log.Fatal("Error running migrations: ", err)
 	}
 
 	log.Println("Successfully connected to the database")

@@ -14,9 +14,17 @@ func main() {
 
 	// Health check endpoint
 	mux.HandleFunc("/health", handlers.HealthCheckHandler)
+
+	// Public routes
 	mux.HandleFunc("/register", handlers.RegisterHandler)
 	mux.HandleFunc("/login", handlers.LoginHandler)
 	mux.HandleFunc("/verify", handlers.VerifyEmailHandler)
+
+	// Protected routes
+	mux.Handle("/myprofile", handlers.AuthMiddleware(http.HandlerFunc(handlers.MyInfoHandler)))
+	mux.Handle("/myusername", handlers.AuthMiddleware(http.HandlerFunc(handlers.MyUsernameHandler)))
+	mux.Handle("/profile/nickname", handlers.AuthMiddleware(http.HandlerFunc(handlers.UpdateNicknameHandler)))
+	mux.Handle("/profile/avatar", handlers.AuthMiddleware(http.HandlerFunc(handlers.UpdateAvatarHandler)))
 
 	// Wrap the mux with the CORS middleware
 	http.ListenAndServe(":3999", corsMiddleware(mux))
