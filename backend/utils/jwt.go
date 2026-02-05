@@ -9,8 +9,8 @@ import (
 
 func GenerateJWTToken(userID string) string {
 	claims := jwt.MapClaims{
-		"user_id": userID,
-		"exp":     jwt.NewNumericDate(time.Now().Add(time.Second * time.Duration(config.AppConfig.JWTExpiresIn))),
+		"username": userID,
+		"exp":      jwt.NewNumericDate(time.Now().Add(time.Second * time.Duration(config.AppConfig.JWTExpiresIn))),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -29,7 +29,7 @@ func ValidateJWTToken(tokenString string) (string, error) {
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		userID := claims["user_id"].(string)
+		userID := claims["username"].(string)
 		return userID, nil
 	}
 

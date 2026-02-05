@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Avatar,
   Button,
@@ -42,9 +42,15 @@ type Profile = {
   avatarUrl?: string;
 };
 
+type AppRole = {
+  app: string;
+  role: string;
+};
+
 function DashboardPage({ onLogout }: Props) {
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [apps, setApps] = useState<AppRole[]>([]);
 
   const [editing, setEditing] = useState<{
     avatar: boolean;
@@ -65,7 +71,17 @@ function DashboardPage({ onLogout }: Props) {
       }
     };
     loadProfile();
+    fetchMyApps();
   }, []);
+
+  const fetchMyApps = async () => {
+    try {
+      const { data } = await api.get<{ data: AppRole[] }>("/myapps");
+      setApps(data.data || []);
+    } catch (error) {
+      // ignore
+    }
+  };
 
   useEffect(() => {
     if (!profile) return;
@@ -151,9 +167,20 @@ function DashboardPage({ onLogout }: Props) {
             </Title>
             <Text type="secondary">Manage your profile and credentials</Text>
           </Space>
-          <Button icon={<LogoutOutlined />} onClick={onLogout}>
-            Logout
-          </Button>
+          <Space>
+            {apps.map((app) => (
+              <Button
+                key={app.app}
+                type="primary"
+                href={app.app === "system" ? "/manage" : `/manage/${app.app}`}
+              >
+                Manage {app.app === "system" ? "Global Admin" : app.app}
+              </Button>
+            ))}
+            <Button icon={<LogoutOutlined />} onClick={onLogout}>
+              Logout
+            </Button>
+          </Space>
         </Flex>
 
         <Divider className="my-6" />

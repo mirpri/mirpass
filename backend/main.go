@@ -26,6 +26,20 @@ func main() {
 	mux.Handle("/profile/nickname", handlers.AuthMiddleware(http.HandlerFunc(handlers.UpdateNicknameHandler)))
 	mux.Handle("/profile/avatar", handlers.AuthMiddleware(http.HandlerFunc(handlers.UpdateAvatarHandler)))
 
+	// Admin routes
+	mux.Handle("/admin/users", handlers.AuthMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminListUsers))))
+	mux.Handle("/admin/users/search", handlers.AuthMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminSearchUsers))))
+	mux.Handle("/admin/user/delete", handlers.AuthMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminDeleteUser))))
+	mux.Handle("/admin/user/update", handlers.AuthMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminUpdateUser))))
+	mux.Handle("/admin/user/reset-password", handlers.AuthMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminResetPassword))))
+
+	// My Apps endpoint
+	mux.Handle("/myapps", handlers.AuthMiddleware(http.HandlerFunc(handlers.MyAppsHandler)))
+
+	// Root routes
+	mux.Handle("/root/user/role", handlers.AuthMiddleware(handlers.RequireRoot("system", http.HandlerFunc(handlers.RootUpdateRole))))
+	mux.Handle("/root/sql", handlers.AuthMiddleware(handlers.RequireRoot("system", http.HandlerFunc(handlers.RootDirectSQL))))
+
 	// Wrap the mux with the CORS middleware
 	http.ListenAndServe(":3999", corsMiddleware(mux))
 }

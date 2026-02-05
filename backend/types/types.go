@@ -23,6 +23,22 @@ type UserProfile struct {
 	AvatarURL string `json:"avatarUrl,omitempty"`
 }
 
+type AppRole struct {
+	App  string `json:"app"`
+	Role string `json:"role"`
+}
+
+type UserWithSystemRole struct {
+	ID           int
+	Username     string
+	Email        string
+	PasswordHash string
+	Nickname     string
+	AvatarURL    string
+	IsVerified   bool
+	Role         string
+}
+
 type UserPublicInfo struct {
 	Username  string `json:"username"`
 	Nickname  string `json:"nickname,omitempty"`

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"mirpass-backend/db"
 	"mirpass-backend/utils"
 	"net/http"
 	"strings"
@@ -46,4 +47,62 @@ func GetUsernameFromContext(ctx context.Context) string {
 		return ""
 	}
 	return username
+}
+
+func RequireAdmin(app string, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		username := GetUsernameFromContext(r.Context())
+		if username == "" {
+			WriteErrorResponse(w, http.StatusUnauthorized, "Unauthorized")
+			return
+		}
+
+		user, err := db.GetUserByUsername(username)
+		if err != nil {
+			WriteErrorResponse(w, http.StatusInternalServerError, "Database error")
+			return
+		}
+
+		role, err := db.GetAppRole(user.ID, app)
+		if err != nil {
+			WriteErrorResponse(w, http.StatusInternalServerError, "Database error")
+			return
+		}
+
+		if role != "admin" && role != "root" {
+			WriteErrorResponse(w, http.StatusForbidden, "Admin access required")
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func RequireRoot(app string, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		username := GetUsernameFromContext(r.Context())
+		if username == "" {
+			WriteErrorResponse(w, http.StatusUnauthorized, "Unauthorized")
+			return
+		}
+
+		user, err := db.GetUserByUsername(username)
+		if err != nil {
+			WriteErrorResponse(w, http.StatusInternalServerError, "Database error")
+			return
+		}
+
+		role, err := db.GetAppRole(user.ID, app)
+		if err != nil {
+			WriteErrorResponse(w, http.StatusInternalServerError, "Database error")
+			return
+		}
+
+		if role != "root" {
+			WriteErrorResponse(w, http.StatusForbidden, "Root access required")
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }

@@ -62,10 +62,10 @@ func InitDB() error {
 	// Create verifications table
 	if _, err = adminConn.Exec(`CREATE TABLE IF NOT EXISTS verifications (
 	       id INT AUTO_INCREMENT PRIMARY KEY,
-	       user_id INT NOT NULL,
+	       username INT NOT NULL,
 	       token VARCHAR(255) NOT NULL,
 	       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-	       FOREIGN KEY (user_id) REFERENCES users(id)
+	       FOREIGN KEY (username) REFERENCES users(id)
 	   )`); err != nil {
 		return fmt.Errorf("create verifications table: %w", err)
 	}
@@ -73,9 +73,12 @@ func InitDB() error {
 	// Create admins table
 	if _, err = adminConn.Exec(`CREATE TABLE IF NOT EXISTS admins (
 	       id INT AUTO_INCREMENT PRIMARY KEY,
-	       username VARCHAR(255) NOT NULL UNIQUE,
-	       role VARCHAR(100) NOT NULL,
-	       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	       username INT NOT NULL,
+		   app VARCHAR(255) NOT NULL DEFAULT 'system',
+	       role ENUM('admin', 'root') NOT NULL,
+	       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+           UNIQUE KEY user_app (username, app),
+           FOREIGN KEY (username) REFERENCES users(id) ON DELETE CASCADE
 	   )`); err != nil {
 		return fmt.Errorf("create admins table: %w", err)
 	}

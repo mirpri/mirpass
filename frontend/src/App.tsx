@@ -5,6 +5,7 @@ import LoginPage from './pages/Login'
 import RegisterPage from './pages/Register'
 import VerifyPage from './pages/Verify'
 import DashboardPage from './pages/Dashboard'
+import AdminPage from './pages/Admin'
 
 function App() {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'))
@@ -49,6 +50,16 @@ function App() {
             element={
               isAuthed ? (
                 <DashboardPage onLogout={handleLogout} />
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
+          />
+          <Route
+            path="/manage"
+            element={
+              isAuthed ? (
+                <AdminPage />
               ) : (
                 <Navigate to="/login" replace />
               )
