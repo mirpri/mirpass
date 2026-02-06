@@ -57,13 +57,7 @@ func RequireAdmin(app string, next http.Handler) http.Handler {
 			return
 		}
 
-		user, err := db.GetUserByUsername(username)
-		if err != nil {
-			WriteErrorResponse(w, http.StatusInternalServerError, "Database error")
-			return
-		}
-
-		role, err := db.GetAppRole(user.ID, app)
+		role, err := db.GetAppRole(username, app)
 		if err != nil {
 			WriteErrorResponse(w, http.StatusInternalServerError, "Database error")
 			return
@@ -86,13 +80,7 @@ func RequireRoot(app string, next http.Handler) http.Handler {
 			return
 		}
 
-		user, err := db.GetUserByUsername(username)
-		if err != nil {
-			WriteErrorResponse(w, http.StatusInternalServerError, "Database error")
-			return
-		}
-
-		role, err := db.GetAppRole(user.ID, app)
+		role, err := db.GetAppRole(username, app)
 		if err != nil {
 			WriteErrorResponse(w, http.StatusInternalServerError, "Database error")
 			return

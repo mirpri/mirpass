@@ -77,7 +77,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, err := db.CreateUser(req.Username, req.Email, string(hashedPassword))
+	_, err = db.CreateUser(req.Username, req.Email, string(hashedPassword))
 	if err != nil {
 		log.Printf("CreateUser error: %v", err)
 		WriteErrorResponse(w, 500, "Error creating user")
@@ -86,7 +86,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Generate and save verification token
 	token := utils.GenerateRandomToken()
-	err = db.CreateVerification(userID, token)
+	err = db.CreateVerification(req.Username, token)
 	if err != nil {
 		log.Printf("CreateVerification error: %v", err)
 		WriteErrorResponse(w, 500, "Error creating verification")

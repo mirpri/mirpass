@@ -42,3 +42,26 @@ func MyUsernameHandler(w http.ResponseWriter, r *http.Request) {
 
 	WriteSuccessResponse(w, "Username retrieved successfully", map[string]string{"username": username})
 }
+
+func MyAppsHandler(w http.ResponseWriter, r *http.Request) {
+	username := GetUsernameFromContext(r.Context())
+	if username == "" {
+		WriteErrorResponse(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	// We need userID (int) from username (string)
+	user, err := db.GetUserByUsername(username)
+	if err != nil {
+		WriteErrorResponse(w, 500, "Database error")
+		return
+	}
+
+	apps, err := db.GetAdminApps(user.Username)
+	if err != nil {
+		WriteErrorResponse(w, 500, "Database error")
+		return
+	}
+
+	WriteSuccessResponse(w, "Apps retrieved", apps)
+}

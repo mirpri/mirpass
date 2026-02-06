@@ -23,12 +23,12 @@ func GetUserByUsername(username string) (*types.User, error) {
 	var avatar sql.NullString
 
 	query := `
-		SELECT id, username, email, password_hash, nickname, avatar_url, is_verified 
+		SELECT username, email, password_hash, nickname, avatar_url, is_verified 
 		FROM users 
 		WHERE username = ?`
 
 	err := database.QueryRow(query, username).
-		Scan(&user.ID, &user.Username, &user.Email, &user.PasswordHash, &nickname, &avatar, &user.IsVerified)
+		Scan(&user.Username, &user.Email, &user.PasswordHash, &nickname, &avatar, &user.IsVerified)
 	if err != nil {
 		return nil, err
 	}
@@ -42,17 +42,18 @@ func CreateUser(username, email, passwordHash string) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return result.LastInsertId()
+	// With username as PK, LastInsertId might not be relevant depending on driver, but returning rows affected or 0 is safe enough for caller who doesn't use it.
+	return result.RowsAffected()
 }
 
-func CreateVerification(userID int64, token string) error {
-	_, err := database.Exec("INSERT INTO verifications (username, token) VALUES (?, ?)", userID, token)
+func CreateVerification(username string, token string) error {
+	_, err := database.Exec("INSERT INTO verifications (username, token) VALUES (?, ?)", username, token)
 	return err
 }
 
 func VerifyUserByToken(token string) error {
-	var userID int
-	err := database.QueryRow("SELECT username FROM verifications WHERE token = ?", token).Scan(&userID)
+	var username string
+	err := database.QueryRow("SELECT username FROM verifications WHERE token = ?", token).Scan(&username)
 	if err != nil {
 		return err
 	}
@@ -63,7 +64,7 @@ func VerifyUserByToken(token string) error {
 		return err
 	}
 
-	_, err = tx.Exec("UPDATE users SET is_verified = TRUE WHERE id = ?", userID)
+	_, err = tx.Exec("UPDATE users SET is_verified = TRUE WHERE username = ?", username)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -90,7 +91,7 @@ func UpdateUserAvatar(username, avatarUrl string) error {
 
 func GetAllUsers() ([]types.User, error) {
 	query := `
-		SELECT id, username, email, nickname, avatar_url, is_verified 
+		SELECT username, email, nickname, avatar_url, is_verified 
 		FROM users`
 	rows, err := database.Query(query)
 	if err != nil {
@@ -102,7 +103,7 @@ func GetAllUsers() ([]types.User, error) {
 	for rows.Next() {
 		var u types.User
 		var nickname, avatar sql.NullString
-		if err := rows.Scan(&u.ID, &u.Username, &u.Email, &nickname, &avatar, &u.IsVerified); err != nil {
+		if err := rows.Scan(&u.Username, &u.Email, &nickname, &avatar, &u.IsVerified); err != nil {
 			return nil, err
 		}
 		u.Nickname = nickname.String
@@ -115,7 +116,7 @@ func GetAllUsers() ([]types.User, error) {
 func SearchUsers(query string) ([]types.User, error) {
 	pattern := "%" + query + "%"
 	sqlQuery := `
-		SELECT id, username, email, nickname, avatar_url, is_verified 
+		SELECT username, email, nickname, avatar_url, is_verified 
 		FROM users 
 		WHERE username LIKE ? OR email LIKE ? OR nickname LIKE ?`
 	rows, err := database.Query(sqlQuery, pattern, pattern, pattern)
@@ -128,7 +129,7 @@ func SearchUsers(query string) ([]types.User, error) {
 	for rows.Next() {
 		var u types.User
 		var nickname, avatar sql.NullString
-		if err := rows.Scan(&u.ID, &u.Username, &u.Email, &nickname, &avatar, &u.IsVerified); err != nil {
+		if err := rows.Scan(&u.Username, &u.Email, &nickname, &avatar, &u.IsVerified); err != nil {
 			return nil, err
 		}
 		u.Nickname = nickname.String
@@ -138,15 +139,15 @@ func SearchUsers(query string) ([]types.User, error) {
 	return users, nil
 }
 
-func DeleteUser(userID int) error {
-	_, err := database.Exec("DELETE FROM users WHERE id = ?", userID)
+func DeleteUser(username string) error {
+	_, err := database.Exec("DELETE FROM users WHERE username = ?", username)
 	return err
 }
 
-func UpdateUserRole(userID int, role string) error {
+func UpdateUserRole(username string, role string) error {
 	// If role is user, remove from admins table for 'system'
 	if role == "user" {
-		_, err := database.Exec("DELETE FROM admins WHERE username = ? AND app = 'system'", userID)
+		_, err := database.Exec("DELETE FROM admins WHERE username = ? AND app = 'system'", username)
 		return err
 	}
 
@@ -154,17 +155,17 @@ func UpdateUserRole(userID int, role string) error {
 	_, err := database.Exec(`
 		INSERT INTO admins (username, app, role) 
 		VALUES (?, 'system', ?) 
-		ON DUPLICATE KEY UPDATE role = ?`, userID, role, role)
+		ON DUPLICATE KEY UPDATE role = ?`, username, role, role)
 	return err
 }
 
-func UpdateUserPassword(userID int, passwordHash string) error {
-	_, err := database.Exec("UPDATE users SET password_hash = ? WHERE id = ?", passwordHash, userID)
+func UpdateUserPassword(username string, passwordHash string) error {
+	_, err := database.Exec("UPDATE users SET password_hash = ? WHERE username = ?", passwordHash, username)
 	return err
 }
 
-func UpdateUserInfo(userID int, email, nickname string) error {
-	_, err := database.Exec("UPDATE users SET email = ?, nickname = ? WHERE id = ?", email, nickname, userID)
+func UpdateUserInfo(username string, email, nickname string) error {
+	_, err := database.Exec("UPDATE users SET email = ?, nickname = ? WHERE username = ?", email, nickname, username)
 	return err
 }
 
@@ -210,9 +211,9 @@ func DirectQuery(query string) ([]map[string]interface{}, error) {
 	return results, nil
 }
 
-func GetSystemRole(userID int) (string, error) {
+func GetSystemRole(username string) (string, error) {
 	var role string
-	err := database.QueryRow("SELECT role FROM admins WHERE username = ? AND app = 'system'", userID).Scan(&role)
+	err := database.QueryRow("SELECT role FROM admins WHERE username = ? AND app = 'system'", username).Scan(&role)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return "", nil
@@ -224,9 +225,9 @@ func GetSystemRole(userID int) (string, error) {
 
 func GetAllUsersWithSystemRole() ([]types.UserWithSystemRole, error) {
 	query := `
-		SELECT u.id, u.username, u.email, u.nickname, u.avatar_url, a.role, u.is_verified 
+		SELECT u.username, u.email, u.nickname, u.avatar_url, a.role, u.is_verified 
 		FROM users u 
-		LEFT JOIN admins a ON u.id = a.username AND a.app = 'system'`
+		LEFT JOIN admins a ON u.username = a.username AND a.app = 'system'`
 	rows, err := database.Query(query)
 	if err != nil {
 		return nil, err
@@ -237,7 +238,7 @@ func GetAllUsersWithSystemRole() ([]types.UserWithSystemRole, error) {
 	for rows.Next() {
 		var u types.UserWithSystemRole
 		var nickname, avatar, role sql.NullString
-		if err := rows.Scan(&u.ID, &u.Username, &u.Email, &nickname, &avatar, &role, &u.IsVerified); err != nil {
+		if err := rows.Scan(&u.Username, &u.Email, &nickname, &avatar, &role, &u.IsVerified); err != nil {
 			return nil, err
 		}
 		u.Nickname = nickname.String
@@ -254,9 +255,9 @@ func GetAllUsersWithSystemRole() ([]types.UserWithSystemRole, error) {
 func SearchUsersWithSystemRole(query string) ([]types.UserWithSystemRole, error) {
 	pattern := "%" + query + "%"
 	sqlQuery := `
-		SELECT u.id, u.username, u.email, u.nickname, u.avatar_url, a.role, u.is_verified 
+		SELECT u.username, u.email, u.nickname, u.avatar_url, a.role, u.is_verified 
 		FROM users u 
-		LEFT JOIN admins a ON u.id = a.username AND a.app = 'system'
+		LEFT JOIN admins a ON u.username = a.username AND a.app = 'system'
 		WHERE u.username LIKE ? OR u.email LIKE ? OR u.nickname LIKE ?`
 	rows, err := database.Query(sqlQuery, pattern, pattern, pattern)
 	if err != nil {
@@ -268,7 +269,7 @@ func SearchUsersWithSystemRole(query string) ([]types.UserWithSystemRole, error)
 	for rows.Next() {
 		var u types.UserWithSystemRole
 		var nickname, avatar, role sql.NullString
-		if err := rows.Scan(&u.ID, &u.Username, &u.Email, &nickname, &avatar, &role, &u.IsVerified); err != nil {
+		if err := rows.Scan(&u.Username, &u.Email, &nickname, &avatar, &role, &u.IsVerified); err != nil {
 			return nil, err
 		}
 		u.Nickname = nickname.String
@@ -282,8 +283,8 @@ func SearchUsersWithSystemRole(query string) ([]types.UserWithSystemRole, error)
 	return users, nil
 }
 
-func GetAdminApps(userID int) ([]types.AppRole, error) {
-	rows, err := database.Query("SELECT app, role FROM admins WHERE username = ?", userID)
+func GetAdminApps(username string) ([]types.AppRole, error) {
+	rows, err := database.Query("SELECT app, role FROM admins WHERE username = ?", username)
 	if err != nil {
 		return nil, err
 	}
@@ -300,10 +301,9 @@ func GetAdminApps(userID int) ([]types.AppRole, error) {
 	return apps, nil
 }
 
-func GetAppRole(userID int, app string) (string, error) {
+func GetAppRole(username string, app string) (string, error) {
 	var role string
-	// table admins has column username as int (referencing users.id) and app string
-	err := database.QueryRow("SELECT role FROM admins WHERE username = ? AND app = ?", userID, app).Scan(&role)
+	err := database.QueryRow("SELECT role FROM admins WHERE username = ? AND app = ?", username, app).Scan(&role)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return "", nil

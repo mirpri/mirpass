@@ -16,17 +16,16 @@ import {
   DeleteOutlined,
   EditOutlined,
   ReloadOutlined,
-  ConsoleSqlOutlined,
-  SafetyCertificateOutlined,
-  
 } from '@ant-design/icons';
+import {
+    ShieldBanIcon
+} from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 
 const { TextArea } = Input;
 
 type AdminUserView = {
-  id: number;
   username: string;
   email: string;
   nickname: string;
@@ -94,13 +93,13 @@ function AdminPage() {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (username: string) => {
     Modal.confirm({
       title: 'Are you sure?',
       content: 'This action cannot be undone.',
       onOk: async () => {
         try {
-          await api.post(`/admin/user/delete?id=${id}`);
+          await api.post(`/admin/user/delete?username=${username}`);
           message.success('User deleted');
           fetchUsers();
         } catch (error) {
@@ -130,7 +129,7 @@ function AdminPage() {
       
       // Update basic info
       await api.post('/admin/user/update', {
-        id: editingUser?.id,
+        username: editingUser?.username,
         email: values.email,
         nickname: values.nickname,
       });
@@ -138,7 +137,7 @@ function AdminPage() {
       // Update role if changed and allowed
       if (systemRole === 'root' && values.role !== editingUser?.role) {
         await api.post('/root/user/role', {
-          id: editingUser?.id,
+          username: editingUser?.username,
           role: values.role,
         });
       }
@@ -161,7 +160,7 @@ function AdminPage() {
     try {
       const values = await passForm.validateFields();
       await api.post('/admin/user/reset-password', {
-        id: editingUser?.id,
+        username: editingUser?.username,
         password: values.password,
       });
       message.success('Password reset successfully');
@@ -183,12 +182,6 @@ function AdminPage() {
   };
 
   const columns = [
-    {
-      title: 'ID',
-      dataIndex: 'id',
-      key: 'id',
-      width: 60,
-    },
     {
       title: 'Username',
       dataIndex: 'username',
@@ -220,7 +213,7 @@ function AdminPage() {
             danger
             icon={<DeleteOutlined />}
             size="small"
-            onClick={() => handleDelete(record.id)}
+            onClick={() => handleDelete(record.username)}
           />
         </Space>
       ),
@@ -258,7 +251,7 @@ function AdminPage() {
         <Table
           columns={columns}
           dataSource={users}
-          rowKey="id"
+          rowKey="username"
           loading={loading}
           pagination={{ pageSize: 10 }}
         />
@@ -273,8 +266,8 @@ function AdminPage() {
                   placeholder="SELECT * FROM users;"
                   className="font-mono bg-gray-800 text-gray-200 border-none"
                 />
-                <Button type="primary" icon={<ConsoleSqlOutlined />} onClick={runSQL}>
-                  Execute SQL
+                <Button type="primary" onClick={runSQL}>
+                  <ShieldBanIcon size={18}/>Execute SQL
                 </Button>
                 {sqlResult && (
                     <div className="overflow-x-auto p-2 rounded-lg mt-2 border border-gray-200">
@@ -302,7 +295,7 @@ function AdminPage() {
             <Input />
           </Form.Item>
           {systemRole === 'root' && (
-            <Form.Item name="role" label="Role">
+            <Form.Item name="role" label={<><ShieldBanIcon size={16}/> Role</>}>
               <Select>
                 <Select.Option value="user">User</Select.Option>
                 <Select.Option value="admin">Admin</Select.Option>

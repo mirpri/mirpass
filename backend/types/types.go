@@ -7,7 +7,6 @@ type Response struct {
 }
 
 type User struct {
-	ID           int
 	Username     string
 	Email        string
 	PasswordHash string
@@ -29,7 +28,6 @@ type AppRole struct {
 }
 
 type UserWithSystemRole struct {
-	ID           int
 	Username     string
 	Email        string
 	PasswordHash string
