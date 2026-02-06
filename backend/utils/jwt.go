@@ -2,6 +2,8 @@ package utils
 
 import (
 	"mirpass-backend/config"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -34,4 +36,25 @@ func ValidateJWTToken(tokenString string) (string, error) {
 	}
 
 	return "", jwt.ErrSignatureInvalid
+}
+
+type Claims struct {
+	Username string
+}
+
+func ExtractClaims(r *http.Request) (*Claims, error) {
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		return nil, jwt.ErrTokenMalformed
+	}
+	parts := strings.Split(authHeader, " ")
+	if len(parts) != 2 || parts[0] != "Bearer" {
+		return nil, jwt.ErrTokenMalformed
+	}
+	tokenString := parts[1]
+	username, err := ValidateJWTToken(tokenString)
+	if err != nil {
+		return nil, err
+	}
+	return &Claims{Username: username}, nil
 }

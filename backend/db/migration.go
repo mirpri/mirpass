@@ -9,8 +9,7 @@ import (
 )
 
 func runMigration(db *sql.DB) error {
-
-	err := db.QueryRow("SELECT created_at FROM users WHERE username = 'root'").Scan()
+	err := db.QueryRow("SELECT created_at FROM users WHERE username = 'root'").Scan(new(sql.NullTime))
 	if err == sql.ErrNoRows {
 		// Create root user
 		hash, err := bcrypt.GenerateFromPassword([]byte("root"), bcrypt.DefaultCost)
@@ -34,6 +33,10 @@ func runMigration(db *sql.DB) error {
 	if err != nil {
 		return fmt.Errorf("assigning root role: %w", err)
 	}
+
+	// Migration: Add name to api_keys if missing
+	// We try to add it and ignore error, assuming error means it exists
+	_, _ = db.Exec("ALTER TABLE api_keys ADD COLUMN name VARCHAR(255) DEFAULT NULL")
 
 	return nil
 }

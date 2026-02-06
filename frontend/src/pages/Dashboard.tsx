@@ -13,38 +13,28 @@ import {
   message,
 } from "antd";
 import {
-  LogoutOutlined,
-  MailOutlined,
-  UserOutlined,
-  IdcardOutlined,
   EditOutlined,
   CheckOutlined,
-  TagOutlined,
   CloseOutlined,
 } from "@ant-design/icons";
+
+import {
+  LogOutIcon,
+  IdCardIcon,
+  MailIcon,
+  UserIcon,
+  TagIcon,
+  AppWindowIcon,
+  PlusIcon,
+  ShieldEllipsis
+} from "lucide-react"
 import api from "../api/client";
+import type { AppRole, Profile, SimpleResponse } from "../types";
 
 const { Title, Text } = Typography;
 
-type SimpleResponse = {
-  status: number;
-  message?: string;
-};
-
 type Props = {
   onLogout: () => void;
-};
-
-type Profile = {
-  username: string;
-  nickname?: string;
-  email: string;
-  avatarUrl?: string;
-};
-
-type AppRole = {
-  app: string;
-  role: string;
 };
 
 function DashboardPage({ onLogout }: Props) {
@@ -95,8 +85,18 @@ function DashboardPage({ onLogout }: Props) {
         "/myprofile",
       );
       return data.data;
-    } catch (error) {
-      message.error("Could not fetch profile data");
+    } catch (error: unknown) {
+      const err = error as {
+        response?: { status?: number; data?: { message?: string } };
+      };
+      const status = err.response?.status;
+      if (status === 401) {
+        message.error("Session expired. Please log in again.");
+        onLogout();
+        return null;
+      }
+      const msg = err.response?.data?.message;
+      message.error(msg || `Could not fetch profile data`);
       return null;
     }
   };
@@ -168,16 +168,7 @@ function DashboardPage({ onLogout }: Props) {
             <Text type="secondary">Manage your profile and credentials</Text>
           </Space>
           <Space>
-            {apps.map((app) => (
-              <Button
-                key={app.app}
-                type="primary"
-                href={app.app === "system" ? "/manage" : `/manage/${app.app}`}
-              >
-                Manage {app.app === "system" ? "Global Admin" : app.app}
-              </Button>
-            ))}
-            <Button icon={<LogoutOutlined />} onClick={onLogout}>
+            <Button icon={<LogOutIcon size={13} />} onClick={onLogout}>
               Logout
             </Button>
           </Space>
@@ -202,11 +193,11 @@ function DashboardPage({ onLogout }: Props) {
               </Space>
               <div className="flex flex-col gap-3">
                 <Space align="center" size={10}>
-                  <IdcardOutlined style={{ color: "#5c4bff" }} />
+                  <IdCardIcon color="#5c4bff" size={16} />
                   <Text>{profile?.username || "—"}</Text>
                 </Space>
                 <Space align="center" size={10}>
-                  <MailOutlined style={{ color: "#5c4bff" }} />
+                  <MailIcon color="#5c4bff" size={16} />
                   <Text>{profile?.email || "—"}</Text>
                 </Space>
               </div>
@@ -217,7 +208,7 @@ function DashboardPage({ onLogout }: Props) {
               <Space direction="vertical" size={32} className="w-full">
                 <div>
                   <Space align="center" size={12}>
-                    <TagOutlined style={{ color: "#5c4bff" }} />
+                    <TagIcon color="#5c4bff" size={16} />
                     <Text strong className="text-base">
                       Nickname
                     </Text>
@@ -263,7 +254,7 @@ function DashboardPage({ onLogout }: Props) {
                 </div>
                 <div>
                   <Space align="center" size={12}>
-                    <UserOutlined style={{ color: "#5c4bff" }} />
+                    <UserIcon color="#5c4bff" size={16} />
                     <Text strong className="text-base">
                       Avatar
                     </Text>
@@ -307,6 +298,37 @@ function DashboardPage({ onLogout }: Props) {
                         </Button>
                       </Space>
                     )}
+                  </div>
+                </div>
+
+                <Divider />
+
+                <div>
+                  <Space align="center" size={12}>
+                    <AppWindowIcon color="#5c4bff" size={16} />
+                    <Text strong className="text-base">
+                      My Applications
+                    </Text>
+                  </Space>
+                  <div className="mt-[14px]">
+                    {apps.map((app) => (
+                      <Button
+                        key={app.appId}
+                        className="mr-2"
+                        href={
+                          app.name === "system"
+                            ? "/manage"
+                            : `/manage/${app.appId}`
+                        }
+                      >
+                        <ShieldEllipsis size={14} />
+                        {app.name}
+                      </Button>
+                    ))}
+                    <Button type="dashed" href="/apps/create">
+                    <PlusIcon size={14} />
+                      Create New App
+                    </Button>
                   </div>
                 </div>
               </Space>

@@ -37,7 +37,7 @@ func LoadConfig() {
 		DBName:       os.Getenv("DB_NAME"),
 		DBAddr:       os.Getenv("DB_ADDR"),
 		JWTSecret:    os.Getenv("JWT_SECRET"),
-		JWTExpiresIn: getEnvInt("JWT_EXPIRES_IN", 3600),
+		JWTExpiresIn: getEnvInt("JWT_EXPIRES_IN", 3600*24*7),
 		MailEnable:   os.Getenv("MAIL_ENABLE") == "true",
 		SMTPEmail:    os.Getenv("SMTP_EMAIL"),
 		SMTPPassword: os.Getenv("SMTP_PASSWORD"),

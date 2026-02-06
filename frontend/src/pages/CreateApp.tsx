@@ -1,0 +1,68 @@
+import { useState } from "react";
+import { Button, Card, Form, Input, Typography, message, Space } from "antd";
+import { useNavigate } from "react-router-dom";
+import api from "../api/client";
+
+const { Title, Text } = Typography;
+
+function CreateAppPage() {
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const onFinish = async (values: { name: string; description: string }) => {
+    setLoading(true);
+    try {
+      const { data } = await api.post("/apps/create", values);
+      message.success("App created successfully");
+      const appId = data.data.id; 
+      navigate(`/manage/${appId}`);
+    } catch (error: any) {
+      const msg = error.response?.data?.message || "Could not create app";
+      message.error(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen py-8 px-6 bg-purple-60 flex items-center justify-center">
+      <Card className="max-w-md w-full rounded-[18px] bg-white/95 shadow-xl p-8">
+        <Space direction="vertical" size={20} className="w-full">
+          <div>
+            <Title level={3} className="m-0">Create New App</Title>
+            <Text type="secondary">Create a new application to manage credentials</Text>
+          </div>
+          
+          <Form layout="vertical" onFinish={onFinish}>
+            <Form.Item
+              label="App Name"
+              name="name"
+              rules={[{ required: true, message: "Please input app name!" }]}
+            >
+              <Input placeholder="my-awesome-app" />
+            </Form.Item>
+
+            <Form.Item
+              label="Description"
+              name="description"
+            >
+              <Input.TextArea placeholder="Describe your app" />
+            </Form.Item>
+
+            <Form.Item>
+              <Button type="primary" htmlType="submit" loading={loading} block>
+                Create App
+              </Button>
+            </Form.Item>
+          </Form>
+          
+           <Button type="link" onClick={() => navigate("/dashboard")} block>
+            Back to Dashboard
+          </Button>
+        </Space>
+      </Card>
+    </div>
+  );
+}
+
+export default CreateAppPage;

@@ -36,6 +36,21 @@ func main() {
 	// My Apps endpoint
 	mux.Handle("/myapps", handlers.AuthMiddleware(http.HandlerFunc(handlers.MyAppsHandler)))
 
+	// App Management
+	mux.Handle("/apps/create", handlers.AuthMiddleware(http.HandlerFunc(handlers.CreateAppHandler)))
+	mux.Handle("/apps/details", handlers.AuthMiddleware(http.HandlerFunc(handlers.AppDetailsHandler)))
+	mux.Handle("/apps/keys", handlers.AuthMiddleware(http.HandlerFunc(handlers.GetAppKeysHandler)))
+	mux.Handle("/apps/keys/create", handlers.AuthMiddleware(http.HandlerFunc(handlers.CreateAppKeyHandler)))
+	mux.Handle("/apps/keys/delete", handlers.AuthMiddleware(http.HandlerFunc(handlers.DeleteAppKeyHandler)))
+
+	mux.Handle("/apps/update", handlers.AuthMiddleware(http.HandlerFunc(handlers.UpdateAppHandler)))
+	mux.Handle("/apps/delete", handlers.AuthMiddleware(http.HandlerFunc(handlers.DeleteAppHandler)))
+
+	mux.Handle("/apps/members", handlers.AuthMiddleware(http.HandlerFunc(handlers.GetAppMembersHandler)))
+	mux.Handle("/apps/members/add", handlers.AuthMiddleware(http.HandlerFunc(handlers.AddAppMemberHandler)))
+	mux.Handle("/apps/members/remove", handlers.AuthMiddleware(http.HandlerFunc(handlers.RemoveAppMemberHandler)))
+	mux.Handle("/apps/members/role", handlers.AuthMiddleware(http.HandlerFunc(handlers.UpdateAppMemberRoleHandler)))
+
 	// Root routes
 	mux.Handle("/root/user/role", handlers.AuthMiddleware(handlers.RequireRoot("system", http.HandlerFunc(handlers.RootUpdateRole))))
 	mux.Handle("/root/sql", handlers.AuthMiddleware(handlers.RequireRoot("system", http.HandlerFunc(handlers.RootDirectSQL))))

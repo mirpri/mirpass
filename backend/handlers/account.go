@@ -85,7 +85,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Generate and save verification token
-	token := utils.GenerateRandomToken()
+	token := utils.GenerateToken()
 	err = db.CreateVerification(req.Username, token)
 	if err != nil {
 		log.Printf("CreateVerification error: %v", err)

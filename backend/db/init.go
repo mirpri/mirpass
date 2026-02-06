@@ -82,6 +82,54 @@ func InitDB() error {
 		return fmt.Errorf("create admins table: %w", err)
 	}
 
+	// Create Application table
+	if _, err = adminConn.Exec(`CREATE TABLE IF NOT EXISTS applications (
+	       id VARCHAR(127) PRIMARY KEY,
+	       name VARCHAR(255) NOT NULL UNIQUE,
+	       description TEXT DEFAULT NULL,
+	       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	   )`); err != nil {
+		return fmt.Errorf("create applications table: %w", err)
+	}
+
+	// Create App api_keys table
+	if _, err = adminConn.Exec(`CREATE TABLE IF NOT EXISTS api_keys (
+	       id INT AUTO_INCREMENT PRIMARY KEY,
+	       app_id VARCHAR(127) NOT NULL,
+	       key_hash VARCHAR(255) NOT NULL UNIQUE,
+           name VARCHAR(255) DEFAULT NULL,
+	       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	       FOREIGN KEY (app_id) REFERENCES applications(id) ON DELETE CASCADE
+	   )`); err != nil {
+		return fmt.Errorf("create api_keys table: %w", err)
+	}
+
+	// Create App login history table
+	if _, err = adminConn.Exec(`CREATE TABLE IF NOT EXISTS login_history (
+	       id INT AUTO_INCREMENT PRIMARY KEY,
+	       username VARCHAR(255) NOT NULL,
+	       app_id VARCHAR(127) NOT NULL,
+	       login_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	       FOREIGN KEY (username) REFERENCES users(username) ON DELETE CASCADE,
+	       FOREIGN KEY (app_id) REFERENCES applications(id) ON DELETE CASCADE
+	   )`); err != nil {
+		return fmt.Errorf("create login_history table: %w", err)
+	}
+
+	// Create App login sessions table
+	if _, err = adminConn.Exec(`CREATE TABLE IF NOT EXISTS login_sessions (
+	       id INT AUTO_INCREMENT PRIMARY KEY,
+	       username VARCHAR(255) NOT NULL,
+	       app_id VARCHAR(127) NOT NULL,
+	       session_token VARCHAR(255) NOT NULL UNIQUE,
+	       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	       expires_at TIMESTAMP NOT NULL,
+	       FOREIGN KEY (username) REFERENCES users(username) ON DELETE CASCADE,
+	       FOREIGN KEY (app_id) REFERENCES applications(id) ON DELETE CASCADE
+	   )`); err != nil {
+		return fmt.Errorf("create login_sessions table: %w", err)
+	}
+
 	return nil
 }
 

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 
 	"mirpass-backend/types"
+	"mirpass-backend/utils"
 
 	"github.com/go-sql-driver/mysql"
 )
@@ -284,7 +285,13 @@ func SearchUsersWithSystemRole(query string) ([]types.UserWithSystemRole, error)
 }
 
 func GetAdminApps(username string) ([]types.AppRole, error) {
-	rows, err := database.Query("SELECT app, role FROM admins WHERE username = ?", username)
+	query := `
+		SELECT a.app, COALESCE(app_tbl.name, a.app), a.role 
+		FROM admins a 
+		LEFT JOIN applications app_tbl ON a.app = app_tbl.id 
+		WHERE a.username = ?`
+
+	rows, err := database.Query(query, username)
 	if err != nil {
 		return nil, err
 	}
@@ -293,7 +300,7 @@ func GetAdminApps(username string) ([]types.AppRole, error) {
 	var apps []types.AppRole
 	for rows.Next() {
 		var ar types.AppRole
-		if err := rows.Scan(&ar.App, &ar.Role); err != nil {
+		if err := rows.Scan(&ar.AppID, &ar.Name, &ar.Role); err != nil {
 			return nil, err
 		}
 		apps = append(apps, ar)
@@ -311,4 +318,148 @@ func GetAppRole(username string, app string) (string, error) {
 		return "", err
 	}
 	return role, nil
+}
+
+func CreateApp(name, description, owner string) (string, error) {
+	// Generate ID
+	id := utils.GenerateID()
+
+	tx, err := database.Begin()
+	if err != nil {
+		return "", err
+	}
+
+	// Insert App
+	_, err = tx.Exec("INSERT INTO applications (id, name, description) VALUES (?, ?, ?)", id, name, description)
+	if err != nil {
+		tx.Rollback()
+		return "", err
+	}
+
+	// Insert Admin (owner)
+	_, err = tx.Exec("INSERT INTO admins (username, app, role) VALUES (?, ?, 'root')", owner, id)
+	if err != nil {
+		tx.Rollback()
+		return "", err
+	}
+
+	if err = tx.Commit(); err != nil {
+		return "", err
+	}
+
+	return id, nil
+}
+
+func GetApplication(appID string) (*types.Application, error) {
+	var app types.Application
+	var createdAt sql.NullString
+	err := database.QueryRow("SELECT id, name, description, created_at FROM applications WHERE id = ?", appID).
+		Scan(&app.ID, &app.Name, &app.Description, &createdAt)
+	if err != nil {
+		return nil, err
+	}
+	app.CreatedAt = createdAt.String
+	return &app, nil
+}
+
+func IsAppAdmin(username, appID string) (bool, error) {
+	var count int
+	err := database.QueryRow("SELECT COUNT(*) FROM admins WHERE username = ? AND app = ? AND (role = 'admin' OR role = 'root')", username, appID).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+func GetAppKeys(appID string) ([]types.APIKey, error) {
+	rows, err := database.Query("SELECT id, app_id, COALESCE(name, ''), created_at FROM api_keys WHERE app_id = ? ORDER BY created_at DESC", appID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var keys []types.APIKey
+	for rows.Next() {
+		var k types.APIKey
+		var createdAt sql.NullString
+		if err := rows.Scan(&k.ID, &k.AppID, &k.Name, &createdAt); err != nil {
+			return nil, err
+		}
+		k.CreatedAt = createdAt.String
+		keys = append(keys, k)
+	}
+	return keys, nil
+}
+
+func CreateAPIKey(appID, keyHash, name string) (int64, error) {
+	res, err := database.Exec("INSERT INTO api_keys (app_id, key_hash, name) VALUES (?, ?, ?)", appID, keyHash, name)
+	if err != nil {
+		return 0, err
+	}
+	return res.LastInsertId()
+}
+
+func DeleteAPIKey(keyID int64, appID string) error {
+	res, err := database.Exec("DELETE FROM api_keys WHERE id = ? AND app_id = ?", keyID, appID)
+	if err != nil {
+		return err
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+func UpdateApp(appID, name, description string) error {
+	_, err := database.Exec("UPDATE applications SET name = ?, description = ? WHERE id = ?", name, description, appID)
+	return err
+}
+
+func DeleteApp(appID string) error {
+	_, err := database.Exec("DELETE FROM applications WHERE id = ?", appID)
+	return err
+}
+
+func AddAppMember(appID, username, role string) error {
+	_, err := database.Exec("INSERT INTO admins (username, app, role) VALUES (?, ?, ?)", username, appID, role)
+	return err
+}
+
+func RemoveAppMember(appID, username string) error {
+	_, err := database.Exec("DELETE FROM admins WHERE username = ? AND app = ?", username, appID)
+	return err
+}
+
+func UpdateAppMemberRole(appID, username, role string) error {
+	_, err := database.Exec("UPDATE admins SET role = ? WHERE username = ? AND app = ?", role, username, appID)
+	return err
+}
+
+func GetAppMembers(appID string) ([]types.AppMember, error) {
+	query := `
+		SELECT a.username, a.role, u.avatar_url 
+		FROM admins a 
+		LEFT JOIN users u ON a.username = u.username 
+		WHERE a.app = ?`
+	rows, err := database.Query(query, appID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var members []types.AppMember
+	for rows.Next() {
+		var m types.AppMember
+		var avatar sql.NullString
+		if err := rows.Scan(&m.Username, &m.Role, &avatar); err != nil {
+			return nil, err
+		}
+		m.AvatarUrl = avatar.String
+		members = append(members, m)
+	}
+	return members, nil
 }
