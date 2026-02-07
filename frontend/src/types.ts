@@ -25,6 +25,9 @@ export interface AppDetails {
   name: string;
   description: string;
   role: string; // Current user's role in this app
+  logoUrl?: string;
+  suspendUntil?: string | null;
+  created_at?: string;
 }
 
 export interface AppMember {

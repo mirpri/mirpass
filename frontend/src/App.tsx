@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
-import { ConfigProvider, App as AntdApp } from 'antd'
+import { ConfigProvider, App as AntdApp, theme } from 'antd'
 import LoginPage from './pages/Login'
 import RegisterPage from './pages/Register'
 import VerifyPage from './pages/Verify'
@@ -9,28 +9,51 @@ import AdminPage from './pages/Admin'
 import CreateAppPage from './pages/CreateApp'
 import ManageAppPage from './pages/ManageApp'
 import Nav from './components/Nav'
+import { useAppStore } from './store/useAppStore'
 
 function App() {
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'))
   const navigate = useNavigate()
+  const { fetchProfile, ssoSessionId, token, setToken, logout } = useAppStore()
+
+  const [isDarkMode, setIsDarkMode] = useState(
+    window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+  )
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    const handleChange = (e: MediaQueryListEvent) => {
+      setIsDarkMode(e.matches)
+    }
+    mediaQuery.addEventListener('change', handleChange)
+    return () => mediaQuery.removeEventListener('change', handleChange)
+  }, [])
 
   const handleLogin = (newToken: string) => {
-    localStorage.setItem('token', newToken)
     setToken(newToken)
-    navigate('/dashboard', { replace: true })
-  }
-
-  const handleLogout = () => {
-    localStorage.removeItem('token')
-    setToken(null)
-    navigate('/login', { replace: true })
+    // Only redirect to dashboard if NOT in an SSO flow
+    if (!ssoSessionId) {
+      navigate('/dashboard', { replace: true })
+    }
   }
 
   const isAuthed = Boolean(token)
 
+  useEffect(() => {
+    if (isAuthed) {
+      fetchProfile().catch((error) => {
+        // If error is 401, handleLogout will be called by consumer or we can do it here
+        // Ideally checking specific error type
+        if (error?.response?.status === 401) {
+          logout()
+        }
+      })
+    }
+  }, [isAuthed])
+
   return (
     <ConfigProvider
       theme={{
+        algorithm: isDarkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
         token: {
           colorPrimary: '#7c3aed',
           borderRadius: 10,
@@ -39,8 +62,8 @@ function App() {
     >
       <AntdApp>
 
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-between align-center">
-        <Nav onLogout={handleLogout}/>
+    <div className="min-h-screen flex flex-col justify-between align-center bg-gray-50 dark:bg-gray-900 dark:text-white">
+        <Nav />
         <div className="flex justify-center align-center p-4">
         <Routes>
           <Route
@@ -56,7 +79,7 @@ function App() {
             path="/dashboard"
             element={
               isAuthed ? (
-                <DashboardPage onLogout={handleLogout} />
+                <DashboardPage />
               ) : (
                 <Navigate to="/login" replace />
               )

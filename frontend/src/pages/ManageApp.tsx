@@ -16,6 +16,7 @@ import {
   Select,
   Popconfirm,
   Divider,
+  Avatar,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -103,6 +104,7 @@ function ManageAppPage() {
       }
     >
       <Space size={10} align="center" className="mb-3">
+        <Avatar size={48} src={app.logoUrl} />
         <Title level={3} style={{ marginBottom: 0 }}>
           {app.name}
         </Title>
@@ -357,6 +359,11 @@ function MembersTab({ app }: { app: AppDetails }) {
     }
   };
 
+  const roleOptions = [
+    { label: "Admin", value: "admin" },
+    { label: "Root", value: "root" },
+  ];
+
   const columns = [
     {
       title: "Username",
@@ -372,36 +379,28 @@ function MembersTab({ app }: { app: AppDetails }) {
       },
     },
     {
-      title: "Joined",
-      dataIndex: "joined_at",
-      key: "joined",
-    },
-    {
       title: "Action",
       key: "action",
       render: (_: any, record: AppMember) => {
         if (app.role !== "root") return null;
-        if (record.role === "root") return null; // Can't delete other roots?
 
         return (
           <Space>
+            <Select
+              value={record.role}
+              onChange={(value) => handleUpdateRole(record.username, value)}
+              options={roleOptions}
+              size="small"
+              className="w-20"
+            />
             <Popconfirm
-              title="Remove this member?"
+              title={`Remove ${record.username} from this app?`}
               onConfirm={() => handleRemoveMember(record.username)}
+              okText="Yes"
+              cancelText="No"
             >
-              <Button danger type="text" size="small">
-                Remove
-              </Button>
+              <Button danger size="small" icon={<DeleteOutlined />} />
             </Popconfirm>
-            {record.role === "admin" && (
-              <Button
-                size="small"
-                type="link"
-                onClick={() => handleUpdateRole(record.username, "root")}
-              >
-                Promote to Root
-              </Button>
-            )}
           </Space>
         );
       },
@@ -484,6 +483,7 @@ function SettingsTab({
     form.setFieldsValue({
       name: app.name,
       description: app.description,
+      logoUrl: app.logoUrl,
     });
   }, [app]);
 
@@ -494,6 +494,7 @@ function SettingsTab({
         appId: app.id,
         name: values.name,
         description: values.description,
+        logoUrl: values.logoUrl,
       });
       message.success("App updated");
       onUpdate();
@@ -544,6 +545,10 @@ function SettingsTab({
           <Input.TextArea rows={4} />
         </Form.Item>
 
+        <Form.Item label="Logo URL" name="logoUrl">
+          <Input placeholder="https://example.com/logo.png" />
+        </Form.Item>
+
         <Form.Item>
           <Button
             type="primary"
@@ -559,7 +564,7 @@ function SettingsTab({
       {isRoot && (
         <>
           <Divider />
-          <div className="border border-red-200 p-4 rounded-lg bg-red-50">
+          <div className="border border-red-200 dark:border-red-900 p-4 rounded-lg bg-red-50 dark:bg-red-900/20">
             <Title level={5} type="danger">
               Danger Zone
             </Title>
@@ -594,6 +599,7 @@ function IntegrationGuideTab() {
   const frontendUrl = window.location.origin;
 
   const [apiKey, setApiKey] = useState("");
+  const [redirectUrl, setRedirectUrl] = useState("");
 
   const handleCreateTestSession = async () => {
   try {
@@ -606,7 +612,7 @@ function IntegrationGuideTab() {
           },
         },
       );
-    const loginUrl = data.data.login_url;
+    const loginUrl = data.data.login_url+(redirectUrl ? `&from=${encodeURIComponent(redirectUrl)}` : "");
     message.success("Test session created");
     window.open(loginUrl, "_blank");
   } catch (error: unknown) {
@@ -629,12 +635,13 @@ function IntegrationGuideTab() {
           Mirpass. Use your API keys to initiate login sessions and retrieve
           user credentials securely.
         </Paragraph>
-        <Space.Compact className="w-full">
+        <Space direction="vertical" className="w-full max-w-xl">
           <Input placeholder="Api Key" value={apiKey} onChange={e => setApiKey(e.target.value)} />
+          <Input placeholder="Redirect URL (Optional)" value={redirectUrl} onChange={e => setRedirectUrl(e.target.value)} />
           <Button onClick={handleCreateTestSession} type="primary">
             Create test session
           </Button>
-        </Space.Compact>
+        </Space>
       </div>
 
       <div>
@@ -650,7 +657,7 @@ function IntegrationGuideTab() {
           <span className="text-blue-300">X-Api-Key:</span> YOUR_API_KEY
           <br />
         </div>
-        <div className="mt-2 bg-gray-100 p-3 rounded text-sm text-gray-600 font-mono">
+        <div className="mt-2 bg-gray-100 dark:bg-gray-800 p-3 rounded text-sm text-gray-600 dark:text-gray-300 font-mono">
           {`{
   "status": "success",
   "data": {
@@ -668,13 +675,13 @@ function IntegrationGuideTab() {
           the Mirpass frontend domain). You can optionally include a `from`
           parameter to redirect the user back to your site after login.
         </Paragraph>
-        <div className="bg-gray-50 border border-gray-200 p-3 rounded text-blue-600 font-mono text-sm break-all">
+        <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-3 rounded text-blue-600 dark:text-blue-400 font-mono text-sm break-all">
           {frontendUrl}/login?sso=sess_abc123...&from=https://yoursite.com/callback
         </div>
         <Paragraph className="mt-2 text-sm">
             After successful authorization, the user will be redirected to:
             <br />
-            <code className="bg-gray-100 p-1 rounded">https://yoursite.com/callback?mirpass_sso=sess_abc123...</code>
+            <code className="bg-gray-100 dark:bg-gray-800 p-1 rounded">https://yoursite.com/callback?mirpass_sso=sess_abc123...</code>
         </Paragraph>
       </div>
 
@@ -691,13 +698,13 @@ function IntegrationGuideTab() {
         <Paragraph className="mt-2 text-sm text-gray-500">
           Response (Pending):
         </Paragraph>
-        <div className="bg-gray-100 p-2 rounded text-xs font-mono mb-2">
+        <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs font-mono mb-2">
           {`{ "status": "pending" }`}
         </div>
         <Paragraph className="text-sm text-gray-500">
           Response (Confirmed):
         </Paragraph>
-        <div className="bg-gray-100 p-2 rounded text-xs font-mono">
+        <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs font-mono">
           {`{
   "status": "confirmed",
   "username": "john_doe",

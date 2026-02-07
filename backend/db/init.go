@@ -87,6 +87,8 @@ func InitDB() error {
 	       id VARCHAR(127) PRIMARY KEY,
 	       name VARCHAR(255) NOT NULL UNIQUE,
 	       description TEXT DEFAULT NULL,
+		   logo_url VARCHAR(511) DEFAULT NULL,
+		   suspend_until TIMESTAMP NULL,
 	       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	   )`); err != nil {
 		return fmt.Errorf("create applications table: %w", err)

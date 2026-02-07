@@ -1,14 +1,11 @@
 import { Button } from "antd";
 import { Github, HelpCircleIcon, HomeIcon, LogOutIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAppStore } from "../store/useAppStore";
 
-type Props = {
-  onLogout: () => void;
-};
-
-
-function Nav({ onLogout }: Props) {
+function Nav() {
     const navigate=useNavigate();
+    const { logout } = useAppStore();
   return (
     <div className="flex justify-between align-center p-4">
       <div className="flex-1">
@@ -17,30 +14,30 @@ function Nav({ onLogout }: Props) {
           style={{ height: "30px", width: "30px", padding: "0" }}
           onClick={() => navigate("/dashboard")}
         >
-          <HomeIcon size={20} className="text-gray-600" />
+          <HomeIcon size={20} className="text-gray-600 dark:text-gray-300" />
         </Button>
       </div>
-      <span className="text-2xl font-bold text-gray-600 mb-0">mirpass</span>
+      <span className="text-2xl font-bold text-gray-600 dark:text-gray-300 mb-0">mirpass</span>
       <div className="flex flex-1 gap-2 justify-end">
         <Button
           type="text"
           style={{ height: "30px", width: "30px", padding: "0" }}
         >
-          <HelpCircleIcon size={20} className="text-gray-600" />
+          <HelpCircleIcon size={20} className="text-gray-600 dark:text-gray-300" />
         </Button>
         <Button
           type="text"
           style={{ height: "30px", width: "30px", padding: "0" }}
         >
-          <Github size={20} className="text-gray-600" />
+          <Github size={20} className="text-gray-600 dark:text-gray-300" />
         </Button>
         <Button
           type="text"
           style={{ height: "30px", width: "30px", padding: "0" }}
           title="logout"
-          onClick={onLogout}
+          onClick={logout}
         >
-          <LogOutIcon size={20} className="text-gray-600" />
+          <LogOutIcon size={20} className="text-gray-600 dark:text-gray-300" />
         </Button>
       </div>
     </div>

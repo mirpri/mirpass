@@ -33,6 +33,12 @@ func main() {
 	mux.Handle("/admin/user/update", handlers.AuthMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminUpdateUser))))
 	mux.Handle("/admin/user/reset-password", handlers.AuthMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminResetPassword))))
 
+	// System App Management
+	mux.Handle("/admin/apps", handlers.AuthMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminListApps))))
+	mux.Handle("/admin/app/delete", handlers.AuthMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminDeleteApp)))) // Maybe restrict to root? using Admin for now as requested
+	mux.Handle("/admin/app/update", handlers.AuthMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminUpdateApp))))
+	mux.Handle("/admin/app/suspend", handlers.AuthMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminSuspendApp))))
+
 	// My Apps endpoint
 	mux.Handle("/myapps", handlers.AuthMiddleware(http.HandlerFunc(handlers.MyAppsHandler)))
 

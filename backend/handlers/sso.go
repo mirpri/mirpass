@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"mirpass-backend/config"
 	"mirpass-backend/db"
@@ -32,6 +33,19 @@ func InitiateSSOHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		WriteErrorResponse(w, http.StatusUnauthorized, "Invalid API Key")
 		return
+	}
+
+	app, err := db.GetApplication(appID)
+	if err != nil {
+		WriteErrorResponse(w, http.StatusInternalServerError, "Failed to get app details")
+		return
+	}
+	if app.SuspendUntil != nil {
+		t, err := time.Parse(time.RFC3339, *app.SuspendUntil)
+		if err == nil && t.After(time.Now()) {
+			WriteErrorResponse(w, http.StatusForbidden, "Application is suspended")
+			return
+		}
 	}
 
 	// Create Session
@@ -62,16 +76,25 @@ func GetSSODetailsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	appName, _ := db.GetAppName(session.AppID)
+	app, err := db.GetApplication(session.AppID)
+	if err != nil {
+		WriteErrorResponse(w, http.StatusInternalServerError, "App details not found")
+		return
+	}
+
+	var status string
+	if session.LoginAt == nil {
+		status = "pending"
+	} else {
+		status = "confirmed"
+	}
 
 	resp := types.SSOSessionDetails{
 		SessionID: session.SessionID,
 		AppID:     session.AppID,
-		AppName:   appName,
-		Status:    "pending",
-	}
-	if session.LoginAt != nil {
-		resp.Status = "confirmed"
+		AppName:   app.Name,
+		LogoURL:   app.LogoURL,
+		Status:    status,
 	}
 
 	WriteSuccessResponse(w, "Session details", resp)
@@ -96,6 +119,26 @@ func ConfirmSSOHandler(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		WriteErrorResponse(w, http.StatusBadRequest, "Invalid request")
 		return
+	}
+
+	// Check suspension
+	session, err := db.GetLoginSession(req.SessionID)
+	if err != nil {
+		WriteErrorResponse(w, http.StatusNotFound, "Session not found")
+		return
+	}
+
+	app, err := db.GetApplication(session.AppID)
+	if err != nil {
+		WriteErrorResponse(w, http.StatusInternalServerError, "Failed to get app")
+		return
+	}
+	if app.SuspendUntil != nil {
+		t, err := time.Parse(time.RFC3339, *app.SuspendUntil)
+		if err == nil && t.After(time.Now()) {
+			WriteErrorResponse(w, http.StatusForbidden, "Application is suspended")
+			return
+		}
 	}
 
 	err = db.ConfirmLoginSession(req.SessionID, claims.Username)

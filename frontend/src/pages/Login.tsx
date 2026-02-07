@@ -11,8 +11,13 @@ import {
   Avatar,
   Divider,
 } from "antd";
-import { LockOutlined, UserOutlined, CheckCircleFilled } from "@ant-design/icons";
+import {
+  LockOutlined,
+  UserOutlined,
+  CheckCircleFilled,
+} from "@ant-design/icons";
 import api from "../api/client";
+import { useAppStore } from "../store/useAppStore";
 
 const { Title, Text } = Typography;
 
@@ -38,14 +43,34 @@ function LoginPage({ onLogin, isAuthenticated }: Props) {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const {
+    ssoSessionId: storeSsoId,
+    fromPath,
+    setSsoSessionId,
+    setFromPath,
+    ssoDetails,
+    ssoConfirm,
+    fetchSsoDetails,
+    profile,
+    logout,
+  } = useAppStore();
 
-  // SSO State
-  const ssoSessionId = searchParams.get("sso");
-  const [ssoDetails, setSsoDetails] = useState<{
-    appName: string;
-    sessionId: string;
-    status: string;
-  } | null>(null);
+  const urlSsoId = searchParams.get("sso");
+  const urlFrom = searchParams.get("from");
+
+  useEffect(() => {
+    if (urlSsoId) {
+      setSsoSessionId(urlSsoId);
+    }
+    if (urlFrom) {
+      setFromPath(urlFrom);
+    }
+  }, [urlSsoId, urlFrom, setSsoSessionId, setFromPath]);
+
+  // SSO State - prioritise URL but fallback to store (e.g. coming back from Register)
+  const ssoSessionId = urlSsoId || storeSsoId;
+  const activeFrom = urlFrom || fromPath;
+
   const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
@@ -57,18 +82,20 @@ function LoginPage({ onLogin, isAuthenticated }: Props) {
 
   useEffect(() => {
     if (ssoSessionId) {
-      fetchSsoDetails(ssoSessionId);
+      setSsoSessionId(ssoSessionId); // ensure store is in sync if we got it from URL
+
+      fetchSsoDetails().then(() => {
+        if (ssoDetails?.status === "confirmed") {
+          message.success(`Already logged in to ${ssoDetails.appName}`);
+          setSsoSessionId(null); // clear SSO session to prevent confusion
+        }
+      }).catch(() => {
+        message.error("Failed to fetch SSO details");
+        setSsoSessionId(null);
+        navigate("/login", { replace: true });
+      });
     }
   }, [ssoSessionId]);
-
-  const fetchSsoDetails = async (sid: string) => {
-    try {
-      const { data } = await api.get(`/sso/details?session_id=${sid}`);
-      setSsoDetails(data.data);
-    } catch (e) {
-      message.error("Invalid or expired session");
-    }
-  };
 
   useEffect(() => {
     if (searchParams.get("verified") === "true") {
@@ -107,30 +134,15 @@ function LoginPage({ onLogin, isAuthenticated }: Props) {
     if (!ssoSessionId) return;
     setConfirming(true);
     try {
-      await api.post("/sso/confirm", { sessionId: ssoSessionId });
-      message.success("Authorized successfully");
-
-      const fromUrl = searchParams.get("from");
-      if (fromUrl) {
-        try {
-          // Construct URL properly to handle existing params
-          const url = new URL(fromUrl);
-          url.searchParams.set("mirpass_sso", ssoSessionId);
-          window.location.href = url.toString();
-          return;
-        } catch (e) {
-             // Fallback if fromUrl is invalid URL (e.g. relative path, though usually TPA should provide full url)
-             // But usually for security it should probably be full URL or we assume absolute.
-             // If manual string concatenation:
-             const separator = fromUrl.includes("?") ? "&" : "?";
-             window.location.href = `${fromUrl}${separator}mirpass_sso=${ssoSessionId}`;
-             return;
-        }
+      await ssoConfirm();
+      setSsoSessionId(null); // clear SSO session to prevent confusion
+      message.success(`Logged in to ${ssoDetails?.appName}`);
+      // Redirect to app or dashboard
+      if (activeFrom) {
+        setTimeout(() => {
+          window.location.href = activeFrom;
+        }, 500);
       }
-
-      setSsoDetails((prev) => (prev ? { ...prev, status: "confirmed" } : prev));
-      // Optionally close window?
-      // window.close();
     } catch (e) {
       message.error("Failed to confirm login");
     } finally {
@@ -161,47 +173,50 @@ function LoginPage({ onLogin, isAuthenticated }: Props) {
     return (
       <Card className="max-w-sm w-full shadow-2xl">
         <Space direction="vertical" size="large" className="w-full text-center">
-            <div className="flex flex-col items-center">
-                <Avatar size={64} className="mb-4 bg-purple-100 text-purple-600">
-                    {ssoDetails.appName.charAt(0).toUpperCase()}
-                </Avatar>
-                <Title level={3} className="m-0">
-                    {ssoDetails.appName}
-                </Title>
-                <Text type="secondary">wants to access your account</Text>
-            </div>
-
-            <Divider className="my-2" />
-
-            <div className="text-left bg-gray-50 p-4 rounded-lg border border-gray-100">
-                <Text type="secondary" className="text-xs uppercase font-bold tracking-wider">Signed in as</Text>
-                <div className="flex items-center gap-3 mt-2">
-                     <Avatar style={{ backgroundColor: '#7c3aed' }} icon={<UserOutlined />} />
-                     <div className="flex flex-col">
-                         {/* TODO We assume we have user context somewhere, simple placeholder for now. 
-                             Ideally extract username from token or store.
-                         */}
-                         <Text strong>Current User</Text> 
-                    </div>
-                </div>
-            </div>
-
-            <Button 
-                type="primary" 
-                size="large" 
-                block 
-                onClick={handleConfirmSSO}
-                loading={confirming}
+          <div className="flex flex-col items-center">
+            <Avatar
+              size={64}
+              src={ssoDetails.logoUrl}
+              style={{margin: "10px"}}
             >
-                Continue to {ssoDetails.appName}
-            </Button>
-             <Button 
-                type="text" 
-                block 
-                onClick={() => navigate('/dashboard')}
+              {ssoDetails.appName.charAt(0).toUpperCase()}
+            </Avatar>
+            <Title level={3} className="m-0">
+              {ssoDetails.appName}
+            </Title>
+            <Text type="secondary">wants to access your account</Text>
+          </div>
+
+          <Divider className="my-2" />
+
+          <div className="text-left bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-4 rounded-lg">
+            <Text
+              type="secondary"
+              className="text-xs uppercase font-bold tracking-wider"
             >
-                Cancel
-            </Button>
+              Signed in as
+            </Text>
+            <div className="flex items-center gap-3 mt-2">
+              <Avatar src={profile?.avatarUrl} icon={<UserOutlined />} />
+              <div className="flex flex-col">
+                <Text strong>{profile?.nickname}</Text>
+                <Text type="secondary">{profile?.username}</Text>
+              </div>
+            </div>
+          </div>
+
+          <Button
+            type="primary"
+            size="large"
+            block
+            onClick={handleConfirmSSO}
+            loading={confirming}
+          >
+            Continue to {ssoDetails.appName}
+          </Button>
+          <Button type="text" block onClick={logout}>
+            Change Account
+          </Button>
         </Space>
       </Card>
     );
@@ -212,10 +227,14 @@ function LoginPage({ onLogin, isAuthenticated }: Props) {
       <Space direction="vertical" size="large" className="w-full">
         <Space direction="vertical" size={4}>
           <Title level={3} className="m-0">
-            {ssoSessionId && ssoDetails ? `Login to ${ssoDetails.appName}` : "Login"}
+            {ssoSessionId && ssoDetails
+              ? `Login to ${ssoDetails.appName}`
+              : "Login"}
           </Title>
           <Text type="secondary">
-              {ssoSessionId ? "Sign in to continue" : "Login to continue to your dashboard"}
+            {ssoSessionId
+              ? "Sign in to continue"
+              : "Login to continue to your dashboard"}
           </Text>
         </Space>
 

@@ -34,12 +34,21 @@ func runMigration(db *sql.DB) error {
 		return fmt.Errorf("assigning root role: %w", err)
 	}
 
-	// Migration: Add name to api_keys if missing
-	// We try to add it and ignore error, assuming error means it exists
-	_, _ = db.Exec("ALTER TABLE api_keys ADD COLUMN name VARCHAR(255) DEFAULT NULL")
+	eff, err := db.Exec(`ALTER TABLE applications ADD COLUMN IF NOT EXISTS suspend_until VARCHAR(255) DEFAULT NULL`)
+	if err != nil {
+		return fmt.Errorf("adding suspend_until column: %w", err)
+	}
+	if rows, _ := eff.RowsAffected(); rows > 0 {
+		log.Printf("Added suspend_until column to applications table")
+	}
 
-	// Migration: Make username nullable in login_sessions
-	_, _ = db.Exec("ALTER TABLE login_sessions MODIFY username VARCHAR(255) NULL")
+	eff, err = db.Exec(`ALTER TABLE applications ADD COLUMN IF NOT EXISTS logo_url VARCHAR(511) DEFAULT NULL`)
+	if err != nil {
+		return fmt.Errorf("adding logo_url column: %w", err)
+	}
+	if rows, _ := eff.RowsAffected(); rows > 0 {
+		log.Printf("Added logo_url column to applications table")
+	}
 
 	return nil
 }

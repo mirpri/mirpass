@@ -220,7 +220,18 @@ func UpdateAppHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := db.UpdateApp(req.AppID, req.Name, req.Description); err != nil {
+	// Fetch existing app to preserve system-controlled fields (SuspendUntil)
+	// No longer needed if we use UpdateAppInfo which doesn't touch suspension
+	/*
+		existing, err := db.GetApplication(req.AppID)
+		if err != nil {
+			WriteErrorResponse(w, http.StatusInternalServerError, "Could not fetch app details")
+			return
+		}
+	*/
+
+	// Users cannot change SuspendUntil.
+	if err := db.UpdateAppInfo(req.AppID, req.Name, req.Description, req.LogoURL); err != nil {
 		WriteErrorResponse(w, http.StatusInternalServerError, "Could not update app")
 		return
 	}

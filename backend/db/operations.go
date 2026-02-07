@@ -353,12 +353,20 @@ func CreateApp(name, description, owner string) (string, error) {
 func GetApplication(appID string) (*types.Application, error) {
 	var app types.Application
 	var createdAt sql.NullString
-	err := database.QueryRow("SELECT id, name, description, created_at FROM applications WHERE id = ?", appID).
-		Scan(&app.ID, &app.Name, &app.Description, &createdAt)
+	var logoUrl sql.NullString
+	var suspendUntil sql.NullString
+
+	err := database.QueryRow("SELECT id, name, description, logo_url, suspend_until, created_at FROM applications WHERE id = ?", appID).
+		Scan(&app.ID, &app.Name, &app.Description, &logoUrl, &suspendUntil, &createdAt)
 	if err != nil {
 		return nil, err
 	}
 	app.CreatedAt = createdAt.String
+	app.LogoURL = logoUrl.String
+	if suspendUntil.Valid {
+		s := suspendUntil.String
+		app.SuspendUntil = &s
+	}
 	return &app, nil
 }
 
@@ -414,9 +422,75 @@ func DeleteAPIKey(keyID int64, appID string) error {
 	return nil
 }
 
-func UpdateApp(appID, name, description string) error {
-	_, err := database.Exec("UPDATE applications SET name = ?, description = ? WHERE id = ?", name, description, appID)
+func UpdateAppInfo(appID, name, description, logoUrl string) error {
+	query := "UPDATE applications SET name = ?, description = ?, logo_url = ? WHERE id = ?"
+	_, err := database.Exec(query, name, description, logoUrl, appID)
 	return err
+}
+
+func UpdateAppSuspension(appID string, suspendUntil *string) error {
+	query := "UPDATE applications SET suspend_until = ? WHERE id = ?"
+	_, err := database.Exec(query, suspendUntil, appID)
+	return err
+}
+
+func GetAllApps() ([]types.Application, error) {
+	query := "SELECT id, name, description, logo_url, suspend_until, created_at FROM applications ORDER BY name ASC"
+	rows, err := database.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var apps []types.Application
+	for rows.Next() {
+		var app types.Application
+		var logoUrl sql.NullString
+		var suspendUntil sql.NullString
+		var createdAt sql.NullString
+
+		if err := rows.Scan(&app.ID, &app.Name, &app.Description, &logoUrl, &suspendUntil, &createdAt); err != nil {
+			return nil, err
+		}
+		app.LogoURL = logoUrl.String
+		if suspendUntil.Valid {
+			s := suspendUntil.String
+			app.SuspendUntil = &s
+		}
+		app.CreatedAt = createdAt.String
+		apps = append(apps, app)
+	}
+	return apps, nil
+}
+
+func SearchApps(query string) ([]types.Application, error) {
+	q := "%" + query + "%"
+	stmt := "SELECT id, name, description, logo_url, suspend_until, created_at FROM applications WHERE name LIKE ? OR description LIKE ? ORDER BY name ASC"
+	rows, err := database.Query(stmt, q, q)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var apps []types.Application
+	for rows.Next() {
+		var app types.Application
+		var logoUrl sql.NullString
+		var suspendUntil sql.NullString
+		var createdAt sql.NullString
+
+		if err := rows.Scan(&app.ID, &app.Name, &app.Description, &logoUrl, &suspendUntil, &createdAt); err != nil {
+			return nil, err
+		}
+		app.LogoURL = logoUrl.String
+		if suspendUntil.Valid {
+			s := suspendUntil.String
+			app.SuspendUntil = &s
+		}
+		app.CreatedAt = createdAt.String
+		apps = append(apps, app)
+	}
+	return apps, nil
 }
 
 func DeleteApp(appID string) error {
@@ -499,7 +573,7 @@ func GetLoginSession(sessionID string) (*types.SSOSession, error) {
 	err := database.QueryRow(`
         SELECT id, app_id, session_id, username, created_at, expires_at, login_at 
         FROM login_sessions WHERE session_id = ?`, sessionID).
-		Scan(&s.ID, &s.AppID, &s.SessionID, &username, &cAt, &eAt, &loginAt)
+		Scan(&s.ID, &s.AppID, &s.SessionID, &username, &cAt, &eAt, &s.LoginAt)
 
 	if err != nil {
 		return nil, err

@@ -44,11 +44,13 @@ type UserPublicInfo struct {
 	AvatarURL string `json:"avatarUrl,omitempty"`
 }
 type Application struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	CreatedAt   string `json:"created_at"`
-	Role        string `json:"role,omitempty"`
+	ID           string  `json:"id"`
+	Name         string  `json:"name"`
+	Description  string  `json:"description"`
+	LogoURL      string  `json:"logoUrl,omitempty"`
+	SuspendUntil *string `json:"suspendUntil,omitempty"`
+	CreatedAt    string  `json:"created_at"`
+	Role         string  `json:"role,omitempty"`
 }
 
 type APIKey struct {
@@ -64,9 +66,11 @@ type CreateAppRequest struct {
 }
 
 type UpdateAppRequest struct {
-	AppID       string `json:"appId"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
+	AppID        string  `json:"appId"`
+	Name         string  `json:"name"`
+	Description  string  `json:"description"`
+	LogoURL      string  `json:"logoUrl,omitempty"`
+	SuspendUntil *string `json:"suspendUntil,omitempty"` // If provided
 }
 
 type AppMember struct {
@@ -108,5 +112,6 @@ type SSOSessionDetails struct {
 	SessionID string `json:"sessionId"`
 	AppID     string `json:"appId"`
 	AppName   string `json:"appName"`
+	LogoURL   string `json:"logoUrl,omitempty"`
 	Status    string `json:"status"` // pending, confirmed
 }
