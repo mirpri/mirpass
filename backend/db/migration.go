@@ -38,5 +38,8 @@ func runMigration(db *sql.DB) error {
 	// We try to add it and ignore error, assuming error means it exists
 	_, _ = db.Exec("ALTER TABLE api_keys ADD COLUMN name VARCHAR(255) DEFAULT NULL")
 
+	// Migration: Make username nullable in login_sessions
+	_, _ = db.Exec("ALTER TABLE login_sessions MODIFY username VARCHAR(255) NULL")
+
 	return nil
 }

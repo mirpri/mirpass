@@ -463,3 +463,65 @@ func GetAppMembers(appID string) ([]types.AppMember, error) {
 	}
 	return members, nil
 }
+
+// --- SSO Operations ---
+
+func GetAppIDByAPIKeyHash(hash string) (string, error) {
+	var appID string
+	err := database.QueryRow("SELECT app_id FROM api_keys WHERE key_hash = ?", hash).Scan(&appID)
+	if err != nil {
+		return "", err
+	}
+	return appID, nil
+}
+
+func GetAppName(appID string) (string, error) {
+	var name string
+	err := database.QueryRow("SELECT name FROM applications WHERE id = ?", appID).Scan(&name)
+	return name, err
+}
+
+func CreateLoginSession(appID string, sessionID string, expiryMinutes int) error {
+	_, err := database.Exec(`
+        INSERT INTO login_sessions (app_id, session_id, expires_at) 
+        VALUES (?, ?, DATE_ADD(NOW(), INTERVAL ? MINUTE))`,
+		appID, sessionID, expiryMinutes)
+	return err
+}
+
+func GetLoginSession(sessionID string) (*types.SSOSession, error) {
+	s := &types.SSOSession{}
+	var username sql.NullString
+	var loginAt sql.NullString
+
+	var cAt, eAt sql.NullString
+
+	err := database.QueryRow(`
+        SELECT id, app_id, session_id, username, created_at, expires_at, login_at 
+        FROM login_sessions WHERE session_id = ?`, sessionID).
+		Scan(&s.ID, &s.AppID, &s.SessionID, &username, &cAt, &eAt, &loginAt)
+
+	if err != nil {
+		return nil, err
+	}
+	s.CreatedAt = cAt.String
+	s.ExpiresAt = eAt.String
+
+	if username.Valid {
+		u := username.String
+		s.Username = &u
+	}
+	if loginAt.Valid {
+		l := loginAt.String
+		s.LoginAt = &l
+	}
+	return s, nil
+}
+
+func ConfirmLoginSession(sessionID string, username string) error {
+	_, err := database.Exec(`
+        UPDATE login_sessions 
+        SET username = ?, login_at = NOW() 
+        WHERE session_id = ?`, username, sessionID)
+	return err
+}

@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom'
 import {
   Button,
   Card,
-  Flex,
   Form,
   Input,
   Space,
@@ -51,8 +50,7 @@ function RegisterPage() {
   }
 
   return (
-    <Flex align="center" justify="center" className="min-h-screen p-6">
-      <Card className="max-w-[480px] w-full shadow-2xl">
+      <Card className="max-w-md w-full shadow-2xl">
         <Space direction="vertical" size="large" className="w-full">
           <Space direction="vertical" size={4}>
             <Title level={3} className="m-0">
@@ -117,7 +115,6 @@ function RegisterPage() {
           </Text>
         </Space>
       </Card>
-    </Flex>
   )
 }
 

@@ -3,6 +3,10 @@ export type SimpleResponse = {
   message?: string;
 };
 
+export type ErrorResponse = {
+  response?: { status?: number; data?: { message?: string } };
+};
+
 export type Profile = {
   username: string;
   nickname?: string;

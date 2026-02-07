@@ -58,3 +58,31 @@ func ExtractClaims(r *http.Request) (*Claims, error) {
 	}
 	return &Claims{Username: username}, nil
 }
+
+func GenerateSSOToken(appID, username string) (string, error) {
+	claims := jwt.MapClaims{
+		"username": username,
+		"app_id":   appID,
+		"type":     "sso",
+		"exp":      jwt.NewNumericDate(time.Now().Add(time.Minute * 5)), // Short lived
+		"iat":      jwt.NewNumericDate(time.Now()),
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(config.AppConfig.JWTSecret))
+}
+
+func ValidateSSOToken(tokenString string) (jwt.MapClaims, error) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		return []byte(config.AppConfig.JWTSecret), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		if t, ok := claims["type"].(string); !ok || t != "sso" {
+			return nil, jwt.ErrTokenInvalidClaims
+		}
+		return claims, nil
+	}
+	return nil, jwt.ErrSignatureInvalid
+}

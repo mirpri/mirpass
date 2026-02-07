@@ -19,7 +19,6 @@ import {
 } from "@ant-design/icons";
 
 import {
-  LogOutIcon,
   IdCardIcon,
   MailIcon,
   UserIcon,
@@ -29,7 +28,7 @@ import {
   ShieldEllipsis
 } from "lucide-react"
 import api from "../api/client";
-import type { AppRole, Profile, SimpleResponse } from "../types";
+import type { AppRole, ErrorResponse, Profile, SimpleResponse } from "../types";
 
 const { Title, Text } = Typography;
 
@@ -85,10 +84,8 @@ function DashboardPage({ onLogout }: Props) {
         "/myprofile",
       );
       return data.data;
-    } catch (error: unknown) {
-      const err = error as {
-        response?: { status?: number; data?: { message?: string } };
-      };
+    } catch (error) {
+      const err = error as ErrorResponse
       const status = err.response?.status;
       if (status === 401) {
         message.error("Session expired. Please log in again.");
@@ -158,7 +155,6 @@ function DashboardPage({ onLogout }: Props) {
   };
 
   return (
-    <div className="min-h-screen py-8 px-6 bg-purple-60 flex items-center justify-center">
       <Card className="mx-auto max-w-4xl w-full rounded-[18px] bg-white/95 shadow-xl p-8">
         <Flex justify="space-between" align="center" wrap>
           <Space direction="vertical" size={4}>
@@ -167,17 +163,12 @@ function DashboardPage({ onLogout }: Props) {
             </Title>
             <Text type="secondary">Manage your profile and credentials</Text>
           </Space>
-          <Space>
-            <Button icon={<LogOutIcon size={13} />} onClick={onLogout}>
-              Logout
-            </Button>
-          </Space>
         </Flex>
 
         <Divider className="my-6" />
 
         <Row gutter={[24, 24]} align="stretch">
-          <Col xs={24} lg={10}>
+          <Col xs={24} sm={9}>
             <div className="bg-white rounded-2xl p-6 min-h-[280px] flex flex-col justify-between border-solid border-1 border-gray-200">
               <Space direction="vertical" size={16}>
                 <Avatar
@@ -203,7 +194,7 @@ function DashboardPage({ onLogout }: Props) {
               </div>
             </div>
           </Col>
-          <Col xs={24} lg={14}>
+          <Col xs={24} sm={15}>
             <div className="bg-white rounded-2xl p-6 min-h-[280px] flex flex-col justify-between border-solid border-1 border-gray-200">
               <Space direction="vertical" size={32} className="w-full">
                 <div>
@@ -314,7 +305,7 @@ function DashboardPage({ onLogout }: Props) {
                     {apps.map((app) => (
                       <Button
                         key={app.appId}
-                        className="mr-2"
+                        className="m-1"
                         href={
                           app.name === "system"
                             ? "/manage"
@@ -325,7 +316,7 @@ function DashboardPage({ onLogout }: Props) {
                         {app.name}
                       </Button>
                     ))}
-                    <Button type="dashed" href="/apps/create">
+                    <Button type="dashed" href="/apps/create" className="m-1">
                     <PlusIcon size={14} />
                       Create New App
                     </Button>
@@ -336,7 +327,6 @@ function DashboardPage({ onLogout }: Props) {
           </Col>
         </Row>
       </Card>
-    </div>
   );
 }
 

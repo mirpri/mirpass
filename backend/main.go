@@ -51,6 +51,15 @@ func main() {
 	mux.Handle("/apps/members/remove", handlers.AuthMiddleware(http.HandlerFunc(handlers.RemoveAppMemberHandler)))
 	mux.Handle("/apps/members/role", handlers.AuthMiddleware(http.HandlerFunc(handlers.UpdateAppMemberRoleHandler)))
 
+	// SSO Routes
+	mux.HandleFunc("/sso/init", handlers.InitiateSSOHandler)
+	mux.HandleFunc("/sso/details", handlers.GetSSODetailsHandler)
+	mux.HandleFunc("/sso/poll", handlers.PollSSOHandler)
+	mux.HandleFunc("/sso/verify", handlers.VerifySSOTokenHandler)
+	mux.Handle("/sso/confirm", handlers.AuthMiddleware(http.HandlerFunc(handlers.ConfirmSSOHandler)))
+
+	// Root routes
+
 	// Root routes
 	mux.Handle("/root/user/role", handlers.AuthMiddleware(handlers.RequireRoot("system", http.HandlerFunc(handlers.RootUpdateRole))))
 	mux.Handle("/root/sql", handlers.AuthMiddleware(handlers.RequireRoot("system", http.HandlerFunc(handlers.RootDirectSQL))))

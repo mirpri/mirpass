@@ -231,9 +231,9 @@ function AdminPage() {
   ];
 
   return (
-    <div className="min-h-screen p-6 bg-gray-50">
+    <>
       <Card
-        title={<Space>Admin Panel</Space>}
+        title="System Management"
         extra={
           <Space>
             <Button onClick={() => navigate("/dashboard")}>
@@ -244,7 +244,7 @@ function AdminPage() {
             </Button>
           </Space>
         }
-        className="shadow-md"
+        className="shadow-md w-full max-w-4xl"
       >
         <Space.Compact className="w-full mb-5">
           <Input
@@ -342,7 +342,7 @@ function AdminPage() {
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+    </>
   );
 }
 

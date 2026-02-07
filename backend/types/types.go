@@ -91,3 +91,22 @@ type RemoveMemberRequest struct {
 	AppID    string `json:"appId"`
 	Username string `json:"username"`
 }
+
+// SSO Types
+
+type SSOSession struct {
+	ID        int64   `json:"id"`
+	SessionID string  `json:"session_id"`
+	AppID     string  `json:"app_id"`
+	Username  *string `json:"username,omitempty"` // Pointer to handle NULL
+	CreatedAt string  `json:"created_at"`
+	ExpiresAt string  `json:"expires_at"`
+	LoginAt   *string `json:"login_at,omitempty"`
+}
+
+type SSOSessionDetails struct {
+	SessionID string `json:"sessionId"`
+	AppID     string `json:"appId"`
+	AppName   string `json:"appName"`
+	Status    string `json:"status"` // pending, confirmed
+}

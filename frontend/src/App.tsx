@@ -8,6 +8,7 @@ import DashboardPage from './pages/Dashboard'
 import AdminPage from './pages/Admin'
 import CreateAppPage from './pages/CreateApp'
 import ManageAppPage from './pages/ManageApp'
+import Nav from './components/Nav'
 
 function App() {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'))
@@ -32,11 +33,15 @@ function App() {
       theme={{
         token: {
           colorPrimary: '#7c3aed',
-          borderRadius: 12,
+          borderRadius: 10,
         },
       }}
     >
       <AntdApp>
+
+    <div className="min-h-screen bg-gray-50 flex flex-col justify-between align-center">
+        <Nav onLogout={handleLogout}/>
+        <div className="flex justify-center align-center p-4">
         <Routes>
           <Route
             path="/login"
@@ -92,6 +97,11 @@ function App() {
             element={<Navigate to={isAuthed ? '/dashboard' : '/login'} replace />}
           />
         </Routes>
+        </div>
+        <div className="text-center text-gray-500 p-4">
+          &copy; {new Date().getFullYear()} mirpass. All rights reserved.
+        </div>
+        </div>
       </AntdApp>
     </ConfigProvider>
   )

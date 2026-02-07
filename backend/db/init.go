@@ -104,25 +104,14 @@ func InitDB() error {
 		return fmt.Errorf("create api_keys table: %w", err)
 	}
 
-	// Create App login history table
-	if _, err = adminConn.Exec(`CREATE TABLE IF NOT EXISTS login_history (
-	       id INT AUTO_INCREMENT PRIMARY KEY,
-	       username VARCHAR(255) NOT NULL,
-	       app_id VARCHAR(127) NOT NULL,
-	       login_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-	       FOREIGN KEY (username) REFERENCES users(username) ON DELETE CASCADE,
-	       FOREIGN KEY (app_id) REFERENCES applications(id) ON DELETE CASCADE
-	   )`); err != nil {
-		return fmt.Errorf("create login_history table: %w", err)
-	}
-
 	// Create App login sessions table
 	if _, err = adminConn.Exec(`CREATE TABLE IF NOT EXISTS login_sessions (
 	       id INT AUTO_INCREMENT PRIMARY KEY,
-	       username VARCHAR(255) NOT NULL,
+	       username VARCHAR(255) DEFAULT NULL,
 	       app_id VARCHAR(127) NOT NULL,
-	       session_token VARCHAR(255) NOT NULL UNIQUE,
+	       session_id VARCHAR(255) NOT NULL UNIQUE,
 	       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		   login_at TIMESTAMP NULL,
 	       expires_at TIMESTAMP NOT NULL,
 	       FOREIGN KEY (username) REFERENCES users(username) ON DELETE CASCADE,
 	       FOREIGN KEY (app_id) REFERENCES applications(id) ON DELETE CASCADE
