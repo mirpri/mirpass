@@ -25,7 +25,6 @@ function CreateAppPage() {
   };
 
   return (
-    <div className="min-h-screen py-8 px-6 bg-purple-60 flex items-center justify-center">
       <Card className="max-w-md w-full rounded-[18px] bg-white/95 shadow-xl p-8">
         <Space direction="vertical" size={20} className="w-full">
           <div>
@@ -49,19 +48,16 @@ function CreateAppPage() {
               <Input.TextArea placeholder="Describe your app" />
             </Form.Item>
 
-            <Form.Item>
               <Button type="primary" htmlType="submit" loading={loading} block>
                 Create App
               </Button>
-            </Form.Item>
+           <Button type="text" onClick={() => navigate("/dashboard")} style={{marginTop: "10px"}} danger block>
+            Cancel
+          </Button>
           </Form>
           
-           <Button type="link" onClick={() => navigate("/dashboard")} block>
-            Back to Dashboard
-          </Button>
         </Space>
       </Card>
-    </div>
   );
 }
 

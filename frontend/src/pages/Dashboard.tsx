@@ -17,7 +17,7 @@ import { EditOutlined, CheckOutlined, CloseOutlined } from "@ant-design/icons";
 import {
   IdCardIcon,
   MailIcon,
-  UserIcon,
+  UserCircle,
   TagIcon,
   AppWindowIcon,
   ShieldEllipsis,
@@ -194,7 +194,7 @@ function DashboardPage() {
             </div>
             <div>
               <Space align="center" size={12}>
-                <UserIcon color="#5c4bff" size={16} />
+                <UserCircle color="#5c4bff" size={16} />
                 <Text strong className="text-base">
                   Avatar
                 </Text>

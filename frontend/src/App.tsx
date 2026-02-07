@@ -8,6 +8,7 @@ import DashboardPage from './pages/Dashboard'
 import AdminPage from './pages/Admin'
 import CreateAppPage from './pages/CreateApp'
 import ManageAppPage from './pages/ManageApp'
+import AboutPage from './pages/About'
 import Nav from './components/Nav'
 import { useAppStore } from './store/useAppStore'
 
@@ -75,6 +76,7 @@ function App() {
             element={isAuthed ? <Navigate to="/dashboard" replace /> : <RegisterPage />}
           />
           <Route path="/verify" element={<VerifyPage />} />
+          <Route path="/about" element={<AboutPage />} />
           <Route
             path="/dashboard"
             element={
