@@ -9,6 +9,111 @@ import (
 	"github.com/go-sql-driver/mysql"
 )
 
+func GetUserLoginHistory(username string) ([]types.LoginHistoryItem, error) {
+	// Gets all distinct apps logged into and their last login time
+	// AND the recent history log.
+	// But to fit the existing "LoginHistoryItem" struct (App, Time), let's just return the full history for now.
+	// The user asked for "dashboard显示自己登录过的所有app和最后登录时间" which is a summary.
+	// But the dashboard also has a "Recent History" table.
+	// Let's modify this to return two datasets? Or just let the handler call two DB functions.
+	// For now, I will create a NEW function GetUserAppsSummary and keep this one for the detailed history log.
+
+	query := `
+		SELECT a.name as app, a.logo_url, ls.login_at
+		FROM login_sessions ls
+		JOIN applications a ON ls.app_id = a.id
+		WHERE ls.username = ? AND ls.login_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+		ORDER BY ls.login_at DESC
+	`
+	rows, err := database.Query(query, username)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var history []types.LoginHistoryItem
+	for rows.Next() {
+		var item types.LoginHistoryItem
+		var logo sql.NullString
+		if err := rows.Scan(&item.App, &logo, &item.Timestamp); err != nil {
+			return nil, err
+		}
+		item.LogoUrl = logo.String
+		history = append(history, item)
+	}
+	return history, nil
+}
+
+func GetUserAppsSummary(username string) ([]types.LoginHistoryItem, error) {
+	// Returns distinct apps and last login time
+	query := `
+		SELECT a.name as app, a.logo_url, MAX(ls.login_at) as last_login
+		FROM login_sessions ls
+		JOIN applications a ON ls.app_id = a.id
+		WHERE ls.username = ?
+		GROUP BY a.name, a.logo_url
+		ORDER BY last_login DESC
+	`
+	rows, err := database.Query(query, username)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var summary []types.LoginHistoryItem
+	for rows.Next() {
+		var item types.LoginHistoryItem
+		var logo sql.NullString
+		if err := rows.Scan(&item.App, &logo, &item.Timestamp); err != nil {
+			return nil, err
+		}
+		item.LogoUrl = logo.String
+		summary = append(summary, item)
+	}
+	return summary, nil
+}
+
+func GetAppLoginStats(appID string) ([]types.LoginHistoryItem, int, error) {
+	// Total users count (distinct users who have ever logged in to this app)
+	var totalUsers int
+	countQuery := `SELECT COUNT(DISTINCT username) FROM login_sessions WHERE app_id = ? AND login_at IS NOT NULL`
+	if err := database.QueryRow(countQuery, appID).Scan(&totalUsers); err != nil {
+		return nil, 0, err
+	}
+
+	// Login history (last 7 days)
+	// We return raw data to frontend to draw charts? Or aggregate here?
+	// User asked for "Login History" query for past 7 days, containing only User/App/Time.
+	// AND a chart showing daily logins and active users.
+	// Let's return the raw history list for the last 7 days.
+
+	query := `
+		SELECT username, login_at
+		FROM login_sessions
+		WHERE app_id = ? AND login_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+		ORDER BY login_at DESC
+	`
+	rows, err := database.Query(query, appID)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var history []types.LoginHistoryItem
+	for rows.Next() {
+		var item types.LoginHistoryItem
+		var user sql.NullString
+		if err := rows.Scan(&user, &item.Timestamp); err != nil {
+			return nil, 0, err
+		}
+		item.App = appID // implied
+		item.User = user.String
+		history = append(history, item)
+	}
+
+	return history, totalUsers, nil
+}
+
 func GetDBConfig() mysql.Config {
 	return cfg
 }

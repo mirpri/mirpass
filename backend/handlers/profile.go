@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"mirpass-backend/db"
+	"mirpass-backend/utils"
 )
 
 type updateNicknameRequest struct {
@@ -14,6 +15,30 @@ type updateNicknameRequest struct {
 
 type updateAvatarRequest struct {
 	AvatarURL string `json:"avatarUrl"`
+}
+
+func GetLoginHistoryHandler(w http.ResponseWriter, r *http.Request) {
+	claims, err := utils.ExtractClaims(r)
+	if err != nil {
+		WriteErrorResponse(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	history, err := db.GetUserLoginHistory(claims.Username)
+	if err != nil {
+		WriteErrorResponse(w, http.StatusInternalServerError, "Failed to get history")
+		return
+	}
+
+	summary, err := db.GetUserAppsSummary(claims.Username)
+	if err != nil {
+		WriteErrorResponse(w, 500, "Failed to get history summary")
+	}
+
+	WriteSuccessResponse(w, "History fetched", map[string]interface{}{
+		"history": history,
+		"summary": summary,
+	})
 }
 
 func UpdateNicknameHandler(w http.ResponseWriter, r *http.Request) {

@@ -43,21 +43,29 @@ type UserPublicInfo struct {
 	Nickname  string `json:"nickname,omitempty"`
 	AvatarURL string `json:"avatarUrl,omitempty"`
 }
+
+type AppPublicInfo struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	LogoURL     string `json:"logoUrl"`
+}
+
 type Application struct {
 	ID           string  `json:"id"`
 	Name         string  `json:"name"`
 	Description  string  `json:"description"`
 	LogoURL      string  `json:"logoUrl,omitempty"`
 	SuspendUntil *string `json:"suspendUntil,omitempty"`
-	CreatedAt    string  `json:"created_at"`
+	CreatedAt    string  `json:"createdAt"`
 	Role         string  `json:"role,omitempty"`
 }
 
 type APIKey struct {
 	ID        int64  `json:"id"`
-	AppID     string `json:"app_id"`
+	AppID     string `json:"appId"`
 	Name      string `json:"name,omitempty"`
-	CreatedAt string `json:"created_at"`
+	CreatedAt string `json:"createdAt"`
 }
 
 type CreateAppRequest struct {
@@ -100,12 +108,12 @@ type RemoveMemberRequest struct {
 
 type SSOSession struct {
 	ID        int64   `json:"id"`
-	SessionID string  `json:"session_id"`
-	AppID     string  `json:"app_id"`
+	SessionID string  `json:"sessionId"`
+	AppID     string  `json:"appId"`
 	Username  *string `json:"username,omitempty"` // Pointer to handle NULL
-	CreatedAt string  `json:"created_at"`
-	ExpiresAt string  `json:"expires_at"`
-	LoginAt   *string `json:"login_at,omitempty"`
+	CreatedAt string  `json:"createdAt"`
+	ExpiresAt string  `json:"expiresAt"`
+	LoginAt   *string `json:"loginAt,omitempty"`
 }
 
 type SSOSessionDetails struct {
@@ -114,4 +122,17 @@ type SSOSessionDetails struct {
 	AppName   string `json:"appName"`
 	LogoURL   string `json:"logoUrl,omitempty"`
 	Status    string `json:"status"` // pending, confirmed
+}
+
+type DailyStats struct {
+	Date        string `json:"date"`
+	Logins      int    `json:"logins"`
+	ActiveUsers int    `json:"activeUsers"`
+}
+
+type LoginHistoryItem struct {
+	User      string `json:"user,omitempty"`
+	App       string `json:"app"`
+	LogoUrl   string `json:"logoUrl"` // Removed omitempty to ensure field presence
+	Timestamp string `json:"time"`
 }

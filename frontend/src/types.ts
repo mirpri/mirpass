@@ -27,19 +27,31 @@ export interface AppDetails {
   role: string; // Current user's role in this app
   logoUrl?: string;
   suspendUntil?: string | null;
-  created_at?: string;
+  createdAt?: string;
 }
 
 export interface AppMember {
-  user_id: number;
+  userId: number;
   username: string;
   role: string; // 'admin' | 'root' | ...
-  joined_at: string;
+  joinedAt: string;
 }
 
 export interface APIKey {
   id: number;
-  key_value: string;
+  keyValue: string; 
   name?: string;
-  created_at: string;
+  createdAt: string;
+}
+
+export type LoginHistoryItem = {
+    user?: string;
+    app: string;
+    logoUrl?: string;
+    time: string;
+}
+
+export type AppStats = {
+    totalUsers: number;
+    history: LoginHistoryItem[];
 }

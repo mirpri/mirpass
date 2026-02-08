@@ -9,6 +9,7 @@ import {
   Input,
   Row,
   Space,
+  Table,
   Typography,
   message,
 } from "antd";
@@ -22,7 +23,12 @@ import {
   AppWindowIcon,
   ShieldEllipsis,
   PlusIcon,
+  ClockIcon,
+
 } from "lucide-react";
+import dayjs from 'dayjs';
+
+import type { LoginHistoryItem } from "../types";
 import api from "../api/client";
 import type { SimpleResponse } from "../types";
 import { useAppStore } from "../store/useAppStore";
@@ -32,6 +38,33 @@ const { Title, Text } = Typography;
 function DashboardPage() {
   const { profile, myApps: apps, fetchMyApps, updateProfile } = useAppStore();
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
+  const [loginHistory, setLoginHistory] = useState<LoginHistoryItem[]>([]);
+  const [appsSummary, setAppsSummary] = useState<LoginHistoryItem[]>([]);
+
+  useEffect(() => {
+    fetchMyApps();
+    fetchLoginHistory();
+  }, []);
+
+  const fetchLoginHistory = async () => {
+    try {
+      const { data } = await api.get<{ data: { history: LoginHistoryItem[], summary: LoginHistoryItem[] } }>(
+        "/user/history"
+      );
+      // Handle both new format (map) and potentially old format (array direct) if transition logic needed?
+      // Assuming backend deployed same time.
+      if (data.data && !Array.isArray(data.data)) {
+          setLoginHistory(data.data.history || []);
+          setAppsSummary(data.data.summary || []);
+      } else {
+        // Fallback if backend not updated or returns array
+        const list = (data.data as any) || [];
+        setLoginHistory(list);
+      }
+    } catch (e) {
+      // ignore
+    }
+  };
 
   const [editing, setEditing] = useState<{
     avatar: boolean;
@@ -270,6 +303,63 @@ function DashboardPage() {
           </Space>
         </Col>
       </Row>
+
+      <Divider className="my-6" />
+
+      {/* App Usage Summary */}
+      <Space direction="vertical" style={{ width: '100%' }} className="mb-8">
+        <Space align="center" size={12}>
+          <AppWindowIcon color="#5c4bff" size={16} />
+          <Text strong className="text-base">Applications Logged Into</Text>
+        </Space>
+        
+        <Row gutter={[16, 16]} className="mt-4">
+          {appsSummary.map((app) => (
+             <Col xs={24} sm={12} md={8} lg={6} key={app.app}>
+               <Card size="small" className="hover:shadow-md transition-shadow">
+                 <div className="flex flex-col gap-2">
+                   <Flex align="center" gap={10}>
+                    <Avatar src={app.logoUrl}>{app.app.charAt(0).toUpperCase()}</Avatar>
+                    <Text strong>{app.app}</Text>
+                   </Flex>
+                   <div className="text-xs text-gray-500">
+                     Last Login: <br />
+                     {dayjs(app.time).format("YYYY-MM-DD HH:mm")}
+                   </div>
+                 </div>
+               </Card>
+             </Col>
+          ))}
+          {appsSummary.length === 0 && <Text type="secondary" className="pl-4">No login history found.</Text>}
+        </Row>
+      </Space>
+
+      <Space direction="vertical" style={{ width: '100%' }}>
+        <Space align="center" size={12}>
+          <ClockIcon size={16} color='#5c4bff' />
+          <Text strong className="text-base">Recent Login History (7 Days)</Text>
+        </Space>
+        
+        <Table
+          dataSource={loginHistory}
+          rowKey={(record) => record.time + record.app}
+          pagination={false}
+          size="small"
+          columns={[
+            {
+              title: "Application",
+              dataIndex: "app",
+              key: "appName"
+            },
+            {
+              title: "Time",
+              dataIndex: "time",
+              key: "time",
+              render: (text: string) => dayjs(text).format("YYYY-MM-DD HH:mm:ss"),
+            },
+          ]}
+        />
+      </Space>
     </Card>
   );
 }

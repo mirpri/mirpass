@@ -19,6 +19,8 @@ func main() {
 	mux.HandleFunc("/register", handlers.RegisterHandler)
 	mux.HandleFunc("/login", handlers.LoginHandler)
 	mux.HandleFunc("/verify", handlers.VerifyEmailHandler)
+	mux.HandleFunc("/apps/info", handlers.AppPublicInfoHandler)
+	mux.HandleFunc("/user/info", handlers.UserPublicInfoHandler)
 
 	// Protected routes
 	mux.Handle("/myprofile", handlers.AuthMiddleware(http.HandlerFunc(handlers.MyInfoHandler)))
@@ -41,6 +43,7 @@ func main() {
 
 	// My Apps endpoint
 	mux.Handle("/myapps", handlers.AuthMiddleware(http.HandlerFunc(handlers.MyAppsHandler)))
+	mux.Handle("/user/history", handlers.AuthMiddleware(http.HandlerFunc(handlers.GetLoginHistoryHandler)))
 
 	// App Management
 	mux.Handle("/apps/create", handlers.AuthMiddleware(http.HandlerFunc(handlers.CreateAppHandler)))
@@ -51,6 +54,7 @@ func main() {
 
 	mux.Handle("/apps/update", handlers.AuthMiddleware(http.HandlerFunc(handlers.UpdateAppHandler)))
 	mux.Handle("/apps/delete", handlers.AuthMiddleware(http.HandlerFunc(handlers.DeleteAppHandler)))
+	mux.Handle("/apps/stats", handlers.AuthMiddleware(http.HandlerFunc(handlers.GetAppStatsHandler)))
 
 	mux.Handle("/apps/members", handlers.AuthMiddleware(http.HandlerFunc(handlers.GetAppMembersHandler)))
 	mux.Handle("/apps/members/add", handlers.AuthMiddleware(http.HandlerFunc(handlers.AddAppMemberHandler)))

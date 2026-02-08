@@ -65,3 +65,51 @@ func MyAppsHandler(w http.ResponseWriter, r *http.Request) {
 
 	WriteSuccessResponse(w, "Apps retrieved", apps)
 }
+
+func UserPublicInfoHandler(w http.ResponseWriter, r *http.Request) {
+	username := r.URL.Query().Get("username")
+	if username == "" {
+		WriteErrorResponse(w, http.StatusBadRequest, "Username is required")
+		return
+	}
+
+	user, err := db.GetUserByUsername(username)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			WriteErrorResponse(w, http.StatusNotFound, "User not found")
+		} else {
+			WriteErrorResponse(w, 500, "Database error")
+		}
+		return
+	}
+
+	res := types.UserPublicInfo{
+		Username:  user.Username,
+		Nickname:  user.Nickname,
+		AvatarURL: user.AvatarURL,
+	}
+	WriteSuccessResponse(w, "User info retrieved successfully", res)
+}
+
+func AppPublicInfoHandler(w http.ResponseWriter, r *http.Request) {
+	appID := r.URL.Query().Get("id")
+	if appID == "" {
+		WriteErrorResponse(w, http.StatusBadRequest, "App ID is required")
+		return
+	}
+
+	app, err := db.GetApplication(appID)
+	res := types.AppPublicInfo{
+		ID:          app.ID,
+		Name:        app.Name,
+		Description: app.Description,
+		LogoURL:     app.LogoURL,
+	}
+
+	if err != nil {
+		WriteErrorResponse(w, http.StatusNotFound, "App not found")
+		return
+	}
+
+	WriteSuccessResponse(w, "App details", res)
+}

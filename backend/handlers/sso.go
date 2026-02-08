@@ -57,16 +57,16 @@ func InitiateSSOHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := map[string]string{
-		"session_id": sessionID,
-		"login_url":  config.AppConfig.FrontendURL + "/login?sso=" + sessionID,
+		"sessionId": sessionID,
+		"loginUrl":  config.AppConfig.FrontendURL + "/login?sso=" + sessionID,
 	}
 	WriteSuccessResponse(w, "Session initiated", resp)
 }
 
 func GetSSODetailsHandler(w http.ResponseWriter, r *http.Request) {
-	sessionID := r.URL.Query().Get("session_id")
+	sessionID := r.URL.Query().Get("sessionId")
 	if sessionID == "" {
-		WriteErrorResponse(w, http.StatusBadRequest, "Missing session_id")
+		WriteErrorResponse(w, http.StatusBadRequest, "Missing sessionId")
 		return
 	}
 
@@ -150,9 +150,9 @@ func ConfirmSSOHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func PollSSOHandler(w http.ResponseWriter, r *http.Request) {
-	sessionID := r.URL.Query().Get("session_id")
+	sessionID := r.URL.Query().Get("sessionId")
 	if sessionID == "" {
-		WriteErrorResponse(w, http.StatusBadRequest, "Missing session_id")
+		WriteErrorResponse(w, http.StatusBadRequest, "Missing sessionId")
 		return
 	}
 

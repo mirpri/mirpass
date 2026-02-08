@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import type { ErrorResponse } from "../types";
 import {
@@ -17,6 +17,9 @@ import {
   Popconfirm,
   Divider,
   Avatar,
+  Statistic,
+  Row,
+  Col,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -25,10 +28,13 @@ import {
   SaveOutlined,
   UserAddOutlined,
 } from "@ant-design/icons";
-import { CopyIcon } from "lucide-react";
+import { BanIcon, CopyIcon } from "lucide-react";
+
+import dayjs from "dayjs";
 import api from "../api/client";
 import { config } from "../config";
-import type { APIKey, AppDetails, AppMember } from "../types";
+import type { APIKey, AppDetails, AppMember, LoginHistoryItem } from "../types";
+import { useAppStore } from "../store/useAppStore";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -59,6 +65,11 @@ function ManageAppPage() {
   if (!app) return <div className="p-8">Loading...</div>;
 
   const items = [
+    {
+      key: "stats",
+      label: "Analytics",
+      children: <StatsTab app={app} />,
+    },
     {
       key: "keys",
       label: "API Keys",
@@ -188,8 +199,8 @@ function KeysTab({ app }: { app: AppDetails }) {
     },
     {
       title: "Created At",
-      dataIndex: "created_at",
-      key: "created_at",
+      dataIndex: "createdAt",
+      key: "createdAt",
     },
     {
       title: "Action",
@@ -296,6 +307,8 @@ function MembersTab({ app }: { app: AppDetails }) {
   const [newUser, setNewUser] = useState("");
   const [newRole, setNewRole] = useState("admin");
 
+  const { profile } = useAppStore();
+
   useEffect(() => {
     fetchMembers();
   }, [app.id]);
@@ -382,7 +395,25 @@ function MembersTab({ app }: { app: AppDetails }) {
       title: "Action",
       key: "action",
       render: (_: any, record: AppMember) => {
-        if (app.role !== "root") return null;
+        if (record.username === profile?.username) {
+          return (
+            <Space>
+              <Popconfirm
+                title={`Remove yourself? You'll lose access to this app!`}
+                onConfirm={() => handleRemoveMember(record.username)}
+                okText="Yes"
+                cancelText="No"
+              >
+                <Button danger size="small" icon={<DeleteOutlined />}>
+                  Leave
+                </Button>
+              </Popconfirm>
+            </Space>
+          );
+        }
+        if (app.role !== "root") {
+          return <BanIcon size={18} />;
+        }
 
         return (
           <Space>
@@ -406,14 +437,6 @@ function MembersTab({ app }: { app: AppDetails }) {
       },
     },
   ];
-
-  if (app.role !== "root" && app.role !== "admin") {
-    return (
-      <div className="text-gray-500">
-        You do not have permission to view members.
-      </div>
-    );
-  }
 
   return (
     <div>
@@ -602,8 +625,8 @@ function IntegrationGuideTab() {
   const [redirectUrl, setRedirectUrl] = useState("");
 
   const handleCreateTestSession = async () => {
-  try {
-    const { data } = await api.post(
+    try {
+      const { data } = await api.post(
         "/sso/init",
         {},
         {
@@ -612,19 +635,22 @@ function IntegrationGuideTab() {
           },
         },
       );
-    const loginUrl = data.data.login_url+(redirectUrl ? `&from=${encodeURIComponent(redirectUrl)}` : "");
-    message.success("Test session created");
-    window.open(loginUrl, "_blank");
-  } catch (error: unknown) {
-    const err = error as ErrorResponse
+      // data.data is map[string]string from backend
+      // keys are now camelCase: sessionId, loginUrl
+      const loginUrl =
+        (data.data as any).loginUrl +
+        (redirectUrl ? `&from=${encodeURIComponent(redirectUrl)}` : "");
+      message.success("Test session created");
+      window.open(loginUrl, "_blank");
+    } catch (error: unknown) {
+      const err = error as ErrorResponse;
       const status = err.response?.status;
       const msg = err.response?.data?.message;
       console.error("Failed to create test session", err);
-      message.error(msg + ` (Status: ${status})`)
+      message.error(msg + ` (Status: ${status})`);
       return null;
-    
-  }
-};
+    }
+  };
 
   return (
     <div className="max-w-3xl space-y-8">
@@ -636,8 +662,16 @@ function IntegrationGuideTab() {
           user credentials securely.
         </Paragraph>
         <Space direction="vertical" className="w-full max-w-xl">
-          <Input placeholder="Api Key" value={apiKey} onChange={e => setApiKey(e.target.value)} />
-          <Input placeholder="Redirect URL (Optional)" value={redirectUrl} onChange={e => setRedirectUrl(e.target.value)} />
+          <Input
+            placeholder="Api Key"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+          />
+          <Input
+            placeholder="Redirect URL (Optional)"
+            value={redirectUrl}
+            onChange={(e) => setRedirectUrl(e.target.value)}
+          />
           <Button onClick={handleCreateTestSession} type="primary">
             Create test session
           </Button>
@@ -661,8 +695,8 @@ function IntegrationGuideTab() {
           {`{
   "status": "success",
   "data": {
-    "session_id": "sess_abc123...",
-    "login_url": "${frontendUrl}/login?sso=sess_abc123..." 
+    "sessionId": "sess_abc123...",
+    "loginUrl": "${frontendUrl}/login?sso=sess_abc123..." 
   }
 }`}
         </div>
@@ -676,12 +710,15 @@ function IntegrationGuideTab() {
           parameter to redirect the user back to your site after login.
         </Paragraph>
         <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-3 rounded text-blue-600 dark:text-blue-400 font-mono text-sm break-all">
-          {frontendUrl}/login?sso=sess_abc123...&from=https://yoursite.com/callback
+          {frontendUrl}
+          /login?sso=sess_abc123...&from=https://yoursite.com/callback
         </div>
         <Paragraph className="mt-2 text-sm">
-            After successful authorization, the user will be redirected to:
-            <br />
-            <code className="bg-gray-100 dark:bg-gray-800 p-1 rounded">https://yoursite.com/callback?mirpass_sso=sess_abc123...</code>
+          After successful authorization, the user will be redirected to:
+          <br />
+          <code className="bg-gray-100 dark:bg-gray-800 p-1 rounded">
+            https://yoursite.com/callback?mirpass_sso=sess_abc123...
+          </code>
         </Paragraph>
       </div>
 
@@ -689,11 +726,13 @@ function IntegrationGuideTab() {
         <Title level={4}>3. Poll for Status</Title>
         <Paragraph>
           While the user is logging in on Mirpass, your client can poll the
-          status endpoint using the `session_id`. Use this when your client is not a web app and won't be able to receive redirects, or if you want to show real-time status updates.
+          status endpoint using the `session_id`. Use this when your client is
+          not a web app and won't be able to receive redirects, or if you want
+          to show real-time status updates.
         </Paragraph>
         <div className="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed">
           <span className="text-green-400">GET</span> {backendUrl}
-          /sso/poll?session_id=sess_abc123...
+          /sso/poll?sessionId=sess_abc123...
         </div>
         <Paragraph className="mt-2 text-sm text-gray-500">
           Response (Pending):
@@ -728,6 +767,197 @@ function IntegrationGuideTab() {
           {`{ "token": "eyJhbGciOiJIUzI1Ni..." }`}
         </div>
       </div>
+    </div>
+  );
+}
+
+// --- Stats Tab ---
+
+function StatsTab({ app }: { app: AppDetails }) {
+  const [stats, setStats] = useState<{
+    totalUsers: number;
+    history: LoginHistoryItem[];
+  } | null>(null);
+
+  useEffect(() => {
+    fetchStats();
+  }, [app.id]);
+
+  const fetchStats = async () => {
+    try {
+      const { data } = await api.get<{
+        data: { totalUsers: number; history: LoginHistoryItem[] };
+      }>(`/apps/stats?id=${app.id}`);
+      setStats(data.data);
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  const chartData = useMemo(() => {
+    if (!stats?.history) return [];
+
+    // Generate last 7 days keys
+    const daysMap = new Map<
+      string,
+      { date: string; logins: number; users: Set<string> }
+    >();
+    for (let i = 6; i >= 0; i--) {
+      const d = dayjs().subtract(i, "day").format("YYYY-MM-DD");
+      daysMap.set(d, { date: d, logins: 0, users: new Set() });
+    }
+
+    stats.history.forEach((item) => {
+      const d = dayjs(item.time).format("YYYY-MM-DD");
+      if (daysMap.has(d)) {
+        const entry = daysMap.get(d)!;
+        entry.logins++;
+        if (item.user) entry.users.add(item.user);
+      }
+    });
+
+    return Array.from(daysMap.values()).map((entry) => ({
+      date: entry.date,
+      logins: entry.logins,
+      activeUsers: entry.users.size,
+    }));
+  }, [stats]);
+
+  if (!stats) return <div className="p-4">Loading stats...</div>;
+
+  return (
+    <div className="space-y-6">
+      <Row gutter={16}>
+        <Col xs={8}>
+          <Card>
+            <Statistic title="Total Users" value={stats.totalUsers} />
+          </Card>
+        </Col>
+        <Col xs={8}>
+          <Card>
+            <Statistic
+              title="Daily Active"
+              value={
+                stats.history.reduce((acc, item) => {
+                  const date = dayjs(item.time);
+                  const sevenDaysAgo = dayjs().subtract(1, "day");
+                  if (date.isAfter(sevenDaysAgo)) {
+                    acc.add(item.user);
+                  }
+                  return acc;
+                }, new Set()).size
+              }
+            />
+          </Card>
+        </Col>
+        <Col xs={8}>
+          <Card>
+            <Statistic
+              title="Avg Logins"
+              value={
+                stats.history.length /
+                (new Set(
+                  stats.history.map((h) => dayjs(h.time).format("YYYY-MM-DD")),
+                ).size || 1)
+              }
+              precision={1}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      <Row gutter={16}>
+        <Col xs={24} xl={12}>
+          <Card title="Statistics" style={{ margin: "10px 0" }}>
+            <div>
+              <div className="flex items-end justify-between h-56 gap-2 px-2">
+                {chartData.map((d) => {
+                  // Find max value to normalize height
+                  const maxVal = Math.max(
+                    ...chartData.map((cd) =>
+                      Math.max(cd.logins, cd.activeUsers),
+                    ),
+                  );
+                  const scale = maxVal > 0 ? 160 / maxVal : 0;
+
+                  return (
+                    <div
+                      key={d.date}
+                      className="flex flex-col items-center gap-2 group w-full overflow-auto"
+                    >
+                      <div className="flex gap-1 items-end h-[160px] w-full justify-center relative">
+                        {/* Logins Bar */}
+                        <div
+                          className="bg-indigo-400 dark:bg-indigo-600 w-3 rounded-t transition-all hover:bg-indigo-300"
+                          style={{
+                            height: `${Math.max(d.logins * scale, 4)}px`,
+                          }}
+                          title={`Logins: ${d.logins}`}
+                        />
+                        {/* Users Bar */}
+                        <div
+                          className="bg-emerald-400 dark:bg-emerald-600 w-3 rounded-t transition-all hover:bg-emerald-300"
+                          style={{
+                            height: `${Math.max(d.activeUsers * scale, 4)}px`,
+                          }}
+                          title={`Users: ${d.activeUsers}`}
+                        />
+                      </div>
+                      <div className="text-xs text-gray-500 whitespace-nowrap transform -rotate-45 origin-left mt-6 pl-4">
+                        {dayjs(d.date).format("MM-DD")}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex justify-center gap-6">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-indigo-400 rounded"></div>
+                  <Text type="secondary" className="text-xs">
+                    Logins
+                  </Text>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-emerald-400 rounded"></div>
+                  <Text type="secondary" className="text-xs">
+                    Active Users
+                  </Text>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </Col>
+        <Col xs={24} xl={12}>
+          <Card title="Activities" style={{ margin: "10px 0" }}>
+            <Table
+              dataSource={stats.history}
+              size="small"
+              pagination={{ pageSize: 10 }}
+              columns={[
+                {
+                  title: "User",
+                  dataIndex: "user",
+                  key: "user",
+                  render: (text: string) =>
+                    text ? (
+                      <span className="flex items-center gap-2">{text}</span>
+                    ) : (
+                      <Text type="secondary">Unknown</Text>
+                    ),
+                },
+                {
+                  title: "Time",
+                  dataIndex: "time",
+                  key: "time",
+                  render: (text: string) =>
+                    dayjs(text).format("YYYY-MM-DD HH:mm:ss"),
+                },
+              ]}
+              rowKey={(record) => record.time + record.user}
+            />
+          </Card>
+        </Col>
+      </Row>
     </div>
   );
 }

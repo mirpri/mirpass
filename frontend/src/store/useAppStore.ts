@@ -96,7 +96,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   fetchSsoDetails: async () => {
     const sid = get().ssoSessionId;
-    const { data } = await api.get(`/sso/details?session_id=${sid}`);
+    const { data } = await api.get(`/sso/details?sessionId=${sid}`);
     set({ ssoDetails: data.data });
   },
     ssoConfirm: async () => {

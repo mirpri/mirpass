@@ -62,7 +62,7 @@ func ExtractClaims(r *http.Request) (*Claims, error) {
 func GenerateSSOToken(appID, username string) (string, error) {
 	claims := jwt.MapClaims{
 		"username": username,
-		"app_id":   appID,
+		"appId":    appID,
 		"type":     "sso",
 		"exp":      jwt.NewNumericDate(time.Now().Add(time.Minute * 5)), // Short lived
 		"iat":      jwt.NewNumericDate(time.Now()),

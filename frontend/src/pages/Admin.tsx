@@ -16,11 +16,8 @@ import {
 import dayjs from "dayjs";
 import {
   SearchOutlined,
-  DeleteOutlined,
-  EditOutlined,
-  ReloadOutlined,
 } from "@ant-design/icons";
-import { ShieldBanIcon } from "lucide-react";
+import { ShieldBanIcon, KeyRound, EditIcon, TrashIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { AppRole } from "../types";
 import api from "../api/client";
@@ -165,20 +162,23 @@ function UserTab({ systemRole }: { systemRole: string }) {
       render: (_: any, record: AdminUserView) => (
         <Space>
           <Button
-            icon={<EditOutlined />}
+            icon={<EditIcon size={14} />}
             size="small"
             onClick={() => handleEdit(record)}
+            title="Edit Profile"
           />
           <Button
-            icon={<ReloadOutlined />}
+            icon={<KeyRound size={14} />}
             size="small"
             onClick={() => handlePasswordReset(record)}
+            title="Reset Password"
           />
           <Button
             danger
-            icon={<DeleteOutlined />}
+            icon={<TrashIcon size={14} />}
             size="small"
             onClick={() => handleDelete(record.username)}
+            title="Delete User"
           />
         </Space>
       ),
@@ -366,7 +366,7 @@ function AppsTab({ systemRole: _systemRole }: { systemRole: string }) {
       ellipsis: true,
     },
     {
-      title: "Suspend Until",
+      title: "Suspension",
       dataIndex: "suspendUntil",
       key: "suspendUntil",
       render: (date: string | null, record: AdminAppView) => (
@@ -384,15 +384,17 @@ function AppsTab({ systemRole: _systemRole }: { systemRole: string }) {
       render: (_: any, record: AdminAppView) => (
         <Space>
           <Button
-            icon={<EditOutlined />}
+            icon={<EditIcon size={14} />}
             size="small"
             onClick={() => handleEdit(record)}
+            title="Edit App"
           />
           <Button
             danger
-            icon={<DeleteOutlined />}
+            icon={<TrashIcon size={14} />}
             size="small"
             onClick={() => handleDelete(record.id)}
+            title="Delete App"
           />
         </Space>
       ),
@@ -506,11 +508,6 @@ function AdminPage() {
   return (
     <Card
       title="System Management"
-      extra={
-        <Button onClick={() => navigate("/dashboard")}>
-          Back to Dashboard
-        </Button>
-      }
       className="shadow-md w-full max-w-4xl"
     >
       <Space direction="vertical" className="w-full">

@@ -238,6 +238,38 @@ func UpdateAppHandler(w http.ResponseWriter, r *http.Request) {
 	WriteSuccessResponse(w, "App updated", nil)
 }
 
+func GetAppStatsHandler(w http.ResponseWriter, r *http.Request) {
+	appID := r.URL.Query().Get("id")
+	if appID == "" {
+		WriteErrorResponse(w, http.StatusBadRequest, "App ID is required")
+		return
+	}
+
+	claims, err := utils.ExtractClaims(r)
+	if err != nil {
+		WriteErrorResponse(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	// Check access
+	isAdmin, err := db.IsAppAdmin(claims.Username, appID)
+	if err != nil || !isAdmin {
+		WriteErrorResponse(w, http.StatusForbidden, "Forbidden")
+		return
+	}
+
+	history, totalUsers, err := db.GetAppLoginStats(appID)
+	if err != nil {
+		WriteErrorResponse(w, http.StatusInternalServerError, "Failed to get stats")
+		return
+	}
+
+	WriteSuccessResponse(w, "Stats fetched", map[string]interface{}{
+		"history":    history,
+		"totalUsers": totalUsers,
+	})
+}
+
 func DeleteAppHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -399,13 +431,8 @@ func RemoveAppMemberHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	role, err := db.GetAppRole(claims.Username, req.AppID)
-	if role != "root" {
+	if role != "root" && claims.Username != req.Username {
 		WriteErrorResponse(w, http.StatusForbidden, "Forbidden: Only root can remove members")
-		return
-	}
-
-	if req.Username == claims.Username {
-		WriteErrorResponse(w, http.StatusBadRequest, "Cannot remove yourself")
 		return
 	}
 

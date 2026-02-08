@@ -1,5 +1,5 @@
 import { Button } from "antd";
-import { Github, InfoIcon, HomeIcon, LogOutIcon } from "lucide-react";
+import { InfoIcon, HomeIcon, LogOutIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAppStore } from "../store/useAppStore";
 
@@ -25,12 +25,6 @@ function Nav() {
           onClick={()=>navigate("/about")}
         >
           <InfoIcon size={20} className="text-gray-600 dark:text-gray-300" />
-        </Button>
-        <Button
-          type="text"
-          style={{ height: "30px", width: "30px", padding: "0" }}
-        >
-          <Github size={20} className="text-gray-600 dark:text-gray-300" />
         </Button>
         <Button
           type="text"
