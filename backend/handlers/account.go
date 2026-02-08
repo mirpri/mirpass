@@ -53,8 +53,6 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func RegisterHandler(w http.ResponseWriter, r *http.Request) {
-	log.Default().Println("RegisterHandler called")
-
 	var req struct {
 		Username string `json:"username"`
 		Email    string `json:"email"`
@@ -89,11 +87,14 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	// Check conflicts & cleanup unverified
 	err = db.ResolveRegistrationConflict(req.Username, req.Email)
 	if err != nil {
-		if err.Error() == "conflict with verified user" {
-			WriteErrorResponse(w, 400, "Username or email already taken")
+		if err.Error() == "username already taken" {
+			WriteErrorResponse(w, 400, "Username already taken")
 			return
 		}
-		log.Printf("ResolveRegistrationConflict error: %v", err)
+		if err.Error() == "email already taken" {
+			WriteErrorResponse(w, 400, "Email already in use")
+			return
+		}
 		WriteErrorResponse(w, 500, "Database error checking conflicts")
 		return
 	}
@@ -121,7 +122,11 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Send verification email
-	go utils.SendVerificationEmail(req.Email, token, "register")
+	err = utils.SendVerificationEmail(req.Email, token, "register")
+	if err != nil {
+		WriteErrorResponse(w, 500, "Error sending verification email")
+		return
+	}
 
 	WriteSuccessResponse(w, "Registration successful. Please check your email to verify your account.", nil)
 }

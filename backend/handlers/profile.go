@@ -176,18 +176,6 @@ func RequestChangeEmailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if new email is already taken
-	conflict_err := db.ResolveRegistrationConflict(username, req.NewEmail)
-	if conflict_err != nil { // Reuse the conflict check logic, but need to be careful with params
-		// Actually ResolveRegistrationConflict checks if username OR email exists.
-		// Here we only care if email exists for ANOTHER user.
-		// Let's do a direct check or simplified check.
-		// For now simple check:
-	}
-	// TODO: Proper unique check. Assuming DB constraint will catch it later or verification phase.
-	// Actually we should check now.
-	// But let's proceed with creating verification.
-
 	token := utils.GenerateToken()
 	// Task: change_email, Detail: new_email
 	if err := db.CreateVerification(username, token, "change_email", req.NewEmail); err != nil {
@@ -195,7 +183,11 @@ func RequestChangeEmailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go utils.SendVerificationEmail(req.NewEmail, token, "change_email") // Send to NEW email
+	err = utils.SendVerificationEmail(req.NewEmail, token, "change_email") // Send to NEW email
+	if err != nil {
+		WriteErrorResponse(w, http.StatusInternalServerError, "Error sending verification email")
+		return
+	}
 
 	WriteSuccessResponse(w, "Verification email sent to new address", nil)
 }
@@ -241,7 +233,11 @@ func RequestPasswordResetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go utils.SendVerificationEmail(user.Email, token, "reset_password")
+	err = utils.SendVerificationEmail(user.Email, token, "reset_password")
+	if err != nil {
+		WriteErrorResponse(w, http.StatusInternalServerError, "Error sending verification email")
+		return
+	}
 
 	WriteSuccessResponse(w, "If account exists, verification details sent", nil)
 }

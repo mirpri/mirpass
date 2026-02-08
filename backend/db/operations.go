@@ -265,7 +265,16 @@ func VerifyUserByToken(token string) (string, error) {
 		if !detail.Valid {
 			err = fmt.Errorf("no new email in verification detail")
 		} else {
-			_, err = tx.Exec("UPDATE users SET email = ? WHERE username = ?", detail.String, username)
+			conflict_err := ResolveRegistrationConflict("", detail.String)
+			if conflict_err != nil {
+				if conflict_err.Error() == "email already taken" {
+					err = fmt.Errorf("email already in use")
+				} else {
+					err = fmt.Errorf("database error checking email conflict")
+				}
+			} else {
+				_, err = tx.Exec("UPDATE users SET email = ? WHERE username = ?", detail.String, username)
+			}
 		}
 	case "reset_password":
 		if !detail.Valid {
