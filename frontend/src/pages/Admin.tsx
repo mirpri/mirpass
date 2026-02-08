@@ -14,6 +14,7 @@ import {
   DatePicker,
 } from "antd";
 import dayjs from "dayjs";
+import { parseDate } from "../utils/date";
 import {
   SearchOutlined,
 } from "@ant-design/icons";
@@ -265,9 +266,7 @@ function AppsTab({ systemRole: _systemRole }: { systemRole: string }) {
   const [loading, setLoading] = useState(false);
   const [apps, setApps] = useState<AdminAppView[]>([]);
   const [search, setSearch] = useState("");
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingApp, setEditingApp] = useState<AdminAppView | null>(null);
-  const [form] = Form.useForm();
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchApps();
@@ -317,33 +316,6 @@ function AppsTab({ systemRole: _systemRole }: { systemRole: string }) {
     });
   };
 
-  const handleEdit = (app: AdminAppView) => {
-    setEditingApp(app);
-    form.setFieldsValue({
-      name: app.name,
-      description: app.description,
-      logoUrl: app.logoUrl,
-    });
-    setIsEditModalOpen(true);
-  };
-
-  const saveEdit = async () => {
-    try {
-      const values = await form.validateFields();
-      await api.post("/admin/app/update", {
-        appId: editingApp?.id,
-        name: values.name,
-        description: values.description,
-        logoUrl: values.logoUrl,
-      });
-      message.success("App updated");
-      setIsEditModalOpen(false);
-      fetchApps();
-    } catch (error) {
-      message.error("Update failed");
-    }
-  };
-
   const columns = [
     {
       title: "Name",
@@ -372,7 +344,7 @@ function AppsTab({ systemRole: _systemRole }: { systemRole: string }) {
       render: (date: string | null, record: AdminAppView) => (
         <DatePicker
           showTime
-          value={date ? dayjs(date) : null}
+          value={date ? parseDate(date) : null}
           onChange={(d) => handleSuspend(record.id, d)}
           allowClear
         />
@@ -386,7 +358,7 @@ function AppsTab({ systemRole: _systemRole }: { systemRole: string }) {
           <Button
             icon={<EditIcon size={14} />}
             size="small"
-            onClick={() => handleEdit(record)}
+            onClick={() => navigate(`/manage/${record.id}`)}
             title="Edit App"
           />
           <Button
@@ -423,26 +395,6 @@ function AppsTab({ systemRole: _systemRole }: { systemRole: string }) {
         loading={loading}
         pagination={{ pageSize: 10 }}
       />
-
-      <Modal
-        title="Edit App"
-        open={isEditModalOpen}
-        onOk={saveEdit}
-        onCancel={() => setIsEditModalOpen(false)}
-      >
-        <Form form={form} layout="vertical">
-          <Form.Item name="name" label="App Name" rules={[{ required: true }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="description" label="Description">
-            <TextArea rows={3} />
-          </Form.Item>
-          <Form.Item name="logoUrl" label="Logo URL">
-            <Input placeholder="https://..." />
-          </Form.Item>
-
-        </Form>
-      </Modal>
     </>
   );
 }

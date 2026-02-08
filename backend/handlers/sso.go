@@ -42,7 +42,7 @@ func InitiateSSOHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if app.SuspendUntil != nil {
 		t, err := time.Parse(time.RFC3339, *app.SuspendUntil)
-		if err == nil && t.After(time.Now()) {
+		if err == nil && t.After(time.Now().UTC()) {
 			WriteErrorResponse(w, http.StatusForbidden, "Application is suspended")
 			return
 		}
@@ -135,7 +135,7 @@ func ConfirmSSOHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if app.SuspendUntil != nil {
 		t, err := time.Parse(time.RFC3339, *app.SuspendUntil)
-		if err == nil && t.After(time.Now()) {
+		if err == nil && t.After(time.Now().UTC()) {
 			WriteErrorResponse(w, http.StatusForbidden, "Application is suspended")
 			return
 		}

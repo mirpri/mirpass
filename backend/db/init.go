@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"mirpass-backend/config"
+	"time"
 
 	"github.com/go-sql-driver/mysql"
 )
@@ -22,6 +23,10 @@ func loadConfig() {
 		DBName:               config.AppConfig.DBName,
 		AllowNativePasswords: true,
 		ParseTime:            true,
+		Loc:                  time.UTC,
+		Params: map[string]string{
+			"time_zone": "'+00:00'",
+		},
 	}
 }
 

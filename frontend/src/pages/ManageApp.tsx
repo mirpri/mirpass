@@ -20,6 +20,7 @@ import {
   Statistic,
   Row,
   Col,
+  DatePicker,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -31,9 +32,17 @@ import {
 import { BanIcon, CopyIcon } from "lucide-react";
 
 import dayjs from "dayjs";
+import { formatDateTime, toUtcDateString } from "../utils/date";
+
 import api from "../api/client";
 import { config } from "../config";
-import type { APIKey, AppDetails, AppMember, LoginHistoryItem } from "../types";
+import type {
+  APIKey,
+  AppDetails,
+  AppMember,
+  LoginHistoryItem,
+  AppStatsSummary,
+} from "../types";
 import { useAppStore } from "../store/useAppStore";
 
 const { Title, Text, Paragraph } = Typography;
@@ -86,8 +95,6 @@ function ManageAppPage() {
       children: <IntegrationGuideTab />,
     },
     {
-      // Only root can see settings? Or maybe admin too but restricted?
-      // Logic inside Tab will handle restriction rendering
       key: "settings",
       label: "Settings",
       children: (
@@ -107,10 +114,9 @@ function ManageAppPage() {
       extra={
         <Button
           icon={<ArrowLeftOutlined />}
-          onClick={() => navigate("/dashboard")}
+          onClick={() => navigate(-1)}
         >
-          {" "}
-          Back to Dashboard
+          Back
         </Button>
       }
     >
@@ -121,7 +127,7 @@ function ManageAppPage() {
         </Title>
         <Tag color="blue">{app.role}</Tag>
       </Space>
-      <Tabs defaultActiveKey="keys" items={items} />
+      <Tabs defaultActiveKey="stats" items={items} />
     </Card>
   );
 }
@@ -201,6 +207,7 @@ function KeysTab({ app }: { app: AppDetails }) {
       title: "Created At",
       dataIndex: "createdAt",
       key: "createdAt",
+      render: (text: string) => formatDateTime(text),
     },
     {
       title: "Action",
@@ -224,13 +231,15 @@ function KeysTab({ app }: { app: AppDetails }) {
     <div>
       <div className="flex justify-between items-center mb-4">
         <Text>Manage your API keys for accessing the service.</Text>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={() => setCreateModalOpen(true)}
-        >
-          Create New Key
-        </Button>
+        {app.role !== "external" && (
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => setCreateModalOpen(true)}
+          >
+            Create New Key
+          </Button>
+        )}
       </div>
 
       <Table
@@ -314,7 +323,6 @@ function MembersTab({ app }: { app: AppDetails }) {
   }, [app.id]);
 
   const fetchMembers = async () => {
-    if (app.role !== "root" && app.role !== "admin") return;
     setLoading(true);
     try {
       const { data } = await api.get<{ data: AppMember[] }>(
@@ -540,11 +548,6 @@ function SettingsTab({
   };
 
   const isRoot = app.role === "root";
-  const isAdmin = app.role === "admin";
-
-  if (!isRoot && !isAdmin) {
-    return <div>You don't have permission to manage this app.</div>;
-  }
 
   return (
     <div className="max-w-3xl">
@@ -554,7 +557,6 @@ function SettingsTab({
         form={form}
         layout="vertical"
         onFinish={handleUpdate}
-        disabled={!isRoot && !isAdmin} // Admins can usually update details?
       >
         <Form.Item
           label="App Name"
@@ -774,108 +776,90 @@ function IntegrationGuideTab() {
 // --- Stats Tab ---
 
 function StatsTab({ app }: { app: AppDetails }) {
-  const [stats, setStats] = useState<{
-    totalUsers: number;
-    history: LoginHistoryItem[];
-  } | null>(null);
+  const [summary, setSummary] = useState<AppStatsSummary | null>(null);
+  const [history, setHistory] = useState<LoginHistoryItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<dayjs.Dayjs | null>(null);
 
   useEffect(() => {
     fetchStats();
   }, [app.id]);
 
+  useEffect(() => {
+    if (selectedDate) {
+      fetchHistory(selectedDate);
+    } else {
+      setHistory([]);
+    }
+  }, [selectedDate, app.id]);
+
   const fetchStats = async () => {
+    setLoading(true);
     try {
-      const { data } = await api.get<{
-        data: { totalUsers: number; history: LoginHistoryItem[] };
-      }>(`/apps/stats?id=${app.id}`);
-      setStats(data.data);
+      const { data } = await api.get<{ data: AppStatsSummary }>(
+        `/apps/stats?id=${app.id}`,
+      );
+      setSummary(data.data);
+    } catch (e) {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchHistory = async (date: dayjs.Dayjs) => {
+    try {
+      const dateStr = toUtcDateString(date);
+      const { data } = await api.get<{ data: LoginHistoryItem[] }>(
+        `/apps/history?id=${app.id}&date=${dateStr}`,
+      );
+      setHistory(data.data || []);
     } catch (e) {
       // ignore
     }
   };
 
   const chartData = useMemo(() => {
-    if (!stats?.history) return [];
+    if (!summary?.daily) return [];
+    return summary.daily;
+  }, [summary]);
 
-    // Generate last 7 days keys
-    const daysMap = new Map<
-      string,
-      { date: string; logins: number; users: Set<string> }
-    >();
-    for (let i = 6; i >= 0; i--) {
-      const d = dayjs().subtract(i, "day").format("YYYY-MM-DD");
-      daysMap.set(d, { date: d, logins: 0, users: new Set() });
-    }
-
-    stats.history.forEach((item) => {
-      const d = dayjs(item.time).format("YYYY-MM-DD");
-      if (daysMap.has(d)) {
-        const entry = daysMap.get(d)!;
-        entry.logins++;
-        if (item.user) entry.users.add(item.user);
-      }
-    });
-
-    return Array.from(daysMap.values()).map((entry) => ({
-      date: entry.date,
-      logins: entry.logins,
-      activeUsers: entry.users.size,
-    }));
-  }, [stats]);
-
-  if (!stats) return <div className="p-4">Loading stats...</div>;
+  if (loading && !summary) return <div className="p-4">Loading stats...</div>;
+  if (!summary) return <div className="p-4">No stats available.</div>;
 
   return (
-    <div className="space-y-6">
-      <Row gutter={16}>
-        <Col xs={8}>
-          <Card>
-            <Statistic title="Total Users" value={stats.totalUsers} />
-          </Card>
-        </Col>
-        <Col xs={8}>
-          <Card>
-            <Statistic
-              title="Daily Active"
-              value={
-                stats.history.reduce((acc, item) => {
-                  const date = dayjs(item.time);
-                  const sevenDaysAgo = dayjs().subtract(1, "day");
-                  if (date.isAfter(sevenDaysAgo)) {
-                    acc.add(item.user);
-                  }
-                  return acc;
-                }, new Set()).size
-              }
-            />
-          </Card>
-        </Col>
-        <Col xs={8}>
-          <Card>
-            <Statistic
-              title="Avg Logins"
-              value={
-                stats.history.length /
-                (new Set(
-                  stats.history.map((h) => dayjs(h.time).format("YYYY-MM-DD")),
-                ).size || 1)
-              }
-              precision={1}
-            />
-          </Card>
-        </Col>
-      </Row>
+    <div>
+      <Card
+        title="Summary"
+        className="bg-white/90"
+        style={{ margin: "10px 0" }}
+      >
+        <Row gutter={16} className="text-center">
+          <Col xs={12} sm={6}>
+            <Statistic title="Total Users" value={summary.totalUsers} />
+          </Col>
+          <Col xs={12} sm={6}>
+            <Statistic title="Total Logins" value={summary.totalLogins} />
+          </Col>
+          <Col xs={12} sm={6}>
+            <Statistic title="Active (24h)" value={summary.activeUsers24h} />
+          </Col>
+          <Col xs={12} sm={6}>
+            <Statistic title="New (24h)" value={summary.newUsers24h} />
+          </Col>
+        </Row>
+      </Card>
 
       <Row gutter={16}>
         <Col xs={24} xl={12}>
-          <Card title="Statistics" style={{ margin: "10px 0" }}>
+          <Card title="Traffic (Last 7 Days)" style={{ margin: "10px 0" }}>
             <div>
               <div className="flex items-end justify-between h-56 gap-2 px-2">
                 {chartData.map((d) => {
-                  // Find max value to normalize height
                   const maxVal = Math.max(
                     ...chartData.map((cd) =>
-                      Math.max(cd.logins, cd.activeUsers),
+                      // Include newUsers in scaling calculation
+                      Math.max(cd.logins, cd.activeUsers, cd.newUsers),
                     ),
                   );
                   const scale = maxVal > 0 ? 160 / maxVal : 0;
@@ -883,7 +867,7 @@ function StatsTab({ app }: { app: AppDetails }) {
                   return (
                     <div
                       key={d.date}
-                      className="flex flex-col items-center gap-2 group w-full overflow-auto"
+                      className="flex flex-col items-center gap-2 group w-full overflow-hidden"
                     >
                       <div className="flex gap-1 items-end h-[160px] w-full justify-center relative">
                         {/* Logins Bar */}
@@ -894,23 +878,31 @@ function StatsTab({ app }: { app: AppDetails }) {
                           }}
                           title={`Logins: ${d.logins}`}
                         />
-                        {/* Users Bar */}
+                        {/* Active Users Bar */}
                         <div
                           className="bg-emerald-400 dark:bg-emerald-600 w-3 rounded-t transition-all hover:bg-emerald-300"
                           style={{
                             height: `${Math.max(d.activeUsers * scale, 4)}px`,
                           }}
-                          title={`Users: ${d.activeUsers}`}
+                          title={`Active Users: ${d.activeUsers}`}
+                        />
+                        {/* New Users Bar */}
+                        <div
+                          className="bg-sky-400 dark:bg-sky-600 w-3 rounded-t transition-all hover:bg-sky-300"
+                          style={{
+                            height: `${Math.max(d.newUsers * scale, 4)}px`,
+                          }}
+                          title={`New Users: ${d.newUsers}`}
                         />
                       </div>
                       <div className="text-xs text-gray-500 whitespace-nowrap transform -rotate-45 origin-left mt-6 pl-4">
-                        {dayjs(d.date).format("MM-DD")}
+                        {dayjs.utc(d.date).format("MM-DD")}
                       </div>
                     </div>
                   );
                 })}
               </div>
-              <div className="flex justify-center gap-6">
+              <div className="flex justify-center flex-wrap gap-x-6 mt-4">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 bg-indigo-400 rounded"></div>
                   <Text type="secondary" className="text-xs">
@@ -923,38 +915,66 @@ function StatsTab({ app }: { app: AppDetails }) {
                     Active Users
                   </Text>
                 </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-sky-400 rounded"></div>
+                  <Text type="secondary" className="text-xs">
+                    New Users
+                  </Text>
+                </div>
               </div>
             </div>
           </Card>
         </Col>
         <Col xs={24} xl={12}>
-          <Card title="Activities" style={{ margin: "10px 0" }}>
-            <Table
-              dataSource={stats.history}
-              size="small"
-              pagination={{ pageSize: 10 }}
-              columns={[
-                {
-                  title: "User",
-                  dataIndex: "user",
-                  key: "user",
-                  render: (text: string) =>
-                    text ? (
-                      <span className="flex items-center gap-2">{text}</span>
-                    ) : (
-                      <Text type="secondary">Unknown</Text>
-                    ),
-                },
-                {
-                  title: "Time",
-                  dataIndex: "time",
-                  key: "time",
-                  render: (text: string) =>
-                    dayjs(text).format("YYYY-MM-DD HH:mm:ss"),
-                },
-              ]}
-              rowKey={(record) => record.time + record.user}
-            />
+          <Card
+            title="Login History"
+            style={{ margin: "10px 0" }}
+            extra={
+              <DatePicker
+                value={selectedDate}
+                onChange={(date) => setSelectedDate(date ? date.utc() : null)}
+                allowClear
+              />
+            }
+          >
+            {!selectedDate ? (
+              <div className="p-4 text-center text-gray-500">
+                Select a date to view login history.
+              </div>
+            ) : (
+              <>
+                <Text>{history.length} activities found</Text>
+                <Table
+                  dataSource={history}
+                  size="small"
+                  pagination={{ pageSize: 10 }}
+                  locale={{ emptyText: "No activity on selected date" }}
+                  columns={[
+                    {
+                      title: "User",
+                      dataIndex: "user",
+                      key: "user",
+                      render: (text: string) =>
+                        text ? (
+                          <span className="flex items-center gap-2">
+                            {text}
+                          </span>
+                        ) : (
+                          <Text type="secondary">Unknown</Text>
+                        ),
+                    },
+                    {
+                      title: "Time (UTC)",
+                      dataIndex: "time",
+                      key: "time",
+                      render: (text: string) =>
+                        formatDateTime(text),
+                    },
+                  ]}
+                  rowKey={(record) => record.time + (record.user || "unknown")}
+                />
+              </>
+            )}
           </Card>
         </Col>
       </Row>

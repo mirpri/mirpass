@@ -55,6 +55,7 @@ func main() {
 	mux.Handle("/apps/update", handlers.AuthMiddleware(http.HandlerFunc(handlers.UpdateAppHandler)))
 	mux.Handle("/apps/delete", handlers.AuthMiddleware(http.HandlerFunc(handlers.DeleteAppHandler)))
 	mux.Handle("/apps/stats", handlers.AuthMiddleware(http.HandlerFunc(handlers.GetAppStatsHandler)))
+	mux.Handle("/apps/history", handlers.AuthMiddleware(http.HandlerFunc(handlers.GetAppHistoryHandler)))
 
 	mux.Handle("/apps/members", handlers.AuthMiddleware(http.HandlerFunc(handlers.GetAppMembersHandler)))
 	mux.Handle("/apps/members/add", handlers.AuthMiddleware(http.HandlerFunc(handlers.AddAppMemberHandler)))

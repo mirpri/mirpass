@@ -12,7 +12,7 @@ import (
 func GenerateJWTToken(userID string) string {
 	claims := jwt.MapClaims{
 		"username": userID,
-		"exp":      jwt.NewNumericDate(time.Now().Add(time.Second * time.Duration(config.AppConfig.JWTExpiresIn))),
+		"exp":      jwt.NewNumericDate(time.Now().UTC().Add(time.Second * time.Duration(config.AppConfig.JWTExpiresIn))),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -64,8 +64,8 @@ func GenerateSSOToken(appID, username string) (string, error) {
 		"username": username,
 		"appId":    appID,
 		"type":     "sso",
-		"exp":      jwt.NewNumericDate(time.Now().Add(time.Minute * 5)), // Short lived
-		"iat":      jwt.NewNumericDate(time.Now()),
+		"exp":      jwt.NewNumericDate(time.Now().UTC().Add(time.Minute * 5)), // Short lived
+		"iat":      jwt.NewNumericDate(time.Now().UTC()),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(config.AppConfig.JWTSecret))

@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"time"
 
 	"mirpass-backend/types"
 	"mirpass-backend/utils"
@@ -22,7 +23,7 @@ func GetUserLoginHistory(username string) ([]types.LoginHistoryItem, error) {
 		SELECT a.name as app, a.logo_url, ls.login_at
 		FROM login_sessions ls
 		JOIN applications a ON ls.app_id = a.id
-		WHERE ls.username = ? AND ls.login_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+		WHERE ls.username = ? AND ls.login_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 7 DAY)
 		ORDER BY ls.login_at DESC
 	`
 	rows, err := database.Query(query, username)
@@ -90,7 +91,7 @@ func GetAppLoginStats(appID string) ([]types.LoginHistoryItem, int, error) {
 	query := `
 		SELECT username, login_at
 		FROM login_sessions
-		WHERE app_id = ? AND login_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+		WHERE app_id = ? AND login_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 7 DAY)
 		ORDER BY login_at DESC
 	`
 	rows, err := database.Query(query, appID)
@@ -418,7 +419,7 @@ func GetAppRole(username string, app string) (string, error) {
 	err := database.QueryRow("SELECT role FROM admins WHERE username = ? AND app = ?", username, app).Scan(&role)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return "", nil
+			return "external", nil
 		}
 		return "", err
 	}
@@ -477,7 +478,25 @@ func GetApplication(appID string) (*types.Application, error) {
 
 func IsAppAdmin(username, appID string) (bool, error) {
 	var count int
+	err := database.QueryRow("SELECT COUNT(*) FROM admins WHERE username = ? AND (app = ? OR app = 'system') AND (role = 'admin' OR role = 'root')", username, appID).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+func IsAppAdminExplicit(username, appID string) (bool, error) {
+	var count int
 	err := database.QueryRow("SELECT COUNT(*) FROM admins WHERE username = ? AND app = ? AND (role = 'admin' OR role = 'root')", username, appID).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+func IsAppRoot(username, appID string) (bool, error) {
+	var count int
+	err := database.QueryRow("SELECT COUNT(*) FROM admins WHERE username = ? AND (app = ? OR app = 'system') AND role = 'root'", username, appID).Scan(&count)
 	if err != nil {
 		return false, err
 	}
@@ -663,7 +682,7 @@ func GetAppName(appID string) (string, error) {
 func CreateLoginSession(appID string, sessionID string, expiryMinutes int) error {
 	_, err := database.Exec(`
         INSERT INTO login_sessions (app_id, session_id, expires_at) 
-        VALUES (?, ?, DATE_ADD(NOW(), INTERVAL ? MINUTE))`,
+        VALUES (?, ?, DATE_ADD(UTC_TIMESTAMP(), INTERVAL ? MINUTE))`,
 		appID, sessionID, expiryMinutes)
 	return err
 }
@@ -700,7 +719,158 @@ func GetLoginSession(sessionID string) (*types.SSOSession, error) {
 func ConfirmLoginSession(sessionID string, username string) error {
 	_, err := database.Exec(`
         UPDATE login_sessions 
-        SET username = ?, login_at = NOW() 
+        SET username = ?, login_at = UTC_TIMESTAMP() 
         WHERE session_id = ?`, username, sessionID)
 	return err
+}
+
+func GetAppStatsSummary(appID string) (*types.AppStatsSummary, error) {
+	summary := &types.AppStatsSummary{}
+
+	// 1. Total Users
+	err := database.QueryRow("SELECT COUNT(DISTINCT username) FROM login_sessions WHERE app_id = ? AND login_at IS NOT NULL", appID).Scan(&summary.TotalUsers)
+	if err != nil {
+		return nil, err
+	}
+
+	// 2. Total Logins
+	err = database.QueryRow("SELECT COUNT(*) FROM login_sessions WHERE app_id = ? AND login_at IS NOT NULL", appID).Scan(&summary.TotalLogins)
+	if err != nil {
+		return nil, err
+	}
+
+	// 3. Active Users 24h
+	err = database.QueryRow("SELECT COUNT(DISTINCT username) FROM login_sessions WHERE app_id = ? AND login_at >= UTC_TIMESTAMP() - INTERVAL 24 HOUR", appID).Scan(&summary.ActiveUsers24h)
+	if err != nil {
+		return nil, err
+	}
+
+	// 4. New Users 24h
+	// Users whose FIRST login to this app was in the last 24h
+	queryNewUsers := `
+		SELECT COUNT(*) FROM (
+			SELECT username 
+			FROM login_sessions 
+			WHERE app_id = ? AND login_at IS NOT NULL 
+			GROUP BY username 
+			HAVING MIN(login_at) >= UTC_TIMESTAMP() - INTERVAL 24 HOUR
+		) as new_u`
+	err = database.QueryRow(queryNewUsers, appID).Scan(&summary.NewUsers24h)
+	if err != nil {
+		return nil, err
+	}
+
+	// 5. Daily Stats (Last 7 days)
+	summary.Daily = make([]types.DailyStats, 0)
+
+	dailyQuery := `
+		SELECT 
+			DATE_FORMAT(login_at, '%Y-%m-%d') as date_str, 
+			COUNT(*) as logins, 
+			COUNT(DISTINCT username) as active
+		FROM login_sessions 
+		WHERE app_id = ? AND login_at >= DATE_SUB(UTC_DATE(), INTERVAL 6 DAY)
+		GROUP BY DATE(login_at)
+		ORDER BY DATE(login_at) ASC
+	`
+	rows, err := database.Query(dailyQuery, appID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	dailyMap := make(map[string]*types.DailyStats)
+	for rows.Next() {
+		var d types.DailyStats
+		if err := rows.Scan(&d.Date, &d.Logins, &d.ActiveUsers); err != nil {
+			return nil, err
+		}
+		dailyMap[d.Date] = &d
+	}
+
+	// Fill in last 7 days
+	// First, get new users counts for the last 7 days in one query efficiently
+	newUsersMap := make(map[string]int)
+	newUsersQuery := `
+		SELECT DATE_FORMAT(min_date, '%Y-%m-%d'), COUNT(*)
+		FROM (
+			SELECT MIN(login_at) as min_date 
+			FROM login_sessions 
+			WHERE app_id = ? 
+			GROUP BY username
+		) as user_firsts
+		WHERE min_date >= DATE_SUB(UTC_DATE(), INTERVAL 6 DAY)
+		GROUP BY DATE(min_date)
+	`
+	nuRows, err := database.Query(newUsersQuery, appID)
+	if err == nil {
+		defer nuRows.Close()
+		for nuRows.Next() {
+			var dStr string
+			var count int
+			if err := nuRows.Scan(&dStr, &count); err == nil {
+				newUsersMap[dStr] = count
+			}
+		}
+	}
+
+	for i := 6; i >= 0; i-- {
+		date := time.Now().UTC().AddDate(0, 0, -i).Format("2006-01-02")
+		d, exists := dailyMap[date]
+		if !exists {
+			d = &types.DailyStats{Date: date, Logins: 0, ActiveUsers: 0}
+		}
+
+		if count, ok := newUsersMap[date]; ok {
+			d.NewUsers = count
+		} else {
+			d.NewUsers = 0
+		}
+
+		summary.Daily = append(summary.Daily, *d)
+	}
+
+	return summary, nil
+}
+
+func GetAppHistory(appID string, dateStr string) ([]types.LoginHistoryItem, error) {
+	var query string
+	var args []interface{}
+	args = append(args, appID)
+
+	if dateStr != "" {
+		query = `
+			SELECT username, login_at 
+			FROM login_sessions 
+			WHERE app_id = ? AND DATE(login_at) = ? 
+			ORDER BY login_at DESC`
+		args = append(args, dateStr)
+	} else {
+		// Default history (last 100)
+		query = `
+			SELECT username, login_at 
+			FROM login_sessions 
+			WHERE app_id = ? AND login_at IS NOT NULL
+			ORDER BY login_at DESC LIMIT 100`
+	}
+
+	rows, err := database.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var history []types.LoginHistoryItem
+	for rows.Next() {
+		var item types.LoginHistoryItem
+		var user sql.NullString
+		if err := rows.Scan(&user, &item.Timestamp); err != nil {
+			return nil, err
+		}
+		item.App = appID
+		item.User = user.String
+		history = append(history, item)
+	}
+
+	return history, nil
 }

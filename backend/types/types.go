@@ -128,6 +128,15 @@ type DailyStats struct {
 	Date        string `json:"date"`
 	Logins      int    `json:"logins"`
 	ActiveUsers int    `json:"activeUsers"`
+	NewUsers    int    `json:"newUsers"`
+}
+
+type AppStatsSummary struct {
+	TotalUsers     int          `json:"totalUsers"`
+	TotalLogins    int          `json:"totalLogins"`
+	ActiveUsers24h int          `json:"activeUsers24h"`
+	NewUsers24h    int          `json:"newUsers24h"`
+	Daily          []DailyStats `json:"daily"`
 }
 
 type LoginHistoryItem struct {

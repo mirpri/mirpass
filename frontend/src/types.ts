@@ -44,6 +44,21 @@ export interface APIKey {
   createdAt: string;
 }
 
+export interface DailyStats {
+  date: string;
+  logins: number;
+  activeUsers: number;
+  newUsers: number;
+}
+
+export interface AppStatsSummary {
+  totalUsers: number;
+  totalLogins: number;
+  activeUsers24h: number;
+  newUsers24h: number;
+  daily: DailyStats[];
+}
+
 export type LoginHistoryItem = {
     user?: string;
     app: string;

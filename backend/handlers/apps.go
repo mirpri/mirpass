@@ -131,8 +131,8 @@ func CreateAppKeyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check access
-	isAdmin, err := db.IsAppAdmin(claims.Username, req.AppID)
+	// Check access EXTERNAL admin can't create keys
+	isAdmin, err := db.IsAppAdminExplicit(claims.Username, req.AppID)
 	if err != nil || !isAdmin {
 		WriteErrorResponse(w, http.StatusForbidden, "Forbidden")
 		return
@@ -211,26 +211,12 @@ func UpdateAppHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	role, err := db.GetAppRole(claims.Username, req.AppID)
-
-	// Only root can update application details? Or admin too?
-	// Usually admin can update details, root can delete.
-	if role != "root" && role != "admin" {
+	isAdmin, err := db.IsAppAdmin(claims.Username, req.AppID)
+	if err != nil || !isAdmin {
 		WriteErrorResponse(w, http.StatusForbidden, "Forbidden")
 		return
 	}
 
-	// Fetch existing app to preserve system-controlled fields (SuspendUntil)
-	// No longer needed if we use UpdateAppInfo which doesn't touch suspension
-	/*
-		existing, err := db.GetApplication(req.AppID)
-		if err != nil {
-			WriteErrorResponse(w, http.StatusInternalServerError, "Could not fetch app details")
-			return
-		}
-	*/
-
-	// Users cannot change SuspendUntil.
 	if err := db.UpdateAppInfo(req.AppID, req.Name, req.Description, req.LogoURL); err != nil {
 		WriteErrorResponse(w, http.StatusInternalServerError, "Could not update app")
 		return
@@ -258,16 +244,44 @@ func GetAppStatsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	history, totalUsers, err := db.GetAppLoginStats(appID)
+	summary, err := db.GetAppStatsSummary(appID)
 	if err != nil {
 		WriteErrorResponse(w, http.StatusInternalServerError, "Failed to get stats")
 		return
 	}
 
-	WriteSuccessResponse(w, "Stats fetched", map[string]interface{}{
-		"history":    history,
-		"totalUsers": totalUsers,
-	})
+	WriteSuccessResponse(w, "Stats fetched", summary)
+}
+
+func GetAppHistoryHandler(w http.ResponseWriter, r *http.Request) {
+	appID := r.URL.Query().Get("id")
+	dateStr := r.URL.Query().Get("date") // Optional
+
+	if appID == "" {
+		WriteErrorResponse(w, http.StatusBadRequest, "App ID is required")
+		return
+	}
+
+	claims, err := utils.ExtractClaims(r)
+	if err != nil {
+		WriteErrorResponse(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	// Check access
+	isAdmin, err := db.IsAppAdmin(claims.Username, appID)
+	if err != nil || !isAdmin {
+		WriteErrorResponse(w, http.StatusForbidden, "Forbidden")
+		return
+	}
+
+	history, err := db.GetAppHistory(appID, dateStr)
+	if err != nil {
+		WriteErrorResponse(w, http.StatusInternalServerError, "Failed to get history")
+		return
+	}
+
+	WriteSuccessResponse(w, "History fetched", history)
 }
 
 func DeleteAppHandler(w http.ResponseWriter, r *http.Request) {
@@ -291,9 +305,9 @@ func DeleteAppHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Only app root can delete app
-	role, err := db.GetAppRole(claims.Username, req.AppID)
-	if role != "root" {
-		WriteErrorResponse(w, http.StatusForbidden, "Forbidden: Only app root can delete app")
+	isRoot, err := db.IsAppRoot(claims.Username, req.AppID)
+	if err != nil || !isRoot {
+		WriteErrorResponse(w, http.StatusForbidden, "Forbidden")
 		return
 	}
 
@@ -350,14 +364,12 @@ func AddAppMemberHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Only root can add admins/roots
-	role, err := db.GetAppRole(claims.Username, req.AppID)
-	if role != "root" {
-		WriteErrorResponse(w, http.StatusForbidden, "Forbidden: Only root can add members")
+	isRoot, err := db.IsAppRoot(claims.Username, req.AppID)
+	if err != nil || !isRoot {
+		WriteErrorResponse(w, http.StatusForbidden, "Forbidden")
 		return
 	}
 
-	// Check if user exists first? Assuming simple flow or DB error will catch
-	// Verify user exists:
 	user, err := db.GetUserByUsername(req.Username)
 	if err != nil || user == nil {
 		WriteErrorResponse(w, http.StatusNotFound, "User not found")
@@ -394,9 +406,9 @@ func UpdateAppMemberRoleHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	role, err := db.GetAppRole(claims.Username, req.AppID)
-	if role != "root" {
-		WriteErrorResponse(w, http.StatusForbidden, "Forbidden: Only root can update roles")
+	isRoot, err := db.IsAppRoot(claims.Username, req.AppID)
+	if err != nil || !isRoot {
+		WriteErrorResponse(w, http.StatusForbidden, "Forbidden")
 		return
 	}
 
@@ -430,9 +442,9 @@ func RemoveAppMemberHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	role, err := db.GetAppRole(claims.Username, req.AppID)
-	if role != "root" && claims.Username != req.Username {
-		WriteErrorResponse(w, http.StatusForbidden, "Forbidden: Only root can remove members")
+	isRoot, err := db.IsAppRoot(claims.Username, req.AppID)
+	if err != nil || !isRoot {
+		WriteErrorResponse(w, http.StatusForbidden, "Forbidden")
 		return
 	}
 

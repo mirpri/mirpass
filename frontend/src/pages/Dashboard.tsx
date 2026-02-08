@@ -26,7 +26,7 @@ import {
   ClockIcon,
 
 } from "lucide-react";
-import dayjs from 'dayjs';
+import { formatDateTime } from "../utils/date";
 
 import type { LoginHistoryItem } from "../types";
 import api from "../api/client";
@@ -324,7 +324,7 @@ function DashboardPage() {
                    </Flex>
                    <div className="text-xs text-gray-500">
                      Last Login: <br />
-                     {dayjs(app.time).format("YYYY-MM-DD HH:mm")}
+                     {formatDateTime(app.time)}
                    </div>
                  </div>
                </Card>
@@ -343,7 +343,7 @@ function DashboardPage() {
         <Table
           dataSource={loginHistory}
           rowKey={(record) => record.time + record.app}
-          pagination={false}
+          pagination={{ pageSize: 5 }}
           size="small"
           columns={[
             {
@@ -355,7 +355,7 @@ function DashboardPage() {
               title: "Time",
               dataIndex: "time",
               key: "time",
-              render: (text: string) => dayjs(text).format("YYYY-MM-DD HH:mm:ss"),
+              render: (text: string) => formatDateTime(text),
             },
           ]}
         />
