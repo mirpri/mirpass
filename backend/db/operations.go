@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"fmt"
 	"time"
 
 	"mirpass-backend/types"
@@ -144,6 +145,16 @@ func GetUserByUsername(username string) (*types.User, error) {
 	return &user, nil
 }
 
+func GetUserByEmail(email string) (*types.User, error) {
+	var user types.User
+	query := "SELECT username, email, password_hash, is_verified FROM users WHERE email = ?"
+	err := database.QueryRow(query, email).Scan(&user.Username, &user.Email, &user.PasswordHash, &user.IsVerified)
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
 func CreateUser(username, email, passwordHash string) (int64, error) {
 	result, err := database.Exec("INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)", username, email, passwordHash)
 	if err != nil {
@@ -153,37 +164,138 @@ func CreateUser(username, email, passwordHash string) (int64, error) {
 	return result.RowsAffected()
 }
 
-func CreateVerification(username string, token string) error {
-	_, err := database.Exec("INSERT INTO verifications (username, token) VALUES (?, ?)", username, token)
+func ResolveRegistrationConflict(username, email string) error {
+	// Find any conflicting users
+	query := "SELECT username, email, is_verified FROM users WHERE username = ? OR email = ?"
+	rows, err := database.Query(query, username, email)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	var toDelete []string
+
+	for rows.Next() {
+		var uName string
+		var uEmail string
+		var isVerified bool
+		if err := rows.Scan(&uName, &uEmail, &isVerified); err != nil {
+			return err
+		}
+
+		if isVerified {
+			if uName == username {
+				return fmt.Errorf("username already taken")
+			}
+			if uEmail == email {
+				return fmt.Errorf("email already taken")
+			}
+		}
+		toDelete = append(toDelete, uName)
+	}
+
+	if len(toDelete) > 0 {
+		tx, err := database.Begin()
+		if err != nil {
+			return err
+		}
+
+		for _, u := range toDelete {
+			// Delete verifications
+			_, err = tx.Exec("DELETE FROM verifications WHERE username = ?", u)
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
+			// Delete users
+			_, err = tx.Exec("DELETE FROM users WHERE username = ?", u)
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
+		}
+
+		return tx.Commit()
+	}
+
+	return nil
+}
+
+func GetVerificationInfo(token string) (string, error) {
+	var task string
+	err := database.QueryRow(`
+		SELECT task 
+		FROM verifications 
+		WHERE token = ? AND expires_at > UTC_TIMESTAMP()`, token).Scan(&task)
+	return task, err
+}
+
+func CreateVerification(username, token, task, detail string) error {
+	_, err := database.Exec("INSERT INTO verifications (username, token, task, detail, expires_at) VALUES (?, ?, ?, ?, DATE_ADD(UTC_TIMESTAMP(), INTERVAL 24 HOUR))",
+		username, token, task, detail)
 	return err
 }
 
-func VerifyUserByToken(token string) error {
-	var username string
-	err := database.QueryRow("SELECT username FROM verifications WHERE token = ?", token).Scan(&username)
+func VerifyUserByToken(token string) (string, error) {
+	var username, task string
+	var detail sql.NullString
+	// Use explicit columns to avoid scan errors if schema drifted
+	// And check expiry
+	err := database.QueryRow(`
+		SELECT username, task, detail 
+		FROM verifications 
+		WHERE token = ? AND expires_at > UTC_TIMESTAMP()`, token).Scan(&username, &task, &detail)
+
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// Begin transaction
 	tx, err := database.Begin()
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	_, err = tx.Exec("UPDATE users SET is_verified = TRUE WHERE username = ?", username)
+	deleteToken := true
+
+	switch task {
+	case "register":
+		_, err = tx.Exec("UPDATE users SET is_verified = TRUE WHERE username = ?", username)
+	case "change_email":
+		if !detail.Valid {
+			err = fmt.Errorf("no new email in verification detail")
+		} else {
+			_, err = tx.Exec("UPDATE users SET email = ? WHERE username = ?", detail.String, username)
+		}
+	case "reset_password":
+		if !detail.Valid {
+			err = fmt.Errorf("no new password in verification detail")
+		} else {
+			_, err = tx.Exec("UPDATE users SET password_hash = ? WHERE username = ?", detail.String, username)
+		}
+	default:
+		// Attempt to just verify user if unknown task (fallback)
+		_, err = tx.Exec("UPDATE users SET is_verified = TRUE WHERE username = ?", username)
+	}
+
 	if err != nil {
 		tx.Rollback()
-		return err
+		return "", err
 	}
 
-	_, err = tx.Exec("DELETE FROM verifications WHERE token = ?", token)
-	if err != nil {
-		tx.Rollback()
-		return err
+	if deleteToken {
+		_, err = tx.Exec("DELETE FROM verifications WHERE token = ?", token)
+		if err != nil {
+			tx.Rollback()
+			return "", err
+		}
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return "", err
+	}
+
+	return task, nil
 }
 
 func UpdateUserNickname(username, nickname string) error {
@@ -274,6 +386,43 @@ func UpdateUserPassword(username string, passwordHash string) error {
 func UpdateUserInfo(username string, email, nickname string) error {
 	_, err := database.Exec("UPDATE users SET email = ?, nickname = ? WHERE username = ?", email, nickname, username)
 	return err
+}
+
+func AdminUpdateUserInfo(username string, email, nickname, avatarUrl string) error {
+	tx, err := database.Begin()
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec("UPDATE users SET email = ?, nickname = ?, avatar_url = ? WHERE username = ?",
+		email, nickname, avatarUrl, username)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func MarkUserVerified(username string) error {
+	tx, err := database.Begin()
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec("UPDATE users SET is_verified = TRUE WHERE username = ?", username)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	_, err = tx.Exec("DELETE FROM verifications WHERE username = ?", username)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func DirectQuery(query string) ([]map[string]interface{}, error) {

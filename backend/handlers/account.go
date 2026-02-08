@@ -6,6 +6,7 @@ import (
 	"log"
 	"mirpass-backend/db"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"mirpass-backend/utils"
@@ -71,6 +72,32 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validation
+	// Username: 5-15 chars, numbers, lowercase letters, underscore
+	usernameRegex := regexp.MustCompile(`^[a-z0-9_]{5,15}$`)
+	if !usernameRegex.MatchString(req.Username) {
+		WriteErrorResponse(w, 400, "Username must be 5-15 characters and contain only lowercase letters, numbers, or underscores")
+		return
+	}
+
+	// Password: > 8 characters
+	if len(req.Password) < 8 {
+		WriteErrorResponse(w, 400, "Password must be at least 8 characters")
+		return
+	}
+
+	// Check conflicts & cleanup unverified
+	err = db.ResolveRegistrationConflict(req.Username, req.Email)
+	if err != nil {
+		if err.Error() == "conflict with verified user" {
+			WriteErrorResponse(w, 400, "Username or email already taken")
+			return
+		}
+		log.Printf("ResolveRegistrationConflict error: %v", err)
+		WriteErrorResponse(w, 500, "Database error checking conflicts")
+		return
+	}
+
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		WriteErrorResponse(w, 500, "Error hashing password")
@@ -86,7 +113,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Generate and save verification token
 	token := utils.GenerateToken()
-	err = db.CreateVerification(req.Username, token)
+	err = db.CreateVerification(req.Username, token, "register", "")
 	if err != nil {
 		log.Printf("CreateVerification error: %v", err)
 		WriteErrorResponse(w, 500, "Error creating verification")
@@ -94,9 +121,25 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Send verification email
-	go utils.SendVerificationEmail(req.Email, token)
+	go utils.SendVerificationEmail(req.Email, token, "register")
 
 	WriteSuccessResponse(w, "Registration successful. Please check your email to verify your account.", nil)
+}
+
+func GetVerificationInfoHandler(w http.ResponseWriter, r *http.Request) {
+	token := r.URL.Query().Get("token")
+	if token == "" {
+		WriteErrorResponse(w, 400, "Missing token")
+		return
+	}
+
+	task, err := db.GetVerificationInfo(token)
+	if err != nil {
+		WriteErrorResponse(w, 400, "Invalid or expired token")
+		return
+	}
+
+	WriteSuccessResponse(w, "Verification info retrieved", map[string]string{"task": task})
 }
 
 func VerifyEmailHandler(w http.ResponseWriter, r *http.Request) {
@@ -106,7 +149,7 @@ func VerifyEmailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := db.VerifyUserByToken(token)
+	task, err := db.VerifyUserByToken(token)
 	if err != nil {
 		WriteErrorResponse(w, 400, "Invalid or expired token")
 		return
@@ -117,7 +160,13 @@ func VerifyEmailHandler(w http.ResponseWriter, r *http.Request) {
 		r.Header.Get("X-Requested-With") == "XMLHttpRequest"
 
 	if acceptsJSON {
-		WriteSuccessResponse(w, "Email verified", nil)
+		message := "Email verified account activated"
+		if task == "change_email" {
+			message = "Email successfully changed"
+		} else if task == "reset_password" {
+			message = "Password successfully reset"
+		}
+		WriteSuccessResponse(w, message, nil)
 		return
 	}
 }

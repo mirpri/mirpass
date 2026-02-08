@@ -20,6 +20,7 @@ func main() {
 	mux.HandleFunc("/register", handlers.RegisterHandler)
 	mux.HandleFunc("/login", handlers.LoginHandler)
 	mux.HandleFunc("/verify", handlers.VerifyEmailHandler)
+	mux.HandleFunc("/verify/info", handlers.GetVerificationInfoHandler)
 	mux.HandleFunc("/apps/info", handlers.AppPublicInfoHandler)
 	mux.HandleFunc("/user/info", handlers.UserPublicInfoHandler)
 
@@ -28,12 +29,16 @@ func main() {
 	mux.Handle("/myusername", handlers.AuthMiddleware(http.HandlerFunc(handlers.MyUsernameHandler)))
 	mux.Handle("/profile/nickname", handlers.AuthMiddleware(http.HandlerFunc(handlers.UpdateNicknameHandler)))
 	mux.Handle("/profile/avatar", handlers.AuthMiddleware(http.HandlerFunc(handlers.UpdateAvatarHandler)))
+	mux.Handle("/profile/password", handlers.AuthMiddleware(http.HandlerFunc(handlers.UpdatePasswordHandler)))
+	mux.Handle("/profile/email/change", handlers.AuthMiddleware(http.HandlerFunc(handlers.RequestChangeEmailHandler)))
+	mux.HandleFunc("/profile/password/reset", handlers.RequestPasswordResetHandler)
 
 	// Admin routes
 	mux.Handle("/admin/users", handlers.AuthMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminListUsers))))
 	mux.Handle("/admin/users/search", handlers.AuthMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminSearchUsers))))
 	mux.Handle("/admin/user/delete", handlers.AuthMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminDeleteUser))))
 	mux.Handle("/admin/user/update", handlers.AuthMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminUpdateUser))))
+	mux.Handle("/admin/user/verify", handlers.AuthMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminVerifyUser))))
 	mux.Handle("/admin/user/reset-password", handlers.AuthMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminResetPassword))))
 
 	// System App Management

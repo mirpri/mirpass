@@ -42,6 +42,7 @@ type Props = {
 function LoginPage({ onLogin, isAuthenticated }: Props) {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  
   const [searchParams, setSearchParams] = useSearchParams();
   const {
     ssoSessionId: storeSsoId,
@@ -277,9 +278,12 @@ function LoginPage({ onLogin, isAuthenticated }: Props) {
           </Form.Item>
         </Form>
 
+        <Space direction="vertical" size={4}>   
         <Text type="secondary">
           New here? <Link to="/register">Create an account</Link>
         </Text>
+        <Link to="/forget">Forgot Password?</Link>
+        </Space>
       </Space>
     </Card>
   );

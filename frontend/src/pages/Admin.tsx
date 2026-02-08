@@ -18,7 +18,7 @@ import { parseDate } from "../utils/date";
 import {
   SearchOutlined,
 } from "@ant-design/icons";
-import { ShieldBanIcon, KeyRound, EditIcon, TrashIcon } from "lucide-react";
+import { ShieldBanIcon, KeyRound, EditIcon, TrashIcon, CircleAlert, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { AppRole } from "../types";
 import api from "../api/client";
@@ -38,7 +38,9 @@ type AdminUserView = {
   username: string;
   email: string;
   nickname: string;
+  avatarUrl: string;
   role: string;
+  isVerified: boolean;
 };
 
 // ... User Admin Logic ...
@@ -95,6 +97,7 @@ function UserTab({ systemRole }: { systemRole: string }) {
     form.setFieldsValue({
       email: user.email,
       nickname: user.nickname,
+      avatarUrl: user.avatarUrl,
       role: user.role,
     });
     setIsEditModalOpen(true);
@@ -107,6 +110,7 @@ function UserTab({ systemRole }: { systemRole: string }) {
         username: editingUser?.username,
         email: values.email,
         nickname: values.nickname,
+        avatarUrl: values.avatarUrl,
       });
       if (systemRole === "root" && values.role !== editingUser?.role) {
         await api.post("/root/user/role", {
@@ -142,8 +146,28 @@ function UserTab({ systemRole }: { systemRole: string }) {
     }
   };
 
+  const handleVerify = async (user: AdminUserView) => {
+    try {
+      await api.post("/admin/user/verify", { username: user.username });
+      message.success("User verified");
+      fetchUsers();
+    } catch (error) {
+      message.error("Verification failed");
+    }
+  };
+
   const columns = [
-    { title: "Username", dataIndex: "username", key: "username" },
+    { title: "Username", dataIndex: "username", key: "username",
+      render: (_: any, record: AdminUserView) => (
+        <Space>
+          {record.username}
+          {!record.isVerified && (
+            <span title="Unverified">
+              <CircleAlert size={16} color="orange" /></span>
+          )}
+        </Space>
+      ),
+    },
     { title: "Email", dataIndex: "email", key: "email" },
     {
       title: "Role",
@@ -181,6 +205,16 @@ function UserTab({ systemRole }: { systemRole: string }) {
             onClick={() => handleDelete(record.username)}
             title="Delete User"
           />
+          {!record.isVerified && (
+            <Button
+              icon={<Check size={14} />}
+              size="small"
+              onClick={() => handleVerify(record)}
+              title="Verify User"
+              type="primary"
+              ghost
+            />
+          )}
         </Space>
       ),
     },
@@ -220,6 +254,9 @@ function UserTab({ systemRole }: { systemRole: string }) {
             <Input />
           </Form.Item>
           <Form.Item name="nickname" label="Nickname">
+            <Input />
+          </Form.Item>
+          <Form.Item name="avatarUrl" label="Avatar URL">
             <Input />
           </Form.Item>
           {systemRole === "root" && (

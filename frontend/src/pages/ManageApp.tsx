@@ -21,6 +21,7 @@ import {
   Row,
   Col,
   DatePicker,
+  Alert,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -121,12 +122,20 @@ function ManageAppPage() {
       }
     >
       <Space size={10} align="center" className="mb-3">
-        <Avatar size={48} src={app.logoUrl} />
+        <Avatar size={48} src={app.logoUrl}>{app.name.charAt(0).toUpperCase()}</Avatar>
         <Title level={3} style={{ marginBottom: 0 }}>
           {app.name}
         </Title>
         <Tag color="blue">{app.role}</Tag>
       </Space>
+      {
+        app.suspendUntil && dayjs(app.suspendUntil).isAfter(dayjs()) && (
+          <Alert
+          type="error"
+          title= {"This app is suspended until " + formatDateTime(app.suspendUntil)}
+          />
+        )
+      }
       <Tabs defaultActiveKey="stats" items={items} />
     </Card>
   );

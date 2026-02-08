@@ -12,6 +12,8 @@ import {
   Table,
   Typography,
   message,
+  Modal,
+  Form,
 } from "antd";
 import { EditOutlined, CheckOutlined, CloseOutlined } from "@ant-design/icons";
 
@@ -24,7 +26,7 @@ import {
   ShieldEllipsis,
   PlusIcon,
   ClockIcon,
-
+  KeyRound,
 } from "lucide-react";
 import { formatDateTime } from "../utils/date";
 
@@ -32,6 +34,7 @@ import type { LoginHistoryItem } from "../types";
 import api from "../api/client";
 import type { SimpleResponse } from "../types";
 import { useAppStore } from "../store/useAppStore";
+import { Link } from "react-router-dom";
 
 const { Title, Text } = Typography;
 
@@ -145,6 +148,42 @@ function DashboardPage() {
     }
   };
 
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [passwordForm] = Form.useForm();
+
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const [emailForm] = Form.useForm();
+
+  const handlePasswordChange = async () => {
+    try {
+      const values = await passwordForm.validateFields();
+      await api.post("/profile/password", {
+        currentPassword: values.currentPassword,
+        newPassword: values.newPassword,
+      });
+      message.success("Password updated successfully");
+      setIsPasswordModalOpen(false);
+      passwordForm.resetFields();
+    } catch (error: any) {
+      message.error(error.response?.data?.message || "Failed to update password");
+    }
+  };
+
+  const handleEmailChange = async () => {
+    try {
+      const values = await emailForm.validateFields();
+      await api.post("/profile/email/change", {
+        password: values.password,
+        newEmail: values.newEmail,
+      });
+      message.success("Verification email sent to new address");
+      setIsEmailModalOpen(false);
+      emailForm.resetFields();
+    } catch (error: any) {
+      message.error(error.response?.data?.message || "Failed to request email change");
+    }
+  };
+
   return (
     <Card className="mx-auto max-w-4xl w-full rounded-[18px] bg-white/95 shadow-xl p-8">
       <Flex justify="space-between" align="center" wrap>
@@ -162,7 +201,7 @@ function DashboardPage() {
         <Col xs={24} sm={9}>
           <Space direction="vertical" size={16} className="w-full p-4">
             <Avatar size={96} src={profile?.avatarUrl} className="shadow-lg">
-              {profile?.username?.charAt(0).toUpperCase() || "U"}
+              {profile?.username?.charAt(0).toUpperCase()}
             </Avatar>
             <Text strong className="text-xl">
               {profile?.nickname || profile?.username || "Loading profile"}
@@ -272,7 +311,46 @@ function DashboardPage() {
               </div>
             </div>
 
-            <Divider />
+            <div>
+              <Space align="center" size={12}>
+                <MailIcon color="#5c4bff" size={16} />
+                <Text strong className="text-base">
+                  Email
+                </Text>
+              </Space>
+              <div className="mt-[14px]">
+                <Text type="secondary" className="mr-4">{profile?.email}</Text>
+                <Button
+                  type="link"
+                  icon={<EditOutlined />}
+                  onClick={() => setIsEmailModalOpen(true)}
+                  className="pl-0"
+                >
+                  Change Email
+                </Button>
+              </div>
+            </div>
+
+            <div>
+              <Space align="center" size={12}>
+                <KeyRound color="#5c4bff" size={16} />
+                <Text strong className="text-base">
+                  Password
+                </Text>
+              </Space>
+              <div className="mt-[14px]">
+                <Button
+                  type="link"
+                  onClick={() => setIsPasswordModalOpen(true)}
+                  className="pl-0"
+                >
+                  Change Password
+                </Button>
+                <Link to="/forget" className="ml-4">
+                  Forgot Password
+                </Link>
+              </div>
+            </div>
 
             <div>
               <Space align="center" size={12}>
@@ -360,6 +438,66 @@ function DashboardPage() {
           ]}
         />
       </Space>
+
+      <Modal
+        title="Change Password"
+        open={isPasswordModalOpen}
+        onOk={handlePasswordChange}
+        onCancel={() => {
+          setIsPasswordModalOpen(false);
+          passwordForm.resetFields();
+        }}
+      >
+        <Form form={passwordForm} layout="vertical">
+          <Form.Item
+            name="currentPassword"
+            label="Current Password"
+            rules={[{ required: true, message: "Please enter your current password" }]}
+          >
+            <Input.Password />
+          </Form.Item>
+          <Form.Item
+            name="newPassword"
+            label="New Password"
+            rules={[
+              { required: true, message: "Please enter a new password" },
+              { min: 8, message: "Password must be at least 8 characters" }
+            ]}
+          >
+            <Input.Password />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title="Change Email"
+        open={isEmailModalOpen}
+        onOk={handleEmailChange}
+        onCancel={() => {
+          setIsEmailModalOpen(false);
+          emailForm.resetFields();
+        }}
+      >
+        <Form form={emailForm} layout="vertical">
+          <Form.Item
+            name="newEmail"
+            label="New Email"
+            rules={[
+              { required: true, message: "Please enter your new email" },
+              { type: "email", message: "Please enter a valid email" }
+            ]}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item
+            name="password"
+            label="Current Password"
+            rules={[{ required: true, message: "Please enter your current password" }]}
+          >
+            <Input.Password />
+          </Form.Item>
+        </Form>
+      </Modal>
     </Card>
   );
 }

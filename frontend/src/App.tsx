@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { ConfigProvider, App as AntdApp, theme } from 'antd'
 import LoginPage from './pages/Login'
+import ForgetPage from './pages/Forget'
 import RegisterPage from './pages/Register'
 import VerifyPage from './pages/Verify'
 import DashboardPage from './pages/Dashboard'
@@ -75,6 +76,7 @@ function App() {
             path="/register"
             element={isAuthed ? <Navigate to="/dashboard" replace /> : <RegisterPage />}
           />
+          <Route path="/forget" element={<ForgetPage />} />
           <Route path="/verify" element={<VerifyPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route

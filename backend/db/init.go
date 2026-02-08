@@ -68,7 +68,10 @@ func InitDB() error {
 	       id INT AUTO_INCREMENT PRIMARY KEY,
 	       username VARCHAR(255) NOT NULL,
 	       token VARCHAR(255) NOT NULL,
+		   task VARCHAR(50) NOT NULL DEFAULT 'register',
+		   detail TEXT DEFAULT NULL,
 	       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		   expires_at TIMESTAMP NOT NULL,
 	       FOREIGN KEY (username) REFERENCES users(username)
 	   )`); err != nil {
 		return fmt.Errorf("create verifications table: %w", err)

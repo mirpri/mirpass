@@ -85,21 +85,39 @@ func AdminDeleteUser(w http.ResponseWriter, r *http.Request) {
 
 func AdminUpdateUser(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Username string `json:"username"`
-		Email    string `json:"email"`
-		Nickname string `json:"nickname"`
+		Username  string `json:"username"`
+		Email     string `json:"email"`
+		Nickname  string `json:"nickname"`
+		AvatarURL string `json:"avatarUrl"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		WriteErrorResponse(w, 400, "Invalid payload")
 		return
 	}
 
-	if err := db.UpdateUserInfo(body.Username, body.Email, body.Nickname); err != nil {
+	if err := db.AdminUpdateUserInfo(body.Username, body.Email, body.Nickname, body.AvatarURL); err != nil {
 		WriteErrorResponse(w, 500, "Update failed")
 		return
 	}
 
 	WriteSuccessResponse(w, "User updated", nil)
+}
+
+func AdminVerifyUser(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Username string `json:"username"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		WriteErrorResponse(w, 400, "Invalid payload")
+		return
+	}
+
+	if err := db.MarkUserVerified(body.Username); err != nil {
+		WriteErrorResponse(w, 500, "Verification failed")
+		return
+	}
+
+	WriteSuccessResponse(w, "User verified", nil)
 }
 
 func AdminResetPassword(w http.ResponseWriter, r *http.Request) {
