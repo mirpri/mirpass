@@ -21,6 +21,7 @@ type Config struct {
 	SMTPHost     string
 	SMTPPort     string
 	FrontendURL  string
+	Port         int
 }
 
 var AppConfig Config
@@ -44,6 +45,7 @@ func LoadConfig() {
 		SMTPHost:     os.Getenv("SMTP_HOST"),
 		SMTPPort:     os.Getenv("SMTP_PORT"),
 		FrontendURL:  os.Getenv("FRONTEND_URL"),
+		Port:         getEnvInt("PORT", 8080),
 	}
 }
 

@@ -33,22 +33,6 @@ func runMigration(db *sql.DB) error {
 	if err != nil {
 		return fmt.Errorf("assigning root role: %w", err)
 	}
-
-	eff, err := db.Exec(`ALTER TABLE applications ADD COLUMN IF NOT EXISTS suspend_until VARCHAR(255) DEFAULT NULL`)
-	if err != nil {
-		return fmt.Errorf("adding suspend_until column: %w", err)
-	}
-	if rows, _ := eff.RowsAffected(); rows > 0 {
-		log.Printf("Added suspend_until column to applications table")
-	}
-
-	eff, err = db.Exec(`ALTER TABLE applications ADD COLUMN IF NOT EXISTS logo_url VARCHAR(511) DEFAULT NULL`)
-	if err != nil {
-		return fmt.Errorf("adding logo_url column: %w", err)
-	}
-	if rows, _ := eff.RowsAffected(); rows > 0 {
-		log.Printf("Added logo_url column to applications table")
-	}
-
+	
 	return nil
 }

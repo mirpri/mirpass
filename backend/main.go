@@ -5,6 +5,7 @@ import (
 	"mirpass-backend/db"
 	"mirpass-backend/handlers"
 	"net/http"
+	"strconv"
 )
 
 func main() {
@@ -76,7 +77,7 @@ func main() {
 	mux.Handle("/root/sql", handlers.AuthMiddleware(handlers.RequireRoot("system", http.HandlerFunc(handlers.RootDirectSQL))))
 
 	// Wrap the mux with the CORS middleware
-	http.ListenAndServe(":3999", corsMiddleware(mux))
+	http.ListenAndServe(":"+strconv.Itoa(config.AppConfig.Port), corsMiddleware(mux))
 }
 
 func corsMiddleware(next http.Handler) http.Handler {
