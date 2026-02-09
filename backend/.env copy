@@ -1,0 +1,15 @@
+DB_USER = mirpass
+DB_PASSWORD = 123
+DB_NAME = mirpass
+DB_ADDR = localhost:3306
+
+JWT_SECRET = your_jwt_secret_key
+JWT_EXPIRES_IN = 3600
+
+MAIL_ENABLE = false
+SMTP_EMAIL = your-email@example.com
+SMTP_PASSWORD = your-app-password
+SMTP_HOST = smtp.example.com
+SMTP_PORT = 587
+
+FRONTEND_URL = http://localhost:5173
