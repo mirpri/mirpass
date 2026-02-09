@@ -93,7 +93,7 @@ func GetSSODetailsHandler(w http.ResponseWriter, r *http.Request) {
 		SessionID: session.SessionID,
 		AppID:     session.AppID,
 		AppName:   app.Name,
-		LogoURL:   app.LogoURL,
+		LogoURL:   FormatUrl(app.LogoURL),
 		Status:    status,
 	}
 

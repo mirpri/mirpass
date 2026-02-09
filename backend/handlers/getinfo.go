@@ -2,10 +2,22 @@ package handlers
 
 import (
 	"database/sql"
+	"mirpass-backend/config"
 	"mirpass-backend/db"
 	"mirpass-backend/types"
 	"net/http"
+	"strings"
 )
+
+func FormatUrl(url string) string {
+	if url == "" {
+		return ""
+	}
+	if strings.HasPrefix(url, "/blob/") {
+		return config.AppConfig.BackendURL + url
+	}
+	return url
+}
 
 func MyInfoHandler(w http.ResponseWriter, r *http.Request) {
 	username := GetUsernameFromContext(r.Context())
@@ -28,7 +40,7 @@ func MyInfoHandler(w http.ResponseWriter, r *http.Request) {
 		Username:  user.Username,
 		Email:     user.Email,
 		Nickname:  user.Nickname,
-		AvatarURL: user.AvatarURL,
+		AvatarURL: FormatUrl(user.AvatarURL),
 	}
 	WriteSuccessResponse(w, "User info retrieved successfully", res)
 }
@@ -86,7 +98,7 @@ func UserPublicInfoHandler(w http.ResponseWriter, r *http.Request) {
 	res := types.UserPublicInfo{
 		Username:  user.Username,
 		Nickname:  user.Nickname,
-		AvatarURL: user.AvatarURL,
+		AvatarURL: FormatUrl(user.AvatarURL),
 	}
 	WriteSuccessResponse(w, "User info retrieved successfully", res)
 }
@@ -103,7 +115,7 @@ func AppPublicInfoHandler(w http.ResponseWriter, r *http.Request) {
 		ID:          app.ID,
 		Name:        app.Name,
 		Description: app.Description,
-		LogoURL:     app.LogoURL,
+		LogoURL:     FormatUrl(app.LogoURL),
 	}
 
 	if err != nil {

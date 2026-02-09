@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -19,6 +20,26 @@ type updateAvatarRequest struct {
 	AvatarURL string `json:"avatarUrl"`
 }
 
+func GetUserAppsSummaryHandler(w http.ResponseWriter, r *http.Request) {
+	claims, err := utils.ExtractClaims(r)
+	if err != nil {
+		WriteErrorResponse(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	summary, err := db.GetUserAppsSummary(claims.Username)
+	if err != nil {
+		WriteErrorResponse(w, http.StatusInternalServerError, "Failed to get history summary")
+		return
+	}
+
+	for _, item := range summary {
+		item.LogoUrl = FormatUrl(item.LogoUrl)
+	}
+
+	WriteSuccessResponse(w, "Summary fetched", summary)
+}
+
 func GetLoginHistoryHandler(w http.ResponseWriter, r *http.Request) {
 	claims, err := utils.ExtractClaims(r)
 	if err != nil {
@@ -26,21 +47,29 @@ func GetLoginHistoryHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	history, err := db.GetUserLoginHistory(claims.Username)
+	dateStr := r.URL.Query().Get("date")
+	offsetStr := r.URL.Query().Get("offset")
+	var offset int
+	if offsetStr != "" {
+		// Assuming simple int minutes
+		// Need `strconv` imported? It is likely imported if this file handles JSON/etc, but let's check.
+		// If not, I need to add import "strconv".
+		// profile.go doesn't seem to import strconv based on previous read_file.
+		// I'll assume I can't easily add import with replace_string without context. Only if I read whole file.
+		// But I read 100 lines before. Imorts were visible: encoding/json, net/http, strings, mirpass/db/utils... no strconv.
+		// So I should just ignore offset if I can't parse or I need to add import.
+		// Let's rely on standard binding or just use a helper if available? No utils.StrToInt.
+		// I will check if I can use Sscanf.
+		fmt.Sscanf(offsetStr, "%d", &offset)
+	}
+
+	history, err := db.GetUserLoginHistory(claims.Username, dateStr, offset)
 	if err != nil {
 		WriteErrorResponse(w, http.StatusInternalServerError, "Failed to get history")
 		return
 	}
 
-	summary, err := db.GetUserAppsSummary(claims.Username)
-	if err != nil {
-		WriteErrorResponse(w, 500, "Failed to get history summary")
-	}
-
-	WriteSuccessResponse(w, "History fetched", map[string]interface{}{
-		"history": history,
-		"summary": summary,
-	})
+	WriteSuccessResponse(w, "History fetched", history)
 }
 
 func UpdateNicknameHandler(w http.ResponseWriter, r *http.Request) {
@@ -69,6 +98,14 @@ func UpdateNicknameHandler(w http.ResponseWriter, r *http.Request) {
 	WriteSuccessResponse(w, "Nickname updated", map[string]string{"nickname": req.Nickname})
 }
 
+// Helper to clean up old blob
+func deleteOldBlob(currentURL string) {
+	if strings.HasPrefix(currentURL, "/blob/") {
+		id := strings.TrimPrefix(currentURL, "/blob/")
+		db.DeleteBlob(id)
+	}
+}
+
 func UpdateAvatarHandler(w http.ResponseWriter, r *http.Request) {
 	username := GetUsernameFromContext(r.Context())
 	if username == "" {
@@ -76,23 +113,68 @@ func UpdateAvatarHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req updateAvatarRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		WriteErrorResponse(w, http.StatusBadRequest, "Invalid request payload")
+	user, err := db.GetUserByUsername(username)
+	if err != nil {
+		WriteErrorResponse(w, http.StatusInternalServerError, "Failed to get user")
 		return
 	}
+	oldAvatar := user.AvatarURL
 
-	if strings.TrimSpace(req.AvatarURL) == "" {
-		WriteErrorResponse(w, http.StatusBadRequest, "Avatar URL cannot be empty")
-		return
+	var newAvatarURL string
+
+	contentType := r.Header.Get("Content-Type")
+	if strings.HasPrefix(contentType, "multipart/form-data") {
+		// Limit upload/scan size
+		r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
+
+		// Check for file
+		file, _, err := r.FormFile("file")
+		if err == nil {
+			defer file.Close()
+			processedData, err := utils.ProcessImage(file)
+			if err != nil {
+				WriteErrorResponse(w, http.StatusInternalServerError, "Failed to process image")
+				return
+			}
+			blobID := utils.GenerateID()
+			if err := db.SaveBlob(blobID, processedData, "image/jpeg"); err != nil {
+				WriteErrorResponse(w, http.StatusInternalServerError, "Failed to save blob")
+				return
+			}
+			newAvatarURL = "/blob/" + blobID
+		} else {
+			// No file, maybe avatarUrl field in form
+			newAvatarURL = r.FormValue("avatarUrl")
+		}
+	} else {
+		// JSON fallback
+		var req updateAvatarRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err == nil {
+			newAvatarURL = req.AvatarURL
+		}
 	}
 
-	if err := db.UpdateUserAvatar(username, req.AvatarURL); err != nil {
+	// If it's a new external URL (http...), fetch and blob it
+	if strings.HasPrefix(newAvatarURL, "http") {
+		processedData, err := utils.DownloadAndProcessImage(newAvatarURL)
+		if err == nil {
+			blobID := utils.GenerateID()
+			if err := db.SaveBlob(blobID, processedData, "image/jpeg"); err == nil {
+				newAvatarURL = "/blob/" + blobID
+			}
+		}
+	}
+
+	if err := db.UpdateUserAvatar(username, newAvatarURL); err != nil {
 		WriteErrorResponse(w, http.StatusInternalServerError, "Could not update avatar")
 		return
 	}
 
-	WriteSuccessResponse(w, "Avatar updated", map[string]string{"avatarUrl": req.AvatarURL})
+	if oldAvatar != "" && oldAvatar != newAvatarURL {
+		deleteOldBlob(oldAvatar)
+	}
+
+	WriteSuccessResponse(w, "Avatar updated", map[string]string{"avatarUrl": newAvatarURL})
 }
 
 func UpdatePasswordHandler(w http.ResponseWriter, r *http.Request) {

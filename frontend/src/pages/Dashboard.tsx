@@ -14,8 +14,13 @@ import {
   message,
   Modal,
   Form,
+  Upload,
+  DatePicker,
 } from "antd";
-import { EditOutlined, CheckOutlined, CloseOutlined } from "@ant-design/icons";
+import { EditOutlined, CheckOutlined, CloseOutlined, UploadOutlined } from "@ant-design/icons";
+import ImgCrop from "antd-img-crop";
+import dayjs from "dayjs";
+import { config } from "../config";
 
 import {
   IdCardIcon,
@@ -30,7 +35,7 @@ import {
 } from "lucide-react";
 import { formatDateTime } from "../utils/date";
 
-import type { LoginHistoryItem } from "../types";
+import type { ErrorResponse, LoginHistoryItem } from "../types";
 import api from "../api/client";
 import type { SimpleResponse } from "../types";
 import { useAppStore } from "../store/useAppStore";
@@ -43,27 +48,39 @@ function DashboardPage() {
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
   const [loginHistory, setLoginHistory] = useState<LoginHistoryItem[]>([]);
   const [appsSummary, setAppsSummary] = useState<LoginHistoryItem[]>([]);
+  const [selectedDate, setSelectedDate] = useState<dayjs.Dayjs | null>(null);
 
   useEffect(() => {
     fetchMyApps();
-    fetchLoginHistory();
+    fetchSummary();
   }, []);
 
-  const fetchLoginHistory = async () => {
+  useEffect(() => {
+    fetchLoginHistory(selectedDate);
+  }, [selectedDate]);
+
+  const fetchSummary = async () => {
     try {
-      const { data } = await api.get<{ data: { history: LoginHistoryItem[], summary: LoginHistoryItem[] } }>(
-        "/user/history"
-      );
-      // Handle both new format (map) and potentially old format (array direct) if transition logic needed?
-      // Assuming backend deployed same time.
-      if (data.data && !Array.isArray(data.data)) {
-          setLoginHistory(data.data.history || []);
-          setAppsSummary(data.data.summary || []);
-      } else {
-        // Fallback if backend not updated or returns array
-        const list = (data.data as any) || [];
-        setLoginHistory(list);
-      }
+      const { data } = await api.get("/user/apps/summary");
+      setAppsSummary(data.data || []);
+    } catch {
+      // ignore
+    }
+  }
+
+  const fetchLoginHistory = async (date: dayjs.Dayjs | null) => {
+    try {
+        let url = "/user/history";
+        if (date) {
+             const dateStr = date.format("YYYY-MM-DD");
+             // Send standard offset in minutes (Local - UTC)? 
+             // Go expects minutes offset. UTC+8 = 480.
+             // date.utcOffset() is minutes from UTC (e.g. 480 for UTC+8)
+             const offset = date.utcOffset(); 
+             url += `?date=${dateStr}&offset=${offset}`;
+        }
+      const { data } = await api.get<{ data: LoginHistoryItem[] }>(url);
+      setLoginHistory(data.data || []);
     } catch (e) {
       // ignore
     }
@@ -79,6 +96,7 @@ function DashboardPage() {
 
   const [nicknameInput, setnicknameInput] = useState("");
   const [avatarInput, setAvatarInput] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   useEffect(() => {
     // Profile is auto-fetched in App.tsx now
@@ -126,22 +144,36 @@ function DashboardPage() {
   };
 
   const handleAvatarSave = async () => {
-    const trimmed = avatarInput.trim();
-    if (!trimmed) {
-      message.warning("Avatar URL cannot be empty");
-      return;
-    }
-
     setLoadingKey("avatar");
     try {
-      const { data } = await api.post<SimpleResponse>("/profile/avatar", {
-        avatarUrl: trimmed,
-      });
-      updateProfile({ avatarUrl: trimmed });
-      message.success(data?.message || "Avatar updated");
+      let dataResp;
+      if (selectedFile) {
+        const formData = new FormData();
+        formData.append("file", selectedFile);
+        const { data } = await api.post<SimpleResponse & { data: { avatarUrl: string } }>("/profile/avatar", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        dataResp = data;
+      } else {
+        const trimmed = avatarInput.trim();
+        const { data } = await api.post<SimpleResponse & { data: { avatarUrl: string } }>("/profile/avatar", {
+          avatarUrl: trimmed,
+        });
+        dataResp = data;
+      }
+
+      let newUrl = dataResp.data?.avatarUrl || avatarInput;
+      // Prepend API_URL if relative path (blob)
+      if (newUrl.startsWith("/blob/") && config.API_URL) {
+           newUrl = config.API_URL.replace(/\/$/, "") + newUrl;
+      }
+
+      updateProfile({ avatarUrl: newUrl });
+      message.success(dataResp?.message || "Avatar updated");
       toggleEditing("avatar", false);
+      setSelectedFile(null);
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
+      const err = error as ErrorResponse;
       message.error(err.response?.data?.message || "Could not update avatar");
     } finally {
       setLoadingKey(null);
@@ -184,6 +216,12 @@ function DashboardPage() {
     }
   };
 
+  if (!profile) {
+    return (
+      <div className="p-10 text-center">Loading Profile...</div>
+    );
+  }
+
   return (
     <Card className="mx-auto max-w-4xl w-full rounded-[18px] bg-white/95 shadow-xl p-8">
       <Flex justify="space-between" align="center" wrap>
@@ -204,7 +242,7 @@ function DashboardPage() {
               {profile?.username?.charAt(0).toUpperCase()}
             </Avatar>
             <Text strong className="text-xl">
-              {profile?.nickname || profile?.username || "Loading profile"}
+              {profile?.nickname || profile?.username || "—"}
             </Text>
             <div className="flex flex-col gap-3">
               <Space align="center" size={10}>
@@ -251,7 +289,7 @@ function DashboardPage() {
                 ) : (
                   <Space align="center">
                     <Text type="secondary">
-                      {profile?.nickname || "No nickname yet"}
+                      {profile?.nickname || "No nickname set"}
                     </Text>
                     <Button
                       type="link"
@@ -273,25 +311,41 @@ function DashboardPage() {
               </Space>
               <div className="mt-[14px]">
                 {editing.avatar ? (
-                  <Space.Compact>
-                    <Input
-                      value={avatarInput}
-                      onChange={(event) => setAvatarInput(event.target.value)}
-                      placeholder="https://example.com/avatar.jpg"
-                      className="min-w-[220px]"
-                    />
-                    <Button
-                      type="primary"
-                      icon={<CheckOutlined />}
-                      loading={loadingKey === "avatar"}
-                      onClick={handleAvatarSave}
-                    />
-                    <Button
-                      icon={<CloseOutlined />}
-                      type="default"
-                      onClick={() => toggleEditing("avatar", false)}
-                    />
-                  </Space.Compact>
+                  <Space>
+                    <Space.Compact>
+                      <Input
+                        value={avatarInput}
+                        onChange={(event) => setAvatarInput(event.target.value)}
+                        placeholder="https://example.com/avatar.jpg"
+                        className="min-w-[220px]"
+                      />
+                      <Button
+                        type="primary"
+                        icon={<CheckOutlined />}
+                        loading={loadingKey === "avatar"}
+                        onClick={handleAvatarSave}
+                      />
+                      <Button
+                        icon={<CloseOutlined />}
+                        type="default"
+                        onClick={() => toggleEditing("avatar", false)}
+                      />
+                    </Space.Compact>
+                    <ImgCrop rotationSlider>
+                      <Upload
+                        showUploadList={false}
+                        customRequest={({ file, onSuccess }) => {
+                          const f = file as File;
+                          setSelectedFile(f);
+                          setAvatarInput(URL.createObjectURL(f));
+                          message.info("Image selected. Click check to save.");
+                          onSuccess?.("ok");
+                        }}
+                      >
+                        <Button icon={<UploadOutlined />}>Select</Button>
+                      </Upload>
+                    </ImgCrop>
+                  </Space>
                 ) : (
                   <Space wrap align="center">
                     <Text type="secondary">
@@ -319,7 +373,7 @@ function DashboardPage() {
                 </Text>
               </Space>
               <div className="mt-[14px]">
-                <Text type="secondary" className="mr-4">{profile?.email}</Text>
+                <Text type="secondary" className="mr-4">{profile?.email || "No Email"}</Text>
                 <Button
                   type="link"
                   icon={<EditOutlined />}
@@ -413,16 +467,25 @@ function DashboardPage() {
       </Space>
 
       <Space direction="vertical" style={{ width: '100%' }}>
-        <Space align="center" size={12}>
-          <ClockIcon size={16} color='#5c4bff' />
-          <Text strong className="text-base">Recent Login History (7 Days)</Text>
-        </Space>
+        <Flex justify="space-between" align="center">
+          <Space align="center" size={12}>
+            <ClockIcon size={16} color='#5c4bff' />
+            <Text strong className="text-base">Login History</Text>
+          </Space>
+          <DatePicker 
+             value={selectedDate} 
+             onChange={setSelectedDate} 
+             placeholder="Select Date"
+             allowClear
+          />
+        </Flex>
         
         <Table
           dataSource={loginHistory}
-          rowKey={(record) => record.time + record.app}
+          rowKey={(record) => record.time + record.app + Math.random()}
           pagination={{ pageSize: 5 }}
           size="small"
+          locale={{ emptyText: "No history found" }}
           columns={[
             {
               title: "Application",

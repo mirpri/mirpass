@@ -26,12 +26,6 @@ func runMigration(db *sql.DB) error {
 		return fmt.Errorf("checking root user: %w", err)
 	}
 
-	// Migrate verifications table if needed
-	// Ignore errors (columns might already exist)
-	db.Exec("ALTER TABLE verifications ADD COLUMN task VARCHAR(50) NOT NULL DEFAULT 'register'")
-	db.Exec("ALTER TABLE verifications ADD COLUMN detail TEXT DEFAULT NULL")
-	db.Exec("ALTER TABLE verifications ADD COLUMN expires_at TIMESTAMP NOT NULL DEFAULT (CURRENT_TIMESTAMP + INTERVAL 1 DAY)")
-
 	// Ensure root has root role for system
 	// Using ON DUPLICATE KEY UPDATE to ensure role is correct
 	_, err = db.Exec(`INSERT INTO admins (username, app, role) VALUES ('root', 'system', 'root') 

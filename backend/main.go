@@ -23,6 +23,7 @@ func main() {
 	mux.HandleFunc("/verify/info", handlers.GetVerificationInfoHandler)
 	mux.HandleFunc("/apps/info", handlers.AppPublicInfoHandler)
 	mux.HandleFunc("/user/info", handlers.UserPublicInfoHandler)
+	mux.HandleFunc("/blob/", handlers.ServeBlobHandler)
 
 	// Protected routes
 	mux.Handle("/myprofile", handlers.AuthMiddleware(http.HandlerFunc(handlers.MyInfoHandler)))
@@ -34,6 +35,10 @@ func main() {
 	mux.HandleFunc("/profile/password/reset", handlers.RequestPasswordResetHandler)
 
 	// Admin routes
+	mux.Handle("/admin/blobs", handlers.AuthMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminListBlobsHandler))))
+	mux.Handle("/admin/blob/delete", handlers.AuthMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminDeleteBlobHandler))))
+	mux.Handle("/admin/blob/upload", handlers.AuthMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.UploadBlobHandler))))
+
 	mux.Handle("/admin/users", handlers.AuthMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminListUsers))))
 	mux.Handle("/admin/users/search", handlers.AuthMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminSearchUsers))))
 	mux.Handle("/admin/user/delete", handlers.AuthMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminDeleteUser))))
@@ -50,6 +55,7 @@ func main() {
 	// My Apps endpoint
 	mux.Handle("/myapps", handlers.AuthMiddleware(http.HandlerFunc(handlers.MyAppsHandler)))
 	mux.Handle("/user/history", handlers.AuthMiddleware(http.HandlerFunc(handlers.GetLoginHistoryHandler)))
+	mux.Handle("/user/apps/summary", handlers.AuthMiddleware(http.HandlerFunc(handlers.GetUserAppsSummaryHandler)))
 
 	// App Management
 	mux.Handle("/apps/create", handlers.AuthMiddleware(http.HandlerFunc(handlers.CreateAppHandler)))

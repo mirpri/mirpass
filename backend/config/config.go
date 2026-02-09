@@ -20,8 +20,9 @@ type Config struct {
 	SMTPPassword string
 	SMTPHost     string
 	SMTPPort     string
-	FrontendURL  string
 	Port         int
+	FrontendURL  string
+	BackendURL   string
 }
 
 var AppConfig Config
@@ -44,8 +45,14 @@ func LoadConfig() {
 		SMTPPassword: os.Getenv("SMTP_PASSWORD"),
 		SMTPHost:     os.Getenv("SMTP_HOST"),
 		SMTPPort:     os.Getenv("SMTP_PORT"),
-		FrontendURL:  os.Getenv("FRONTEND_URL"),
 		Port:         getEnvInt("PORT", 8080),
+		FrontendURL:  os.Getenv("FRONTEND_URL"),
+		BackendURL:   os.Getenv("BACKEND_URL"),
+	}
+
+	if AppConfig.BackendURL == "" {
+		AppConfig.BackendURL = "http://localhost:" + strconv.Itoa(AppConfig.Port)
+		log.Printf("BACKEND_URL not set, defaulting to %s", AppConfig.BackendURL)
 	}
 }
 

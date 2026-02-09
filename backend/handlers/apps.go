@@ -4,7 +4,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strings"
 
 	"mirpass-backend/db"
 	"mirpass-backend/types"
@@ -77,6 +79,7 @@ func AppDetailsHandler(w http.ResponseWriter, r *http.Request) {
 	// Add user's role to the response
 	role, _ := db.GetAppRole(claims.Username, appID)
 	app.Role = role
+	app.LogoURL = FormatUrl(app.LogoURL)
 
 	WriteSuccessResponse(w, "App details", app)
 }
@@ -199,28 +202,95 @@ func UpdateAppHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req types.UpdateAppRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		WriteErrorResponse(w, http.StatusBadRequest, "Invalid request")
-		return
-	}
-
 	claims, err := utils.ExtractClaims(r)
 	if err != nil {
 		WriteErrorResponse(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
-	isAdmin, err := db.IsAppAdmin(claims.Username, req.AppID)
-	if err != nil || !isAdmin {
-		WriteErrorResponse(w, http.StatusForbidden, "Forbidden")
-		return
+	var appID, name, description, logoURL string
+
+	contentType := r.Header.Get("Content-Type")
+	if strings.HasPrefix(contentType, "multipart/form-data") {
+		r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
+		if err := r.ParseMultipartForm(10 << 20); err != nil {
+			WriteErrorResponse(w, http.StatusBadRequest, "Invalid form data")
+			return
+		}
+
+		appID = r.FormValue("appId")
+		name = r.FormValue("name")
+		description = r.FormValue("description")
+		logoURL = r.FormValue("logoUrl")
+
+		// Check access early
+		isAdmin, err := db.IsAppAdmin(claims.Username, appID)
+		if err != nil || !isAdmin {
+			WriteErrorResponse(w, http.StatusForbidden, "Forbidden")
+			return
+		}
+
+		file, _, err := r.FormFile("file")
+		if err == nil {
+			defer file.Close()
+			processedData, err := utils.ProcessImage(file)
+			if err != nil {
+				WriteErrorResponse(w, http.StatusInternalServerError, "Failed to process image")
+				return
+			}
+			blobID := utils.GenerateID()
+			if err := db.SaveBlob(blobID, processedData, "image/jpeg"); err != nil {
+				WriteErrorResponse(w, http.StatusInternalServerError, "Failed to save blob")
+				return
+			}
+			logoURL = "/blob/" + blobID
+		}
+	} else {
+		var req types.UpdateAppRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			WriteErrorResponse(w, http.StatusBadRequest, "Invalid request")
+			return
+		}
+		appID = req.AppID
+		name = req.Name
+		description = req.Description
+		logoURL = req.LogoURL
+
+		isAdmin, err := db.IsAppAdmin(claims.Username, appID)
+		if err != nil || !isAdmin {
+			WriteErrorResponse(w, http.StatusForbidden, "Forbidden")
+			return
+		}
 	}
 
-	if err := db.UpdateAppInfo(req.AppID, req.Name, req.Description, req.LogoURL); err != nil {
+	// Fetch old app for cleanup
+	oldApp, err := db.GetApplication(appID)
+	if err != nil {
+		WriteErrorResponse(w, http.StatusInternalServerError, "Failed to fetch app info")
+		return
+	}
+	oldLogo := oldApp.LogoURL
+
+	// External URL blob
+	if strings.HasPrefix(logoURL, "http") {
+		processedData, err := utils.DownloadAndProcessImage(logoURL)
+		if err == nil {
+			blobID := utils.GenerateID()
+			if err := db.SaveBlob(blobID, processedData, "image/jpeg"); err == nil {
+				logoURL = "/blob/" + blobID
+			}
+		}
+	}
+
+	if err := db.UpdateAppInfo(appID, name, description, logoURL); err != nil {
 		WriteErrorResponse(w, http.StatusInternalServerError, "Could not update app")
 		return
 	}
+
+	if oldLogo != "" && oldLogo != logoURL {
+		db.DeleteBlobByURL(oldLogo)
+	}
+
 	WriteSuccessResponse(w, "App updated", nil)
 }
 
@@ -256,6 +326,12 @@ func GetAppStatsHandler(w http.ResponseWriter, r *http.Request) {
 func GetAppHistoryHandler(w http.ResponseWriter, r *http.Request) {
 	appID := r.URL.Query().Get("id")
 	dateStr := r.URL.Query().Get("date") // Optional
+	offsetStr := r.URL.Query().Get("offset")
+
+	var offset int
+	if offsetStr != "" {
+		fmt.Sscanf(offsetStr, "%d", &offset)
+	}
 
 	if appID == "" {
 		WriteErrorResponse(w, http.StatusBadRequest, "App ID is required")
@@ -275,7 +351,7 @@ func GetAppHistoryHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	history, err := db.GetAppHistory(appID, dateStr)
+	history, err := db.GetAppHistory(appID, dateStr, offset)
 	if err != nil {
 		WriteErrorResponse(w, http.StatusInternalServerError, "Failed to get history")
 		return

@@ -38,9 +38,6 @@ func SendVerificationEmail(to, token, task string) error {
 
 	msg := []byte(headers + body)
 
-	fmt.Printf("DEBUG: Mail Config - Enable: %v, Host: %s, Port: %s, User: %s\n",
-		config.AppConfig.MailEnable, config.AppConfig.SMTPHost, config.AppConfig.SMTPPort, config.AppConfig.SMTPEmail)
-
 	if !config.AppConfig.MailEnable {
 		fmt.Printf("Mail sending is disabled. Task: %s. To: %s\n%s\n", task, to, msg)
 		return nil
@@ -52,7 +49,6 @@ func SendVerificationEmail(to, token, task string) error {
 	auth := smtp.PlainAuth("", from, password, host)
 
 	addr := fmt.Sprintf("%s:%s", host, port)
-	fmt.Printf("DEBUG: Attempting to send mail to %s via %s...\n", to, addr)
 
 	err := smtp.SendMail(addr, auth, from, []string{to}, msg)
 	if err != nil {

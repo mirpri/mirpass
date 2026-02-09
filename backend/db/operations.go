@@ -11,23 +11,42 @@ import (
 	"github.com/go-sql-driver/mysql"
 )
 
-func GetUserLoginHistory(username string) ([]types.LoginHistoryItem, error) {
-	// Gets all distinct apps logged into and their last login time
-	// AND the recent history log.
-	// But to fit the existing "LoginHistoryItem" struct (App, Time), let's just return the full history for now.
-	// The user asked for "dashboard显示自己登录过的所有app和最后登录时间" which is a summary.
-	// But the dashboard also has a "Recent History" table.
-	// Let's modify this to return two datasets? Or just let the handler call two DB functions.
-	// For now, I will create a NEW function GetUserAppsSummary and keep this one for the detailed history log.
+func GetUserLoginHistory(username string, dateStr string, offsetMinutes int) ([]types.LoginHistoryItem, error) {
+	var query string
+	var args []interface{}
+	args = append(args, username)
 
-	query := `
-		SELECT a.name as app, a.logo_url, ls.login_at
-		FROM login_sessions ls
-		JOIN applications a ON ls.app_id = a.id
-		WHERE ls.username = ? AND ls.login_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 7 DAY)
-		ORDER BY ls.login_at DESC
-	`
-	rows, err := database.Query(query, username)
+	if dateStr != "" {
+		// Calculate UTC range for the local date
+		// offsetMinutes is Local - UTC (e.g. 480 for UTC+8)
+		localStart, err := time.Parse("2006-01-02", dateStr)
+		if err != nil {
+			return nil, err
+		}
+		offsetDuration := time.Duration(offsetMinutes) * time.Minute
+		utcStart := localStart.Add(-offsetDuration)
+		utcEnd := utcStart.Add(24 * time.Hour)
+
+		query = `
+			SELECT a.name as app, a.logo_url, ls.login_at
+			FROM login_sessions ls
+			JOIN applications a ON ls.app_id = a.id
+			WHERE ls.username = ? AND ls.login_at >= ? AND ls.login_at < ?
+			ORDER BY ls.login_at DESC
+		`
+		args = append(args, utcStart, utcEnd)
+	} else {
+		// Default: Recent 10 items
+		query = `
+			SELECT a.name as app, a.logo_url, ls.login_at
+			FROM login_sessions ls
+			JOIN applications a ON ls.app_id = a.id
+			WHERE ls.username = ?
+			ORDER BY ls.login_at DESC LIMIT 10
+		`
+	}
+
+	rows, err := database.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -991,25 +1010,35 @@ func GetAppStatsSummary(appID string) (*types.AppStatsSummary, error) {
 	return summary, nil
 }
 
-func GetAppHistory(appID string, dateStr string) ([]types.LoginHistoryItem, error) {
+func GetAppHistory(appID string, dateStr string, offsetMinutes int) ([]types.LoginHistoryItem, error) {
 	var query string
 	var args []interface{}
 	args = append(args, appID)
 
 	if dateStr != "" {
+		// Calculate UTC range for the local date
+		localStart, err := time.Parse("2006-01-02", dateStr)
+		if err != nil {
+			return nil, err
+		}
+
+		offsetDuration := time.Duration(offsetMinutes) * time.Minute
+		utcStart := localStart.Add(-offsetDuration)
+		utcEnd := utcStart.Add(24 * time.Hour)
+
 		query = `
 			SELECT username, login_at 
 			FROM login_sessions 
-			WHERE app_id = ? AND DATE(login_at) = ? 
+			WHERE app_id = ? AND login_at >= ? AND login_at < ?
 			ORDER BY login_at DESC`
-		args = append(args, dateStr)
+		args = append(args, utcStart, utcEnd)
 	} else {
-		// Default history (last 100)
+		// Default history (last 10)
 		query = `
 			SELECT username, login_at 
 			FROM login_sessions 
 			WHERE app_id = ? AND login_at IS NOT NULL
-			ORDER BY login_at DESC LIMIT 100`
+			ORDER BY login_at DESC LIMIT 10`
 	}
 
 	rows, err := database.Query(query, args...)

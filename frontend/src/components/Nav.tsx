@@ -5,7 +5,7 @@ import { useAppStore } from "../store/useAppStore";
 
 function Nav() {
   const navigate = useNavigate();
-  const { logout, profile } = useAppStore();
+  const { logout, profile, token } = useAppStore();
   return (
     <div className="flex justify-between align-center p-4">
       <div className="flex flex-1 gap-2">
@@ -27,6 +27,7 @@ function Nav() {
             type="text"
             style={{ height: "30px", padding: "0", borderRadius: "50%" }}
             onClick={() => navigate("/dashboard")}
+            title={profile.username}
           >
           
             <Avatar src={profile?.avatarUrl} size={30}>
@@ -37,10 +38,11 @@ function Nav() {
           type="text"
           style={{ height: "30px", width: "30px", padding: "0" }}
           onClick={() => navigate("/about")}
+          title="About"
         >
           <InfoIcon size={20} className="text-gray-600 dark:text-gray-300" />
         </Button>)}
-        {profile?.username ? (
+        {token ? (
           <Button
             type="text"
             style={{ height: "30px", width: "30px", padding: "0" }}

@@ -129,6 +129,18 @@ func InitDB() error {
 		return fmt.Errorf("create login_sessions table: %w", err)
 	}
 
+	// Create blobs table
+	_, err = adminConn.Exec(`CREATE TABLE IF NOT EXISTS blobs (
+		id VARCHAR(64) PRIMARY KEY,
+		data MEDIUMBLOB NOT NULL,
+		content_type VARCHAR(50) NOT NULL,
+		size INT NOT NULL,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	)`)
+	if err != nil {
+		return fmt.Errorf("create blobs table: %w", err)
+	}
+
 	return nil
 }
 

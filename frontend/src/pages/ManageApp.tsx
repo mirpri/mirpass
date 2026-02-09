@@ -22,6 +22,7 @@ import {
   Col,
   DatePicker,
   Alert,
+  Upload,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -29,8 +30,10 @@ import {
   DeleteOutlined,
   SaveOutlined,
   UserAddOutlined,
+  UploadOutlined,
 } from "@ant-design/icons";
 import { BanIcon, CopyIcon } from "lucide-react";
+import ImgCrop from "antd-img-crop";
 
 import dayjs from "dayjs";
 import { formatDateTime, toUtcDateString } from "../utils/date";
@@ -113,29 +116,28 @@ function ManageAppPage() {
       className="max-w-5xl w-full rounded-[18px] bg-white/95 shadow-xl p-6"
       title="Manage Application"
       extra={
-        <Button
-          icon={<ArrowLeftOutlined />}
-          onClick={() => navigate(-1)}
-        >
+        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)}>
           Back
         </Button>
       }
     >
       <Space size={10} align="center" className="mb-3">
-        <Avatar size={48} src={app.logoUrl}>{app.name.charAt(0).toUpperCase()}</Avatar>
+        <Avatar size={48} src={app.logoUrl}>
+          {app.name.charAt(0).toUpperCase()}
+        </Avatar>
         <Title level={3} style={{ marginBottom: 0 }}>
           {app.name}
         </Title>
         <Tag color="blue">{app.role}</Tag>
       </Space>
-      {
-        app.suspendUntil && dayjs(app.suspendUntil).isAfter(dayjs()) && (
-          <Alert
+      {app.suspendUntil && dayjs(app.suspendUntil).isAfter(dayjs()) && (
+        <Alert
           type="error"
-          title= {"This app is suspended until " + formatDateTime(app.suspendUntil)}
-          />
-        )
-      }
+          title={
+            "This app is suspended until " + formatDateTime(app.suspendUntil)
+          }
+        />
+      )}
       <Tabs defaultActiveKey="stats" items={items} />
     </Card>
   );
@@ -518,6 +520,7 @@ function SettingsTab({
 }) {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   useEffect(() => {
     form.setFieldsValue({
@@ -525,20 +528,36 @@ function SettingsTab({
       description: app.description,
       logoUrl: app.logoUrl,
     });
+    setSelectedFile(null);
   }, [app]);
 
   const handleUpdate = async (values: any) => {
     setLoading(true);
     try {
-      await api.post("/apps/update", {
-        appId: app.id,
-        name: values.name,
-        description: values.description,
-        logoUrl: values.logoUrl,
-      });
+      if (selectedFile) {
+        const formData = new FormData();
+        formData.append("appId", app.id);
+        formData.append("name", values.name);
+        formData.append("description", values.description || "");
+        formData.append("logoUrl", values.logoUrl || "");
+        formData.append("file", selectedFile);
+
+        await api.post("/apps/update", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      } else {
+        await api.post("/apps/update", {
+          appId: app.id,
+          name: values.name,
+          description: values.description,
+          logoUrl: values.logoUrl,
+        });
+      }
       message.success("App updated");
       onUpdate();
+      setSelectedFile(null); // Reset file selection after success
     } catch (e) {
+      console.error(e);
       message.error("Failed to update app");
     } finally {
       setLoading(false);
@@ -562,11 +581,7 @@ function SettingsTab({
     <div className="max-w-3xl">
       <Title level={4}>General Settings</Title>
 
-      <Form
-        form={form}
-        layout="vertical"
-        onFinish={handleUpdate}
-      >
+      <Form form={form} layout="vertical" onFinish={handleUpdate}>
         <Form.Item
           label="App Name"
           name="name"
@@ -579,8 +594,27 @@ function SettingsTab({
           <Input.TextArea rows={4} />
         </Form.Item>
 
-        <Form.Item label="Logo URL" name="logoUrl">
-          <Input placeholder="https://example.com/logo.png" />
+        <Form.Item label="Logo URL">
+          <Space.Compact style={{ width: "100%" }}>
+            <Form.Item name="logoUrl" noStyle>
+              <Input placeholder="https://example.com/logo.png" />
+            </Form.Item>
+            <ImgCrop rotationSlider>
+              <Upload
+                showUploadList={false}
+                customRequest={({ file, onSuccess }) => {
+                  const f = file as File;
+                  setSelectedFile(f);
+                  const blobUrl = URL.createObjectURL(f);
+                  form.setFieldValue("logoUrl", blobUrl);
+                  message.success("Logo selected. Click Save to apply.");
+                  onSuccess?.("ok");
+                }}
+              >
+                <Button icon={<UploadOutlined />}>Select</Button>
+              </Upload>
+            </ImgCrop>
+          </Space.Compact>
         </Form.Item>
 
         <Form.Item>
@@ -795,11 +829,7 @@ function StatsTab({ app }: { app: AppDetails }) {
   }, [app.id]);
 
   useEffect(() => {
-    if (selectedDate) {
-      fetchHistory(selectedDate);
-    } else {
-      setHistory([]);
-    }
+    fetchHistory(selectedDate);
   }, [selectedDate, app.id]);
 
   const fetchStats = async () => {
@@ -816,12 +846,13 @@ function StatsTab({ app }: { app: AppDetails }) {
     }
   };
 
-  const fetchHistory = async (date: dayjs.Dayjs) => {
+  const fetchHistory = async (date: dayjs.Dayjs | null) => {
+    let q = `/apps/history?id=${app.id}`;
+    if (date) {
+      q += `&date=${toUtcDateString(date)}&offset=${date.utcOffset()}`;
+    }
     try {
-      const dateStr = toUtcDateString(date);
-      const { data } = await api.get<{ data: LoginHistoryItem[] }>(
-        `/apps/history?id=${app.id}&date=${dateStr}`,
-      );
+      const { data } = await api.get<{ data: LoginHistoryItem[] }>(q);
       setHistory(data.data || []);
     } catch (e) {
       // ignore
@@ -946,44 +977,33 @@ function StatsTab({ app }: { app: AppDetails }) {
               />
             }
           >
-            {!selectedDate ? (
-              <div className="p-4 text-center text-gray-500">
-                Select a date to view login history.
-              </div>
-            ) : (
-              <>
-                <Text>{history.length} activities found</Text>
-                <Table
-                  dataSource={history}
-                  size="small"
-                  pagination={{ pageSize: 10 }}
-                  locale={{ emptyText: "No activity on selected date" }}
-                  columns={[
-                    {
-                      title: "User",
-                      dataIndex: "user",
-                      key: "user",
-                      render: (text: string) =>
-                        text ? (
-                          <span className="flex items-center gap-2">
-                            {text}
-                          </span>
-                        ) : (
-                          <Text type="secondary">Unknown</Text>
-                        ),
-                    },
-                    {
-                      title: "Time (UTC)",
-                      dataIndex: "time",
-                      key: "time",
-                      render: (text: string) =>
-                        formatDateTime(text),
-                    },
-                  ]}
-                  rowKey={(record) => record.time + (record.user || "unknown")}
-                />
-              </>
-            )}
+            {selectedDate && <Text>{history.length} activities found</Text>}
+            <Table
+              dataSource={history}
+              size="small"
+              pagination={{ pageSize: 10 }}
+              locale={{ emptyText: "No activity on selected date" }}
+              columns={[
+                {
+                  title: "User",
+                  dataIndex: "user",
+                  key: "user",
+                  render: (text: string) =>
+                    text ? (
+                      <span className="flex items-center gap-2">{text}</span>
+                    ) : (
+                      <Text type="secondary">Unknown</Text>
+                    ),
+                },
+                {
+                  title: "Time",
+                  dataIndex: "time",
+                  key: "time",
+                  render: (text: string) => formatDateTime(text),
+                },
+              ]}
+              rowKey={(record) => record.time + (record.user || "unknown")}
+            />
           </Card>
         </Col>
       </Row>
