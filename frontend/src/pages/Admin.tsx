@@ -17,14 +17,23 @@ import {
 import dayjs from "dayjs";
 import { parseDate } from "../utils/date";
 import {
+  ArrowLeftOutlined,
   SearchOutlined,
   UploadOutlined,
 } from "@ant-design/icons";
-import { ShieldBanIcon, KeyRound, EditIcon, TrashIcon, CircleAlert, Check } from "lucide-react";
+import {
+  ShieldBanIcon,
+  KeyRound,
+  EditIcon,
+  TrashIcon,
+  CircleAlert,
+  Check,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { AppRole } from "../types";
 import api from "../api/client";
 import { sha256 } from "../utils/crypto";
+import { LoadingView } from "../components/LoadingView";
 
 const { TextArea } = Input;
 
@@ -160,13 +169,17 @@ function UserTab({ systemRole }: { systemRole: string }) {
   };
 
   const columns = [
-    { title: "Username", dataIndex: "username", key: "username",
+    {
+      title: "Username",
+      dataIndex: "username",
+      key: "username",
       render: (_: any, record: AdminUserView) => (
         <Space>
           {record.username}
           {!record.isVerified && (
             <span title="Unverified">
-              <CircleAlert size={16} color="orange" /></span>
+              <CircleAlert size={16} color="orange" />
+            </span>
           )}
         </Space>
       ),
@@ -326,16 +339,16 @@ function AppsTab({ systemRole: _systemRole }: { systemRole: string }) {
   };
 
   const handleSuspend = async (appId: string, date: dayjs.Dayjs | null) => {
-      try {
-          await api.post("/admin/app/suspend", {
-              appId,
-              suspendUntil: date ? date.toISOString() : null,
-          });
-          message.success("Suspension updated");
-          fetchApps();
-      } catch (error) {
-          message.error("Failed to update suspension");
-      }
+    try {
+      await api.post("/admin/app/suspend", {
+        appId,
+        suspendUntil: date ? date.toISOString() : null,
+      });
+      message.success("Suspension updated");
+      fetchApps();
+    } catch (error) {
+      message.error("Failed to update suspension");
+    }
   };
 
   const handleDelete = async (appId: string) => {
@@ -440,70 +453,100 @@ function AppsTab({ systemRole: _systemRole }: { systemRole: string }) {
 }
 
 function BlobsTab() {
-  const [blobs, setBlobs] = useState<{ID: string, Size: number, ContentType: string}[]>([]);
+  const [blobs, setBlobs] = useState<
+    { ID: string; Size: number; ContentType: string }[]
+  >([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-     fetchBlobs();
+    fetchBlobs();
   }, []);
 
   const fetchBlobs = async () => {
     setLoading(true);
     try {
-        const {data} = await api.get("/admin/blobs");
-        setBlobs(data.data || []);
+      const { data } = await api.get("/admin/blobs");
+      setBlobs(data.data || []);
     } catch {
-       message.error("Failed to load blobs");
+      message.error("Failed to load blobs");
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
   const deleteBlob = async (id: string) => {
-      try {
-          await api.post("/admin/blob/delete", {id});
-          message.success("Deleted");
-          fetchBlobs();
-      } catch {
-          message.error("Delete failed");
-      }
-  }
+    try {
+      await api.post("/admin/blob/delete", { id });
+      message.success("Deleted");
+      fetchBlobs();
+    } catch {
+      message.error("Delete failed");
+    }
+  };
 
   const handleUpload = async (options: any) => {
-      const { file, onSuccess, onError } = options;
-      const formData = new FormData();
-      formData.append("file", file);
-      try {
-          await api.post("/admin/blob/upload", formData, {headers: {"Content-Type": "multipart/form-data"}});
-          message.success("Uploaded");
-          onSuccess("ok");
-          fetchBlobs();
-      } catch (err) {
-          onError(err);
-          message.error("Upload failed");
-      }
-  }
+    const { file, onSuccess, onError } = options;
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      await api.post("/admin/blob/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      message.success("Uploaded");
+      onSuccess("ok");
+      fetchBlobs();
+    } catch (err) {
+      onError(err);
+      message.error("Upload failed");
+    }
+  };
 
   return (
-      <div>
-          <div className="mb-4">
-               <Upload customRequest={handleUpload} showUploadList={false}>
-                   <Button icon={<UploadOutlined />}>Upload Blob</Button>
-               </Upload>
-          </div>
-          <Table
-             dataSource={blobs}
-             rowKey="ID"
-             loading={loading}
-             columns={[
-                 {title: "ID", dataIndex: "ID", render: (id) => <a href={`${api.defaults.baseURL || ""}/blob/${id}`} target="_blank" rel="noreferrer">{id}</a>},
-                 {title: "Size", dataIndex: "Size", render: (s) => (s/1024).toFixed(1) + " KB"},
-                 {title: "Type", dataIndex: "ContentType"},
-                 {title: "Action", render: (_, r) => <Button danger size="small" onClick={()=>deleteBlob(r.ID)} icon={<TrashIcon size={14}/>}></Button>}
-             ]}
-          />
+    <div>
+      <div className="mb-4">
+        <Upload customRequest={handleUpload} showUploadList={false}>
+          <Button icon={<UploadOutlined />}>Upload Blob</Button>
+        </Upload>
       </div>
-  )
+      <Table
+        dataSource={blobs}
+        rowKey="ID"
+        loading={loading}
+        columns={[
+          {
+            title: "ID",
+            dataIndex: "ID",
+            render: (id) => (
+              <a
+                href={`${api.defaults.baseURL || ""}/blob/${id}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {id}
+              </a>
+            ),
+          },
+          {
+            title: "Size",
+            dataIndex: "Size",
+            render: (s) => (s / 1024).toFixed(1) + " KB",
+          },
+          { title: "Type", dataIndex: "ContentType" },
+          {
+            title: "Action",
+            render: (_, r) => (
+              <Button
+                danger
+                size="small"
+                onClick={() => deleteBlob(r.ID)}
+                icon={<TrashIcon size={14} />}
+              ></Button>
+            ),
+          },
+        ]}
+      />
+    </div>
+  );
 }
 
 function AdminPage() {
@@ -537,7 +580,7 @@ function AdminPage() {
   };
 
   if (checkingAuth) {
-    return <div className="p-10 text-center">Loading...</div>;
+    return <LoadingView />;
   }
 
   const runSQL = async () => {
@@ -572,7 +615,12 @@ function AdminPage() {
   return (
     <Card
       title="System Management"
-      className="shadow-md w-full max-w-4xl"
+      className="shadow-xl w-full max-w-4xl"
+      extra={
+        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)}>
+          Back
+        </Button>
+      }
     >
       <Space direction="vertical" className="w-full">
         <Tabs defaultActiveKey="1" items={items} />

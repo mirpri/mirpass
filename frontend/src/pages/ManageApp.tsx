@@ -48,6 +48,7 @@ import type {
   AppStatsSummary,
 } from "../types";
 import { useAppStore } from "../store/useAppStore";
+import { LoadingView } from "../components/LoadingView";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -75,7 +76,7 @@ function ManageAppPage() {
     }
   };
 
-  if (!app) return <div className="p-8">Loading...</div>;
+  if (!app) return <LoadingView />;
 
   const items = [
     {
@@ -113,7 +114,7 @@ function ManageAppPage() {
 
   return (
     <Card
-      className="max-w-5xl w-full rounded-[18px] bg-white/95 shadow-xl p-6"
+      className="max-w-5xl w-full shadow-xl"
       title="Manage Application"
       extra={
         <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)}>

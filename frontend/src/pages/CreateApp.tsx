@@ -25,7 +25,7 @@ function CreateAppPage() {
   };
 
   return (
-      <Card className="max-w-md w-full rounded-[18px] bg-white/95 shadow-xl p-8">
+      <Card className="max-w-md w-full shadow-xl">
         <Space direction="vertical" size={20} className="w-full">
           <div>
             <Title level={3} className="m-0">Create New App</Title>

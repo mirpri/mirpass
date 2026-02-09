@@ -1,6 +1,7 @@
 import { useState, useEffect, Suspense, lazy } from "react";
 import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
-import { ConfigProvider, App as AntdApp, theme, Spin } from "antd";
+import { ConfigProvider, App as AntdApp, theme } from "antd";
+import { LoadingView } from "./components/LoadingView";
 
 const LoginPage = lazy(() => import("./pages/Login"));
 const ForgetPage = lazy(() => import("./pages/Forget"));
@@ -60,20 +61,18 @@ function App() {
       theme={{
         algorithm: isDarkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
         token: {
-          colorPrimary: "#7c3aed",
+          colorPrimary: "#3aaeed",
           borderRadius: 10,
         },
       }}
     >
       <AntdApp>
-        <div className="min-h-screen flex flex-col justify-between align-center bg-gray-50 dark:bg-gray-900 dark:text-white">
+        <div className="min-h-screen flex flex-col justify-between align-center bg-gray-100 dark:bg-gray-900 dark:text-white">
           <Nav />
           <div className="flex justify-center align-center p-4">
             <Suspense
               fallback={
-                <div className="flex justify-center mt-20">
-                  <Spin size="large" />
-                </div>
+                <LoadingView />
               }
             >
               <Routes>

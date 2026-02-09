@@ -41,6 +41,7 @@ import type { SimpleResponse } from "../types";
 import { useAppStore } from "../store/useAppStore";
 import { Link } from "react-router-dom";
 import { sha256 } from "../utils/crypto";
+import { LoadingView } from "../components/LoadingView";
 
 const { Title, Text } = Typography;
 
@@ -219,12 +220,12 @@ function DashboardPage() {
 
   if (!profile) {
     return (
-      <div className="p-10 text-center">Loading Profile...</div>
+      <LoadingView />
     );
   }
 
   return (
-    <Card className="mx-auto max-w-4xl w-full rounded-[18px] bg-white/95 shadow-xl p-8">
+    <Card className="max-w-4xl w-full shadow-xl">
       <Flex justify="space-between" align="center" wrap>
         <Space direction="vertical" size={4}>
           <Title level={3} className="m-0">
@@ -247,11 +248,11 @@ function DashboardPage() {
             </Text>
             <div className="flex flex-col gap-3">
               <Space align="center" size={10}>
-                <IdCardIcon color="#5c4bff" size={16} />
+                <IdCardIcon color="#3aaeed" size={16} />
                 <Text>{profile?.username || "—"}</Text>
               </Space>
               <Space align="center" size={10}>
-                <MailIcon color="#5c4bff" size={16} />
+                <MailIcon color="#3aaeed" size={16} />
                 <Text>{profile?.email || "—"}</Text>
               </Space>
             </div>
@@ -261,7 +262,7 @@ function DashboardPage() {
           <Space direction="vertical" size={32} className="w-full p-4">
             <div>
               <Space align="center" size={12}>
-                <TagIcon color="#5c4bff" size={16} />
+                <TagIcon color="#3aaeed" size={16} />
                 <Text strong className="text-base">
                   Nickname
                 </Text>
@@ -305,7 +306,7 @@ function DashboardPage() {
             </div>
             <div>
               <Space align="center" size={12}>
-                <UserCircle color="#5c4bff" size={16} />
+                <UserCircle color="#3aaeed" size={16} />
                 <Text strong className="text-base">
                   Avatar
                 </Text>
@@ -368,7 +369,7 @@ function DashboardPage() {
 
             <div>
               <Space align="center" size={12}>
-                <MailIcon color="#5c4bff" size={16} />
+                <MailIcon color="#3aaeed" size={16} />
                 <Text strong className="text-base">
                   Email
                 </Text>
@@ -388,7 +389,7 @@ function DashboardPage() {
 
             <div>
               <Space align="center" size={12}>
-                <KeyRound color="#5c4bff" size={16} />
+                <KeyRound color="#3aaeed" size={16} />
                 <Text strong className="text-base">
                   Password
                 </Text>
@@ -409,7 +410,7 @@ function DashboardPage() {
 
             <div>
               <Space align="center" size={12}>
-                <AppWindowIcon color="#5c4bff" size={16} />
+                <AppWindowIcon color="#3aaeed" size={16} />
                 <Text strong className="text-base">
                   My Applications
                 </Text>
@@ -423,10 +424,12 @@ function DashboardPage() {
                   </Button>
                   </Link>
                 ))}
-                <Button type="dashed" href="/apps/create" className="m-1">
+                <Link to="/apps/create" className="m-1">
+                <Button type="dashed">
                   <PlusIcon size={14} />
                   Create New App
                 </Button>
+                </Link>
               </div>
             </div>
           </Space>
@@ -438,7 +441,7 @@ function DashboardPage() {
       {/* App Usage Summary */}
       <Space direction="vertical" style={{ width: '100%' }} className="mb-8">
         <Space align="center" size={12}>
-          <AppWindowIcon color="#5c4bff" size={16} />
+          <AppWindowIcon color="#3aaeed" size={16} />
           <Text strong className="text-base">Applications Logged Into</Text>
         </Space>
         
@@ -466,7 +469,7 @@ function DashboardPage() {
       <Space direction="vertical" style={{ width: '100%' }}>
         <Flex justify="space-between" align="center">
           <Space align="center" size={12}>
-            <ClockIcon size={16} color='#5c4bff' />
+            <ClockIcon size={16} color='#3aaeed' />
             <Text strong className="text-base">Login History</Text>
           </Space>
           <DatePicker 
