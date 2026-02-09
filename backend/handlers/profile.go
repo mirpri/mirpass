@@ -8,8 +8,6 @@ import (
 
 	"mirpass-backend/db"
 	"mirpass-backend/utils"
-
-	"golang.org/x/crypto/bcrypt"
 )
 
 type updateNicknameRequest struct {
@@ -205,13 +203,13 @@ func UpdatePasswordHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.CurrentPassword)); err != nil {
+	if !utils.CheckPasswordHash(req.CurrentPassword, user.PasswordHash) {
 		WriteErrorResponse(w, http.StatusUnauthorized, "Incorrect current password")
 		return
 	}
 
 	// Update to new password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	hashedPassword, err := utils.HashPassword(req.NewPassword)
 	if err != nil {
 		WriteErrorResponse(w, http.StatusInternalServerError, "Error hashing password")
 		return
@@ -253,7 +251,7 @@ func RequestChangeEmailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
+	if !utils.CheckPasswordHash(req.Password, user.PasswordHash) {
 		WriteErrorResponse(w, http.StatusUnauthorized, "Incorrect password")
 		return
 	}
@@ -301,7 +299,7 @@ func RequestPasswordResetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	hashedPassword, err := utils.HashPassword(req.NewPassword)
 	if err != nil {
 		WriteErrorResponse(w, 500, "Error processing")
 		return

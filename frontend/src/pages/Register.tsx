@@ -11,6 +11,7 @@ import {
 } from 'antd'
 import { MailOutlined, UserOutlined, LockOutlined } from '@ant-design/icons'
 import api from '../api/client'
+import { sha256 } from '../utils/crypto'
 
 const { Title, Text } = Typography
 
@@ -35,7 +36,7 @@ function RegisterPage() {
       const payload: RegisterPayload = {
         username: values.username,
         email: values.email,
-        password: values.password,
+        password: await sha256(values.password),
       }
 
       const { data } = await api.post<RegisterResponse>('/register', payload)
@@ -63,7 +64,11 @@ function RegisterPage() {
             <Form.Item
               label="Username"
               name="username"
-              rules={[{ required: true, message: 'Please enter a username' }]}
+              rules={[{ required: true, message: 'Please enter a username' },
+              { min: 5, message: 'Username must be at least 5 characters' },
+              { max: 15, message: 'Username cannot exceed 15 characters' },
+              { pattern: /^[a-z0-9_]+$/, message: 'Can only contain lowercase letters, numbers, and underscores' }
+              ]}
             >
               <Input size="large" prefix={<UserOutlined />} placeholder="johndoe" />
             </Form.Item>
@@ -79,7 +84,9 @@ function RegisterPage() {
             <Form.Item
               label="Password"
               name="password"
-              rules={[{ required: true, message: 'Please enter a password' }]}
+              rules={[{ required: true, message: 'Please enter a password' },
+              { min: 8, message: 'Password must be at least 8 characters' }
+              ]}
             >
               <Input.Password size="large" prefix={<LockOutlined />} placeholder="••••••••" />
             </Form.Item>

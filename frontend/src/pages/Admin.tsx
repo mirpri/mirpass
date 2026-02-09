@@ -24,6 +24,7 @@ import { ShieldBanIcon, KeyRound, EditIcon, TrashIcon, CircleAlert, Check } from
 import { useNavigate } from "react-router-dom";
 import type { AppRole } from "../types";
 import api from "../api/client";
+import { sha256 } from "../utils/crypto";
 
 const { TextArea } = Input;
 
@@ -139,7 +140,7 @@ function UserTab({ systemRole }: { systemRole: string }) {
       const values = await passForm.validateFields();
       await api.post("/admin/user/reset-password", {
         username: editingUser?.username,
-        password: values.password,
+        password: await sha256(values.password),
       });
       message.success("Password reset");
       setIsPasswordModalOpen(false);

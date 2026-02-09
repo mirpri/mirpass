@@ -36,10 +36,10 @@ export default function AboutPage() {
           <Divider />
         
           <div className="flex flex-col sm:flex-row gap-4 justify-center mt-4">
-            <Button type="primary" size="large" icon={<GithubOutlined />} href="https://github.com/mirpass/mirpass" target="_blank">
+            <Button type="primary" size="large" icon={<GithubOutlined />} href="https://github.com/mirpri/mirpass" target="_blank">
               GitHub Repository
             </Button>
-            <Button size="large" href='/apps/create'>
+            <Button size="large" onClick={() => navigate("/app/create")}>
                 <BookPlusIcon size={18} />
               Create Your App
             </Button>

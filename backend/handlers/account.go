@@ -10,8 +10,6 @@ import (
 	"strings"
 
 	"mirpass-backend/utils"
-
-	"golang.org/x/crypto/bcrypt"
 )
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
@@ -37,8 +35,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(creds.Password))
-	if err != nil {
+	if !utils.CheckPasswordHash(creds.Password, user.PasswordHash) {
 		WriteErrorResponse(w, 401, "Invalid username or password")
 		return
 	}
@@ -99,7 +96,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	hashedPassword, err := utils.HashPassword(req.Password)
 	if err != nil {
 		WriteErrorResponse(w, 500, "Error hashing password")
 		return

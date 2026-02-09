@@ -3,9 +3,8 @@ package handlers
 import (
 	"encoding/json"
 	"mirpass-backend/db"
+	"mirpass-backend/utils"
 	"net/http"
-
-	"golang.org/x/crypto/bcrypt"
 )
 
 type AdminUserView struct {
@@ -130,7 +129,7 @@ func AdminResetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hashed, err := bcrypt.GenerateFromPassword([]byte(body.Password), bcrypt.DefaultCost)
+	hashed, err := utils.HashPassword(body.Password)
 	if err != nil {
 		WriteErrorResponse(w, 500, "Hash error")
 		return

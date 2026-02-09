@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"mirpass-backend/config"
 	"mirpass-backend/db"
 	"mirpass-backend/handlers"
@@ -88,24 +89,6 @@ func main() {
 	mux.Handle("/root/sql", handlers.AuthMiddleware(handlers.RequireRoot("system", http.HandlerFunc(handlers.RootDirectSQL))))
 
 	// Wrap the mux with the CORS middleware
-	http.ListenAndServe(":"+strconv.Itoa(config.AppConfig.Port), corsMiddleware(mux))
-}
-
-func corsMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Set CORS headers
-		w.Header().Set("Access-Control-Allow-Origin", "*") // For development, allow all
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "*") // Allow all headers
-		w.Header().Set("Access-Control-Expose-Headers", "Content-Length, Content-Type, Authorization")
-
-		// Handle preflight requests
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-
-		// Pass to the next handler
-		next.ServeHTTP(w, r)
-	})
+	log.Println("Server starting on port " + strconv.Itoa(config.AppConfig.Port))
+	log.Fatal(http.ListenAndServe(":"+strconv.Itoa(config.AppConfig.Port), handlers.CORSMiddleware(mux)))
 }

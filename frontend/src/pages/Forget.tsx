@@ -7,6 +7,7 @@ import {
 } from "@ant-design/icons";
 import { MailCheckIcon } from "lucide-react"
 import api from "../api/client";
+import { sha256 } from "../utils/crypto";
 
 const { Title, Text } = Typography;
 
@@ -23,7 +24,7 @@ function ForgetPage() {
     try {
       await api.post("/profile/password/reset", {
         username: values.username,
-        newPassword: values.newPassword,
+        newPassword: await sha256(values.newPassword),
       });
       setSubmitted(true);
       message.success(

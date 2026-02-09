@@ -40,6 +40,7 @@ import api from "../api/client";
 import type { SimpleResponse } from "../types";
 import { useAppStore } from "../store/useAppStore";
 import { Link } from "react-router-dom";
+import { sha256 } from "../utils/crypto";
 
 const { Title, Text } = Typography;
 
@@ -190,8 +191,8 @@ function DashboardPage() {
     try {
       const values = await passwordForm.validateFields();
       await api.post("/profile/password", {
-        currentPassword: values.currentPassword,
-        newPassword: values.newPassword,
+        currentPassword: await sha256(values.currentPassword),
+        newPassword: await sha256(values.newPassword),
       });
       message.success("Password updated successfully");
       setIsPasswordModalOpen(false);
@@ -205,7 +206,7 @@ function DashboardPage() {
     try {
       const values = await emailForm.validateFields();
       await api.post("/profile/email/change", {
-        password: values.password,
+        password: await sha256(values.password),
         newEmail: values.newEmail,
       });
       message.success("Verification email sent to new address");
@@ -415,16 +416,12 @@ function DashboardPage() {
               </Space>
               <div className="mt-[14px]">
                 {apps.map((app) => (
-                  <Button
-                    key={app.appId}
-                    className="m-1"
-                    href={
-                      app.name === "system" ? "/manage" : `/manage/${app.appId}`
-                    }
-                  >
-                    <ShieldEllipsis size={14} />
+                  <Link key={app.appId} to={app.name === "system" ? "/manage" : `/manage/${app.appId}`}>
+                    <Button className="m-1">
+                      <ShieldEllipsis size={14} />
                     {app.name}
                   </Button>
+                  </Link>
                 ))}
                 <Button type="dashed" href="/apps/create" className="m-1">
                   <PlusIcon size={14} />

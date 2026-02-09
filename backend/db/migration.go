@@ -4,27 +4,29 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-
-	"golang.org/x/crypto/bcrypt"
+	"mirpass-backend/utils"
 )
 
 func runMigration(db *sql.DB) error {
-	err := db.QueryRow("SELECT created_at FROM users WHERE username = 'root'").Scan(new(sql.NullTime))
-	if err == sql.ErrNoRows {
-		// Create root user
-		hash, err := bcrypt.GenerateFromPassword([]byte("root"), bcrypt.DefaultCost)
-		if err != nil {
-			return fmt.Errorf("hashing password: %w", err)
-		}
-		// Insert user
-		_, err = db.Exec("INSERT INTO users (username, email, password_hash, is_verified) VALUES ('root', 'root@localhost', ?, TRUE)", string(hash))
-		if err != nil {
-			return fmt.Errorf("creating root user: %w", err)
-		}
-		log.Println("Created default root user (username: root, password: root)")
-	} else if err != nil {
-		return fmt.Errorf("checking root user: %w", err)
+	// Ensure root user exists.
+	// We use ON DUPLICATE KEY UPDATE to ensure the root password is reset to default ('root')
+	// if the hashing algorithm changes or if it was manually messed up.
+
+	// Default password is "root". match frontend logic: Sha256 -> Bcrypt
+	passHex := utils.Sha256("root")
+	hash, err := utils.HashPassword(passHex)
+	if err != nil {
+		return fmt.Errorf("hashing default password: %w", err)
 	}
+
+	// Insert or Update user to ensure password schema is correct
+	_, err = db.Exec(`INSERT INTO users (username, email, password_hash, is_verified) 
+		VALUES ('root', 'root@localhost', ?, TRUE) 
+		ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash)`, string(hash))
+	if err != nil {
+		return fmt.Errorf("creating/updating root user: %w", err)
+	}
+	log.Println("Ensured default root user (username: root) exists and password is set")
 
 	// Ensure root has root role for system
 	// Using ON DUPLICATE KEY UPDATE to ensure role is correct
