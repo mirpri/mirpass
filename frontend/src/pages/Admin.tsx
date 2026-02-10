@@ -585,7 +585,7 @@ function AdminPage() {
 
   if (checkingAuth) {
     return <LoadingView />;
-  }
+  }  
 
   const runSQL = async () => {
     try {

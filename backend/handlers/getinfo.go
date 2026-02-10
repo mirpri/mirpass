@@ -21,6 +21,8 @@ func FormatUrl(url string) string {
 
 func MyInfoHandler(w http.ResponseWriter, r *http.Request) {
 	username := GetUsernameFromContext(r.Context())
+	appId, _ := r.Context().Value("appId").(string)
+
 	if username == "" {
 		WriteErrorResponse(w, http.StatusUnauthorized, "Unauthorized")
 		return
@@ -36,11 +38,20 @@ func MyInfoHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res := types.UserProfile{
-		Username:  user.Username,
-		Email:     user.Email,
-		Nickname:  user.Nickname,
-		AvatarURL: FormatUrl(user.AvatarURL),
+	var res interface{}
+	if appId == "system" {
+		res = types.UserProfile{
+			Username:  user.Username,
+			Email:     user.Email,
+			Nickname:  user.Nickname,
+			AvatarURL: FormatUrl(user.AvatarURL),
+		}
+	} else {
+		res = types.UserPublicInfo{
+			Username:  user.Username,
+			Nickname:  user.Nickname,
+			AvatarURL: FormatUrl(user.AvatarURL),
+		}
 	}
 	WriteSuccessResponse(w, "User info retrieved successfully", res)
 }

@@ -29,51 +29,51 @@ func main() {
 	// Protected routes
 	mux.Handle("/myprofile", handlers.AuthMiddleware(http.HandlerFunc(handlers.MyInfoHandler)))
 	mux.Handle("/myusername", handlers.AuthMiddleware(http.HandlerFunc(handlers.MyUsernameHandler)))
-	mux.Handle("/profile/nickname", handlers.AuthMiddleware(http.HandlerFunc(handlers.UpdateNicknameHandler)))
-	mux.Handle("/profile/avatar", handlers.AuthMiddleware(http.HandlerFunc(handlers.UpdateAvatarHandler)))
-	mux.Handle("/profile/password", handlers.AuthMiddleware(http.HandlerFunc(handlers.UpdatePasswordHandler)))
-	mux.Handle("/profile/email/change", handlers.AuthMiddleware(http.HandlerFunc(handlers.RequestChangeEmailHandler)))
+	mux.Handle("/profile/nickname", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.UpdateNicknameHandler)))
+	mux.Handle("/profile/avatar", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.UpdateAvatarHandler)))
+	mux.Handle("/profile/password", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.UpdatePasswordHandler)))
+	mux.Handle("/profile/email/change", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.RequestChangeEmailHandler)))
 	mux.HandleFunc("/profile/password/reset", handlers.RequestPasswordResetHandler)
 
 	// Admin routes
-	mux.Handle("/admin/blobs", handlers.AuthMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminListBlobsHandler))))
-	mux.Handle("/admin/blob/delete", handlers.AuthMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminDeleteBlobHandler))))
-	mux.Handle("/admin/blob/upload", handlers.AuthMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.UploadBlobHandler))))
+	mux.Handle("/admin/blobs", handlers.AuthSysMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminListBlobsHandler))))
+	mux.Handle("/admin/blob/delete", handlers.AuthSysMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminDeleteBlobHandler))))
+	mux.Handle("/admin/blob/upload", handlers.AuthSysMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.UploadBlobHandler))))
 
-	mux.Handle("/admin/users", handlers.AuthMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminListUsers))))
-	mux.Handle("/admin/users/search", handlers.AuthMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminSearchUsers))))
-	mux.Handle("/admin/user/delete", handlers.AuthMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminDeleteUser))))
-	mux.Handle("/admin/user/update", handlers.AuthMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminUpdateUser))))
-	mux.Handle("/admin/user/verify", handlers.AuthMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminVerifyUser))))
-	mux.Handle("/admin/user/reset-password", handlers.AuthMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminResetPassword))))
+	mux.Handle("/admin/users", handlers.AuthSysMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminListUsers))))
+	mux.Handle("/admin/users/search", handlers.AuthSysMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminSearchUsers))))
+	mux.Handle("/admin/user/delete", handlers.AuthSysMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminDeleteUser))))
+	mux.Handle("/admin/user/update", handlers.AuthSysMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminUpdateUser))))
+	mux.Handle("/admin/user/verify", handlers.AuthSysMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminVerifyUser))))
+	mux.Handle("/admin/user/reset-password", handlers.AuthSysMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminResetPassword))))
 
 	// System App Management
-	mux.Handle("/admin/apps", handlers.AuthMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminListApps))))
-	mux.Handle("/admin/app/delete", handlers.AuthMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminDeleteApp)))) // Maybe restrict to root? using Admin for now as requested
-	mux.Handle("/admin/app/update", handlers.AuthMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminUpdateApp))))
-	mux.Handle("/admin/app/suspend", handlers.AuthMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminSuspendApp))))
+	mux.Handle("/admin/apps", handlers.AuthSysMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminListApps))))
+	mux.Handle("/admin/app/delete", handlers.AuthSysMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminDeleteApp)))) // Maybe restrict to root? using Admin for now as requested
+	mux.Handle("/admin/app/update", handlers.AuthSysMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminUpdateApp))))
+	mux.Handle("/admin/app/suspend", handlers.AuthSysMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminSuspendApp))))
 
 	// My Apps endpoint
-	mux.Handle("/myapps", handlers.AuthMiddleware(http.HandlerFunc(handlers.MyAppsHandler)))
-	mux.Handle("/user/history", handlers.AuthMiddleware(http.HandlerFunc(handlers.GetLoginHistoryHandler)))
-	mux.Handle("/user/apps/summary", handlers.AuthMiddleware(http.HandlerFunc(handlers.GetUserAppsSummaryHandler)))
+	mux.Handle("/myapps", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.MyAppsHandler)))
+	mux.Handle("/user/history", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.GetLoginHistoryHandler)))
+	mux.Handle("/user/apps/summary", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.GetUserAppsSummaryHandler)))
 
 	// App Management
-	mux.Handle("/apps/create", handlers.AuthMiddleware(http.HandlerFunc(handlers.CreateAppHandler)))
-	mux.Handle("/apps/details", handlers.AuthMiddleware(http.HandlerFunc(handlers.AppDetailsHandler)))
-	mux.Handle("/apps/keys", handlers.AuthMiddleware(http.HandlerFunc(handlers.GetAppKeysHandler)))
-	mux.Handle("/apps/keys/create", handlers.AuthMiddleware(http.HandlerFunc(handlers.CreateAppKeyHandler)))
-	mux.Handle("/apps/keys/delete", handlers.AuthMiddleware(http.HandlerFunc(handlers.DeleteAppKeyHandler)))
+	mux.Handle("/apps/create", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.CreateAppHandler)))
+	mux.Handle("/apps/details", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.AppDetailsHandler)))
+	mux.Handle("/apps/keys", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.GetAppKeysHandler)))
+	mux.Handle("/apps/keys/create", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.CreateAppKeyHandler)))
+	mux.Handle("/apps/keys/delete", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.DeleteAppKeyHandler)))
 
-	mux.Handle("/apps/update", handlers.AuthMiddleware(http.HandlerFunc(handlers.UpdateAppHandler)))
-	mux.Handle("/apps/delete", handlers.AuthMiddleware(http.HandlerFunc(handlers.DeleteAppHandler)))
-	mux.Handle("/apps/stats", handlers.AuthMiddleware(http.HandlerFunc(handlers.GetAppStatsHandler)))
-	mux.Handle("/apps/history", handlers.AuthMiddleware(http.HandlerFunc(handlers.GetAppHistoryHandler)))
+	mux.Handle("/apps/update", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.UpdateAppHandler)))
+	mux.Handle("/apps/delete", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.DeleteAppHandler)))
+	mux.Handle("/apps/stats", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.GetAppStatsHandler)))
+	mux.Handle("/apps/history", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.GetAppHistoryHandler)))
 
-	mux.Handle("/apps/members", handlers.AuthMiddleware(http.HandlerFunc(handlers.GetAppMembersHandler)))
-	mux.Handle("/apps/members/add", handlers.AuthMiddleware(http.HandlerFunc(handlers.AddAppMemberHandler)))
-	mux.Handle("/apps/members/remove", handlers.AuthMiddleware(http.HandlerFunc(handlers.RemoveAppMemberHandler)))
-	mux.Handle("/apps/members/role", handlers.AuthMiddleware(http.HandlerFunc(handlers.UpdateAppMemberRoleHandler)))
+	mux.Handle("/apps/members", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.GetAppMembersHandler)))
+	mux.Handle("/apps/members/add", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.AddAppMemberHandler)))
+	mux.Handle("/apps/members/remove", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.RemoveAppMemberHandler)))
+	mux.Handle("/apps/members/role", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.UpdateAppMemberRoleHandler)))
 
 	// SSO Routes
 	mux.HandleFunc("/sso/init", handlers.InitiateSSOHandler)
@@ -81,13 +81,13 @@ func main() {
 	mux.HandleFunc("/sso/poll", handlers.PollSSOHandler)
 	mux.HandleFunc("/sso/verify", handlers.VerifySSOTokenHandler)
 	mux.HandleFunc("/sso/token", handlers.ExchangeSSOCodeHandler)
-	mux.Handle("/sso/confirm", handlers.AuthMiddleware(http.HandlerFunc(handlers.ConfirmSSOHandler)))
+	mux.Handle("/sso/confirm", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.ConfirmSSOHandler)))
 
 	// Root routes
 
 	// Root routes
-	mux.Handle("/root/user/role", handlers.AuthMiddleware(handlers.RequireRoot("system", http.HandlerFunc(handlers.RootUpdateRole))))
-	mux.Handle("/root/sql", handlers.AuthMiddleware(handlers.RequireRoot("system", http.HandlerFunc(handlers.RootDirectSQL))))
+	mux.Handle("/root/user/role", handlers.AuthSysMiddleware(handlers.RequireRoot("system", http.HandlerFunc(handlers.RootUpdateRole))))
+	mux.Handle("/root/sql", handlers.AuthSysMiddleware(handlers.RequireRoot("system", http.HandlerFunc(handlers.RootDirectSQL))))
 
 	// Wrap the mux with the CORS middleware
 	log.Println("Server starting on port " + strconv.Itoa(config.AppConfig.Port))

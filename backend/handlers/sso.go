@@ -277,11 +277,19 @@ func VerifySSOTokenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	claims, err := utils.ValidateSSOToken(req.Token)
+	claims, err := utils.ValidateToken(req.Token)
 	if err != nil {
-		WriteErrorResponse(w, http.StatusUnauthorized, "Invalid token")
+		WriteSuccessResponse(w, "Invalid token", map[string]interface{}{
+			"valid": false,
+		})
 		return
 	}
 
-	WriteSuccessResponse(w, "valid", claims)
+	res := map[string]interface{}{
+		"valid":    true,
+		"appId":    claims.AppID,
+		"username": claims.Username,
+	}
+
+	WriteSuccessResponse(w, "Token is valid", res)
 }

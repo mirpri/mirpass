@@ -1,6 +1,6 @@
 import { useState, useEffect, Suspense, lazy } from "react";
 import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
-import { ConfigProvider, App as AntdApp, theme } from "antd";
+import { ConfigProvider, App as AntdApp, theme, message } from "antd";
 import { LoadingView } from "./components/LoadingView";
 
 const LoginPage = lazy(() => import("./pages/Login"));
@@ -48,10 +48,10 @@ function App() {
   useEffect(() => {
     if (isAuthed) {
       fetchProfile().catch((error) => {
-        // If error is 401, handleLogout will be called by consumer or we can do it here
-        // Ideally checking specific error type
         if (error?.response?.status === 401) {
           logout();
+        } else {
+          message.error("Failed to fetch user profile.");
         }
       });
     }

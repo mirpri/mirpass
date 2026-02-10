@@ -25,27 +25,36 @@ func GenerateSysToken(userID string) (string, error) {
 	return GenerateJWTToken("system", userID)
 }
 
-func ValidateSysToken(tokenString string) (string, error) {
+func ValidateToken(tokenString string) (Claims, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		return []byte(config.AppConfig.JWTSecret), nil
 	})
 
 	if err != nil {
-		return "", err
+		return Claims{}, err
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 
 	if ok && token.Valid && claims["appId"] == "system" {
 		userID := claims["username"].(string)
-		return userID, nil
+		return Claims{Username: userID, AppID: "system"}, nil
 	}
 
-	return "", jwt.ErrSignatureInvalid
+	return Claims{}, jwt.ErrSignatureInvalid
 }
 
 type Claims struct {
 	Username string
+	AppID    string
+}
+
+func ValidateSysToken(tokenString string) (string, error) {
+	claim, err := ValidateToken(tokenString)
+	if err != nil {
+		return "", err
+	}
+	return claim.Username, nil
 }
 
 func ExtractClaims(r *http.Request) (*Claims, error) {
@@ -58,23 +67,9 @@ func ExtractClaims(r *http.Request) (*Claims, error) {
 		return nil, jwt.ErrTokenMalformed
 	}
 	tokenString := parts[1]
-	username, err := ValidateSysToken(tokenString)
+	claims, err := ValidateToken(tokenString)
 	if err != nil {
 		return nil, err
 	}
-	return &Claims{Username: username}, nil
-}
-
-func ValidateSSOToken(tokenString string) (jwt.MapClaims, error) {
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		return []byte(config.AppConfig.JWTSecret), nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		// Valid claims
-		return claims, nil
-	}
-	return nil, jwt.ErrSignatureInvalid
+	return &claims, nil
 }

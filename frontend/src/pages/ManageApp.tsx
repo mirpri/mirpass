@@ -49,6 +49,7 @@ import type {
 } from "../types";
 import { useAppStore } from "../store/useAppStore";
 import { LoadingView } from "../components/LoadingView";
+import { FailedView } from "../components/FailedView";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -57,6 +58,7 @@ function ManageAppPage() {
   const navigate = useNavigate();
 
   const [app, setApp] = useState<AppDetails | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (appId) {
@@ -65,6 +67,7 @@ function ManageAppPage() {
   }, [appId]);
 
   const loadApp = async () => {
+    setLoading(true);
     try {
       const { data } = await api.get<{ data: AppDetails }>(
         `/apps/details?id=${appId}`,
@@ -73,10 +76,13 @@ function ManageAppPage() {
     } catch (e) {
       message.error("Could not load app details");
       navigate("/dashboard");
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (!app) return <LoadingView />;
+  if (loading) return <LoadingView />;
+  if (!app) return <FailedView />;
 
   const items = [
     {
@@ -682,7 +688,7 @@ function IntegrationGuideTab({ app }: { app: AppDetails }) {
           headers: {
             "X-Api-Key": apiKey,
           },
-        }
+        },
       );
       const loginUrl =
         (data.data as any).loginUrl +
@@ -718,7 +724,11 @@ function IntegrationGuideTab({ app }: { app: AppDetails }) {
             value={redirectUrl}
             onChange={(e) => setRedirectUrl(e.target.value)}
           />
-          <Button onClick={handleCreateTestSession} type="primary" disabled={!apiKey}>
+          <Button
+            onClick={handleCreateTestSession}
+            type="primary"
+            disabled={!apiKey}
+          >
             Create test session
           </Button>
         </Space>
@@ -740,9 +750,13 @@ function IntegrationGuideTab({ app }: { app: AppDetails }) {
           <br />
           {`{ "appId": "${app.id}" }`}
         </div>
+        <Paragraph className="mt-2 text-sm text-gray-500">
+          Response (Failure):
+        </Paragraph>
         <div className="mt-2 bg-gray-100 dark:bg-gray-800 p-3 rounded text-sm text-gray-600 dark:text-gray-300 font-mono">
           {`{
-  "status": "success",
+  "status": 200,
+  "message": "Session initiated",
   "data": {
     "sessionId": "sess_abc123...",
     "pollSecret": "secret_xyz...",
@@ -759,7 +773,7 @@ function IntegrationGuideTab({ app }: { app: AppDetails }) {
           the Mirpass frontend domain). You can optionally include a `from`
           parameter to redirect the user back to your site after login.
         </Paragraph>
-        <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-3 rounded text-blue-600 dark:text-blue-400 font-mono text-sm break-all">
+        <div className="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed">
           {frontendUrl}
           /login?sso=sess_abc123...&from=https://yoursite.com/callback
         </div>
@@ -775,8 +789,10 @@ function IntegrationGuideTab({ app }: { app: AppDetails }) {
       <div>
         <Title level={4}>3. Poll for Status (If not redirecting)</Title>
         <Paragraph>
-          Use the `pollSecret` returned in step 1 to securely poll the status. 
-          Note: If the user is redirected (Step 2), the auth code will be delivered there, and subsequent polling will not satisfy the code delivery.
+          Use the `pollSecret` returned in step 1 to securely poll the status.
+          Note: If the user is redirected (Step 2), the auth code will be
+          delivered there, and subsequent polling will not satisfy the code
+          delivery.
         </Paragraph>
         <div className="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed">
           <span className="text-green-400">GET</span> {backendUrl}
@@ -786,15 +802,23 @@ function IntegrationGuideTab({ app }: { app: AppDetails }) {
           Response (Pending):
         </Paragraph>
         <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs font-mono mb-2">
-          {`{ "status": "pending" }`}
+          {`{
+  "status": 200,
+  "message": "pending",
+  "data": { "status": "pending" }
+}`}
         </div>
         <Paragraph className="text-sm text-gray-500">
           Response (Confirmed):
         </Paragraph>
         <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs font-mono">
           {`{
-  "status": "confirmed",
-  "authCode": "AUTH_CODE_123..."
+  "status": 200,
+  "message": "confirmed",
+  "data": {
+    "status": "confirmed",
+    "authCode": "AUTH_CODE_123..."
+  }
 }`}
         </div>
       </div>
@@ -802,8 +826,9 @@ function IntegrationGuideTab({ app }: { app: AppDetails }) {
       <div>
         <Title level={4}>4. Exchange Code for Token</Title>
         <Paragraph>
-          Once you receive the `authCode` (via redirect or polling), exchange it for a user access token.
-          The code is valid for 10 minutes and can be used only once.
+          Once you receive the `authCode` (via redirect or polling), exchange it
+          for a user access token. The code is valid for 10 minutes and can be
+          used only once.
         </Paragraph>
         <div className="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed">
           <span className="text-purple-400">POST</span> {backendUrl}/sso/token
@@ -813,9 +838,7 @@ function IntegrationGuideTab({ app }: { app: AppDetails }) {
           <br />
           {`{ "code": "AUTH_CODE_123..." }`}
         </div>
-        <Paragraph className="mt-2 text-sm text-gray-500">
-          Response:
-        </Paragraph>
+        <Paragraph className="mt-2 text-sm text-gray-500">Response:</Paragraph>
         <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs font-mono">
           {`{
   "token": "eyJhbGciOiJIUzI1Ni...",
@@ -830,19 +853,69 @@ function IntegrationGuideTab({ app }: { app: AppDetails }) {
           To ensure the token is valid and get user claims, verify it against
           our server.
         </Paragraph>
-        <div className="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed">
-          <span className="text-purple-400">POST</span> {backendUrl}/sso/verify
-          <br />
-          <span className="text-blue-300">Content-Type:</span> application/json
-          <br />
-          <br />
-          {`{ "token": "eyJhbGciOiJIUzI1Ni..." }`}
+        <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs font-mono">
+          {`{
+  "status": 200,
+  "message": "Token is valid",
+  "data": {
+    "valid": true,
+    "username": "john_doe",
+    "appId": "APP_ID"
+  }
+}`}
+        </div>
+        <Paragraph className="mt-2 text-sm text-gray-500">Response:</Paragraph>
+        <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs font-mono">
+          {`{
+  "valid": true,
+  "username": "john_doe",
+  "appId": "APP_ID"
+          }`}
         </div>
         <Paragraph className="mt-2 text-sm text-gray-500">
-          Response:
+          If not valid:
         </Paragraph>
         <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs font-mono">
-          </div>
+          {`{
+  "valid": false
+}`}
+        </div>
+      </div>
+
+      <div>
+        <Title level={4}>6. Fetch User Info</Title>
+        <Paragraph>
+          Once you have a valid token or a username, you can fetch user profile
+          information.
+        </Paragraph>
+
+        <Text strong>Option A: Using the Access Token (Recommended)</Text>
+        <div className="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed mt-2 mb-4">
+          <span className="text-purple-400">GET</span> {config.API_URL}
+          /myprofile
+          <br />
+          <span className="text-blue-400">Authorization:</span> Bearer
+          &lt;token&gt;
+        </div>
+
+        <Text strong>Option B: By Username (Public)</Text>
+        <div className="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed mt-2 mb-4">
+          <span className="text-purple-400">GET</span> {config.API_URL}
+          /user/info?username=john_doe
+        </div>
+        <Paragraph className="mt-2 text-sm text-gray-500">
+          Response (Success):
+        </Paragraph>
+        <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs font-mono">
+          {`{
+  "status": 200,
+  "message": "User info retrieved",
+  "data": {
+    "username": "john_doe",
+    "nickname": "John",
+    "avatarUrl": "..."
+  }`}
+        </div>
       </div>
     </div>
   );

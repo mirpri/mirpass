@@ -17,7 +17,12 @@ import {
   Upload,
   DatePicker,
 } from "antd";
-import { EditOutlined, CheckOutlined, CloseOutlined, UploadOutlined } from "@ant-design/icons";
+import {
+  EditOutlined,
+  CheckOutlined,
+  CloseOutlined,
+  UploadOutlined,
+} from "@ant-design/icons";
 import ImgCrop from "antd-img-crop";
 import dayjs from "dayjs";
 import { config } from "../config";
@@ -42,11 +47,18 @@ import { useAppStore } from "../store/useAppStore";
 import { Link } from "react-router-dom";
 import { sha256 } from "../utils/crypto";
 import { LoadingView } from "../components/LoadingView";
+import { FailedView } from "../components/FailedView";
 
 const { Title, Text } = Typography;
 
 function DashboardPage() {
-  const { profile, myApps: apps, fetchMyApps, updateProfile } = useAppStore();
+  const {
+    profile,
+    myApps: apps,
+    fetchMyApps,
+    updateProfile,
+    isLoadingProfile,
+  } = useAppStore();
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
   const [loginHistory, setLoginHistory] = useState<LoginHistoryItem[]>([]);
   const [appsSummary, setAppsSummary] = useState<LoginHistoryItem[]>([]);
@@ -68,19 +80,19 @@ function DashboardPage() {
     } catch {
       // ignore
     }
-  }
+  };
 
   const fetchLoginHistory = async (date: dayjs.Dayjs | null) => {
     try {
-        let url = "/user/history";
-        if (date) {
-             const dateStr = date.format("YYYY-MM-DD");
-             // Send standard offset in minutes (Local - UTC)? 
-             // Go expects minutes offset. UTC+8 = 480.
-             // date.utcOffset() is minutes from UTC (e.g. 480 for UTC+8)
-             const offset = date.utcOffset(); 
-             url += `?date=${dateStr}&offset=${offset}`;
-        }
+      let url = "/user/history";
+      if (date) {
+        const dateStr = date.format("YYYY-MM-DD");
+        // Send standard offset in minutes (Local - UTC)?
+        // Go expects minutes offset. UTC+8 = 480.
+        // date.utcOffset() is minutes from UTC (e.g. 480 for UTC+8)
+        const offset = date.utcOffset();
+        url += `?date=${dateStr}&offset=${offset}`;
+      }
       const { data } = await api.get<{ data: LoginHistoryItem[] }>(url);
       setLoginHistory(data.data || []);
     } catch (e) {
@@ -152,13 +164,17 @@ function DashboardPage() {
       if (selectedFile) {
         const formData = new FormData();
         formData.append("file", selectedFile);
-        const { data } = await api.post<SimpleResponse & { data: { avatarUrl: string } }>("/profile/avatar", formData, {
+        const { data } = await api.post<
+          SimpleResponse & { data: { avatarUrl: string } }
+        >("/profile/avatar", formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
         dataResp = data;
       } else {
         const trimmed = avatarInput.trim();
-        const { data } = await api.post<SimpleResponse & { data: { avatarUrl: string } }>("/profile/avatar", {
+        const { data } = await api.post<
+          SimpleResponse & { data: { avatarUrl: string } }
+        >("/profile/avatar", {
           avatarUrl: trimmed,
         });
         dataResp = data;
@@ -167,7 +183,7 @@ function DashboardPage() {
       let newUrl = dataResp.data?.avatarUrl || avatarInput;
       // Prepend API_URL if relative path (blob)
       if (newUrl.startsWith("/blob/") && config.API_URL) {
-           newUrl = config.API_URL.replace(/\/$/, "") + newUrl;
+        newUrl = config.API_URL.replace(/\/$/, "") + newUrl;
       }
 
       updateProfile({ avatarUrl: newUrl });
@@ -199,7 +215,9 @@ function DashboardPage() {
       setIsPasswordModalOpen(false);
       passwordForm.resetFields();
     } catch (error: any) {
-      message.error(error.response?.data?.message || "Failed to update password");
+      message.error(
+        error.response?.data?.message || "Failed to update password",
+      );
     }
   };
 
@@ -214,15 +232,14 @@ function DashboardPage() {
       setIsEmailModalOpen(false);
       emailForm.resetFields();
     } catch (error: any) {
-      message.error(error.response?.data?.message || "Failed to request email change");
+      message.error(
+        error.response?.data?.message || "Failed to request email change",
+      );
     }
   };
 
-  if (!profile) {
-    return (
-      <LoadingView />
-    );
-  }
+  if (isLoadingProfile) return <LoadingView />;
+  if (!profile) return <FailedView />;
 
   return (
     <Card className="max-w-4xl w-full shadow-xl">
@@ -375,7 +392,9 @@ function DashboardPage() {
                 </Text>
               </Space>
               <div className="mt-[14px]">
-                <Text type="secondary" className="mr-4">{profile?.email || "No Email"}</Text>
+                <Text type="secondary" className="mr-4">
+                  {profile?.email || "No Email"}
+                </Text>
                 <Button
                   type="link"
                   icon={<EditOutlined />}
@@ -417,18 +436,23 @@ function DashboardPage() {
               </Space>
               <div className="mt-[14px] flex flex-wrap gap-2">
                 {apps.map((app) => (
-                  <Link key={app.appId} to={app.name === "system" ? "/manage" : `/manage/${app.appId}`}>
+                  <Link
+                    key={app.appId}
+                    to={
+                      app.name === "system" ? "/manage" : `/manage/${app.appId}`
+                    }
+                  >
                     <Button>
                       <ShieldEllipsis size={14} />
-                    {app.name}
-                  </Button>
+                      {app.name}
+                    </Button>
                   </Link>
                 ))}
                 <Link to="/apps/create">
-                <Button type="dashed">
-                  <PlusIcon size={14} />
-                  Create New App
-                </Button>
+                  <Button type="dashed">
+                    <PlusIcon size={14} />
+                    Create New App
+                  </Button>
                 </Link>
               </div>
             </div>
@@ -439,47 +463,57 @@ function DashboardPage() {
       <Divider className="my-6" />
 
       {/* App Usage Summary */}
-      <Space orientation="vertical" style={{ width: '100%' }} className="mb-8">
+      <Space orientation="vertical" style={{ width: "100%" }} className="mb-8">
         <Space align="center" size={12}>
           <AppWindowIcon color="#3aaeed" size={16} />
-          <Text strong className="text-base">Applications Logged Into</Text>
+          <Text strong className="text-base">
+            Applications Logged Into
+          </Text>
         </Space>
-        
+
         <Row gutter={[16, 16]} className="mt-4">
           {appsSummary.map((app) => (
-             <Col xs={24} sm={12} md={8} lg={6} key={app.app}>
-               <Card size="small" className="hover:shadow-md transition-shadow">
-                 <div className="flex flex-col gap-2">
-                   <Flex align="center" gap={10}>
-                    <Avatar src={app.logoUrl}>{app.app.charAt(0).toUpperCase()}</Avatar>
+            <Col xs={24} sm={12} md={8} lg={6} key={app.app}>
+              <Card size="small" className="hover:shadow-md transition-shadow">
+                <div className="flex flex-col gap-2">
+                  <Flex align="center" gap={10}>
+                    <Avatar src={app.logoUrl}>
+                      {app.app.charAt(0).toUpperCase()}
+                    </Avatar>
                     <Text strong>{app.app}</Text>
-                   </Flex>
-                   <div className="text-xs text-gray-500">
-                     Last Login: <br />
-                     {formatDateTime(app.time)}
-                   </div>
-                 </div>
-               </Card>
-             </Col>
+                  </Flex>
+                  <div className="text-xs text-gray-500">
+                    Last Login: <br />
+                    {formatDateTime(app.time)}
+                  </div>
+                </div>
+              </Card>
+            </Col>
           ))}
-          {appsSummary.length === 0 && <Text type="secondary" className="pl-4">No login history found.</Text>}
+          {appsSummary.length === 0 && (
+            <Text type="secondary" className="pl-4">
+              No login history found.
+            </Text>
+          )}
         </Row>
       </Space>
 
-      <Space orientation="vertical" style={{ width: '100%' }}>
+      <Space orientation="vertical" style={{ width: "100%" }}>
         <Flex justify="space-between" align="center">
           <Space align="center" size={12}>
-            <ClockIcon size={16} color='#3aaeed' />
-            <Text strong className="text-base">Login History</Text>
+            <ClockIcon size={16} color="#3aaeed" />
+            <Text strong className="text-base">
+              Login History
+            </Text>
           </Space>
-          <DatePicker 
-             value={selectedDate} 
-             onChange={setSelectedDate} 
-             placeholder="Select Date"
-             allowClear
+          <DatePicker
+            value={selectedDate}
+            onChange={setSelectedDate}
+            placeholder="Select Date"
+            allowClear
           />
         </Flex>
-        
+
         <Table
           dataSource={loginHistory}
           rowKey={(record) => record.time + record.app + Math.random()}
@@ -490,7 +524,7 @@ function DashboardPage() {
             {
               title: "Application",
               dataIndex: "app",
-              key: "appName"
+              key: "appName",
             },
             {
               title: "Time",
@@ -515,7 +549,9 @@ function DashboardPage() {
           <Form.Item
             name="currentPassword"
             label="Current Password"
-            rules={[{ required: true, message: "Please enter your current password" }]}
+            rules={[
+              { required: true, message: "Please enter your current password" },
+            ]}
           >
             <Input.Password />
           </Form.Item>
@@ -524,7 +560,7 @@ function DashboardPage() {
             label="New Password"
             rules={[
               { required: true, message: "Please enter a new password" },
-              { min: 8, message: "Password must be at least 8 characters" }
+              { min: 8, message: "Password must be at least 8 characters" },
             ]}
           >
             <Input.Password />
@@ -547,7 +583,7 @@ function DashboardPage() {
             label="New Email"
             rules={[
               { required: true, message: "Please enter your new email" },
-              { type: "email", message: "Please enter a valid email" }
+              { type: "email", message: "Please enter a valid email" },
             ]}
           >
             <Input />
@@ -555,7 +591,9 @@ function DashboardPage() {
           <Form.Item
             name="password"
             label="Current Password"
-            rules={[{ required: true, message: "Please enter your current password" }]}
+            rules={[
+              { required: true, message: "Please enter your current password" },
+            ]}
           >
             <Input.Password />
           </Form.Item>
