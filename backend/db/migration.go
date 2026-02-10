@@ -3,7 +3,6 @@ package db
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"mirpass-backend/utils"
 )
 
@@ -21,12 +20,10 @@ func runMigration(db *sql.DB) error {
 
 	// Insert or Update user to ensure password schema is correct
 	_, err = db.Exec(`INSERT INTO users (username, email, password_hash, is_verified) 
-		VALUES ('root', 'root@localhost', ?, TRUE) 
-		ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash)`, string(hash))
+		VALUES ('root', 'root@localhost', ?, TRUE) ON DUPLICATE KEY UPDATE is_verified = TRUE`, string(hash))
 	if err != nil {
 		return fmt.Errorf("creating/updating root user: %w", err)
 	}
-	log.Println("Ensured default root user (username: root) exists and password is set")
 
 	// Ensure root has root role for system
 	// Using ON DUPLICATE KEY UPDATE to ensure role is correct

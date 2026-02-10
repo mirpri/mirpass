@@ -7,7 +7,6 @@ import (
 	"mirpass-backend/db"
 	"net/http"
 	"regexp"
-	"strings"
 
 	"mirpass-backend/utils"
 )
@@ -157,18 +156,14 @@ func VerifyEmailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// If the request is coming from fetch/axios (expects JSON), return JSON instead of redirect
-	acceptsJSON := strings.Contains(r.Header.Get("Accept"), "application/json") ||
-		r.Header.Get("X-Requested-With") == "XMLHttpRequest"
-
-	if acceptsJSON {
-		message := "Email verified account activated"
-		if task == "change_email" {
-			message = "Email successfully changed"
-		} else if task == "reset_password" {
-			message = "Password successfully reset"
-		}
-		WriteSuccessResponse(w, message, nil)
-		return
+	switch task {
+	case "register":
+		WriteSuccessResponse(w, "Email verified, account activated", nil)
+	case "change_email":
+		WriteSuccessResponse(w, "Email successfully changed", nil)
+	case "reset_password":
+		WriteSuccessResponse(w, "Password successfully reset", nil)
+	default:
+		WriteSuccessResponse(w, "Verification successful", nil)
 	}
 }

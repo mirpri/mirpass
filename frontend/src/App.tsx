@@ -4,6 +4,7 @@ import { ConfigProvider, App as AntdApp, theme } from "antd";
 import { LoadingView } from "./components/LoadingView";
 
 const LoginPage = lazy(() => import("./pages/Login"));
+const AuthorizePage = lazy(() => import("./pages/Authorize"));
 const ForgetPage = lazy(() => import("./pages/Forget"));
 const RegisterPage = lazy(() => import("./pages/Register"));
 const VerifyPage = lazy(() => import("./pages/Verify"));
@@ -83,6 +84,12 @@ function App() {
                       onLogin={handleLogin}
                       isAuthenticated={isAuthed}
                     />
+                  }
+                />
+                <Route
+                  path="/authorize"
+                  element={
+                    <AuthorizePage />
                   }
                 />
                 <Route

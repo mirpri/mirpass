@@ -10,7 +10,7 @@ export default function AboutPage() {
 
   return (
     <Card className="max-w-3xl w-full shadow-xl">
-      <Space direction="vertical" size="large" className="w-full">
+      <Space orientation="vertical" size="large" className="w-full">
         <div className="flex items-center justify-between">
           <Title level={2} style={{ margin: 0 }}>
             About Mirpass
@@ -29,7 +29,7 @@ export default function AboutPage() {
 
         <Divider />
 
-        <Space direction="vertical" size="middle">
+        <Space orientation="vertical" size="middle">
           <Title level={4}>Why Mirpass?</Title>
           <ul className="list-disc pl-5 space-y-2 text-gray-600 dark:text-gray-300">
             <li>

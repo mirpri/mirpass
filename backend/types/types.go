@@ -144,7 +144,12 @@ type AppStatsSummary struct {
 
 type LoginHistoryItem struct {
 	User      string `json:"user,omitempty"`
+	App       string `json:"app,omitempty"`
+	Timestamp string `json:"time"`
+}
+
+type AppLoginSummaryItem struct {
 	App       string `json:"app"`
-	LogoUrl   string `json:"logoUrl"` // Removed omitempty to ensure field presence
+	LogoUrl   string `json:"logoUrl,omitempty"`
 	Timestamp string `json:"time"`
 }

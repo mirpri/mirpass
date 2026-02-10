@@ -43,7 +43,7 @@ function ForgetPage() {
 
   return (
     <Card className="w-full max-w-md shadow-xl">
-      <Space direction="vertical" size="large" className="w-full">
+      <Space orientation="vertical" size="large" className="w-full">
         {!submitted ? (
           <>
             <div className="text-center">

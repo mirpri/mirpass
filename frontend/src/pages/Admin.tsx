@@ -3,10 +3,8 @@ import {
   Table,
   Button,
   Input,
-  Modal,
   Form,
   Select,
-  message,
   Tag,
   Space,
   Card,
@@ -14,6 +12,8 @@ import {
   DatePicker,
   Upload,
   Avatar,
+  App,
+  Modal,
 } from "antd";
 import dayjs from "dayjs";
 import { parseDate } from "../utils/date";
@@ -58,6 +58,7 @@ type AdminUserView = {
 
 // ... User Admin Logic ...
 function UserTab({ systemRole }: { systemRole: string }) {
+  const { message, modal } = App.useApp();
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<AdminUserView[]>([]);
   const [search, setSearch] = useState("");
@@ -90,7 +91,7 @@ function UserTab({ systemRole }: { systemRole: string }) {
   };
 
   const handleDelete = async (username: string) => {
-    Modal.confirm({
+    modal.confirm({
       title: "Are you sure?",
       content: "This action cannot be undone.",
       onOk: async () => {
@@ -317,6 +318,7 @@ function UserTab({ systemRole }: { systemRole: string }) {
 
 // ... Apps Admin Logic ...
 function AppsTab({ systemRole: _systemRole }: { systemRole: string }) {
+  const { message, modal } = App.useApp();
   const [loading, setLoading] = useState(false);
   const [apps, setApps] = useState<AdminAppView[]>([]);
   const [search, setSearch] = useState("");
@@ -353,7 +355,7 @@ function AppsTab({ systemRole: _systemRole }: { systemRole: string }) {
   };
 
   const handleDelete = async (appId: string) => {
-    Modal.confirm({
+    modal.confirm({
       title: "Delete App?",
       content:
         "This will delete the app and all associated data permanently. Cannot be undone.",
@@ -453,6 +455,7 @@ function AppsTab({ systemRole: _systemRole }: { systemRole: string }) {
 }
 
 function BlobsTab() {
+  const { message } = App.useApp();
   const [blobs, setBlobs] = useState<
     { ID: string; Size: number; ContentType: string }[]
   >([]);
@@ -550,6 +553,7 @@ function BlobsTab() {
 }
 
 function AdminPage() {
+  const { message } = App.useApp();
   const [systemRole, setSystemRole] = useState<string>("");
   const [checkingAuth, setCheckingAuth] = useState(true);
   const navigate = useNavigate();
@@ -622,11 +626,11 @@ function AdminPage() {
         </Button>
       }
     >
-      <Space direction="vertical" className="w-full">
+      <Space orientation="vertical" className="w-full">
         <Tabs defaultActiveKey="1" items={items} />
         {systemRole === "root" && (
           <div className="bg-gray-50 dark:bg-gray-900 p-6 rounded-xl border border-gray-200 dark:border-gray-700 mt-8">
-            <Space direction="vertical" className="w-full">
+            <Space orientation="vertical" className="w-full">
               <TextArea
                 rows={4}
                 value={sqlQuery}

@@ -31,8 +31,8 @@ func GetUserAppsSummaryHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, item := range summary {
-		item.LogoUrl = FormatUrl(item.LogoUrl)
+	for i := range summary {
+		summary[i].LogoUrl = FormatUrl(summary[i].LogoUrl)
 	}
 
 	WriteSuccessResponse(w, "Summary fetched", summary)
@@ -49,15 +49,6 @@ func GetLoginHistoryHandler(w http.ResponseWriter, r *http.Request) {
 	offsetStr := r.URL.Query().Get("offset")
 	var offset int
 	if offsetStr != "" {
-		// Assuming simple int minutes
-		// Need `strconv` imported? It is likely imported if this file handles JSON/etc, but let's check.
-		// If not, I need to add import "strconv".
-		// profile.go doesn't seem to import strconv based on previous read_file.
-		// I'll assume I can't easily add import with replace_string without context. Only if I read whole file.
-		// But I read 100 lines before. Imorts were visible: encoding/json, net/http, strings, mirpass/db/utils... no strconv.
-		// So I should just ignore offset if I can't parse or I need to add import.
-		// Let's rely on standard binding or just use a helper if available? No utils.StrToInt.
-		// I will check if I can use Sscanf.
 		fmt.Sscanf(offsetStr, "%d", &offset)
 	}
 

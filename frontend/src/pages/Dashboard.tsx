@@ -227,7 +227,7 @@ function DashboardPage() {
   return (
     <Card className="max-w-4xl w-full shadow-xl">
       <Flex justify="space-between" align="center" wrap>
-        <Space direction="vertical" size={4}>
+        <Space orientation="vertical" size={4}>
           <Title level={3} className="m-0">
             Dashboard
           </Title>
@@ -239,7 +239,7 @@ function DashboardPage() {
 
       <Row gutter={[24, 24]} align="stretch">
         <Col xs={24} sm={9}>
-          <Space direction="vertical" size={16} className="w-full p-4">
+          <Space orientation="vertical" size={16} className="w-full p-4">
             <Avatar size={96} src={profile?.avatarUrl} className="shadow-lg">
               {profile?.username?.charAt(0).toUpperCase()}
             </Avatar>
@@ -259,7 +259,7 @@ function DashboardPage() {
           </Space>
         </Col>
         <Col xs={24} sm={15}>
-          <Space direction="vertical" size={32} className="w-full p-4">
+          <Space orientation="vertical" size={32} className="w-full p-4">
             <div>
               <Space align="center" size={12}>
                 <TagIcon color="#3aaeed" size={16} />
@@ -415,16 +415,16 @@ function DashboardPage() {
                   My Applications
                 </Text>
               </Space>
-              <div className="mt-[14px]">
+              <div className="mt-[14px] flex flex-wrap gap-2">
                 {apps.map((app) => (
                   <Link key={app.appId} to={app.name === "system" ? "/manage" : `/manage/${app.appId}`}>
-                    <Button className="m-1">
+                    <Button>
                       <ShieldEllipsis size={14} />
                     {app.name}
                   </Button>
                   </Link>
                 ))}
-                <Link to="/apps/create" className="m-1">
+                <Link to="/apps/create">
                 <Button type="dashed">
                   <PlusIcon size={14} />
                   Create New App
@@ -439,7 +439,7 @@ function DashboardPage() {
       <Divider className="my-6" />
 
       {/* App Usage Summary */}
-      <Space direction="vertical" style={{ width: '100%' }} className="mb-8">
+      <Space orientation="vertical" style={{ width: '100%' }} className="mb-8">
         <Space align="center" size={12}>
           <AppWindowIcon color="#3aaeed" size={16} />
           <Text strong className="text-base">Applications Logged Into</Text>
@@ -466,7 +466,7 @@ function DashboardPage() {
         </Row>
       </Space>
 
-      <Space direction="vertical" style={{ width: '100%' }}>
+      <Space orientation="vertical" style={{ width: '100%' }}>
         <Flex justify="space-between" align="center">
           <Space align="center" size={12}>
             <ClockIcon size={16} color='#3aaeed' />

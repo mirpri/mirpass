@@ -52,8 +52,8 @@ function RegisterPage() {
 
   return (
       <Card className="max-w-md w-full shadow-2xl">
-        <Space direction="vertical" size="large" className="w-full">
-          <Space direction="vertical" size={4}>
+        <Space orientation="vertical" size="large" className="w-full">
+          <Space orientation="vertical" size={4}>
             <Title level={3} className="m-0">
               Create your account
             </Title>

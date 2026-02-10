@@ -28,7 +28,7 @@ func GetUserLoginHistory(username string, dateStr string, offsetMinutes int) ([]
 		utcEnd := utcStart.Add(24 * time.Hour)
 
 		query = `
-			SELECT a.name as app, a.logo_url, ls.login_at
+			SELECT a.name as app, ls.login_at
 			FROM login_sessions ls
 			JOIN applications a ON ls.app_id = a.id
 			WHERE ls.username = ? AND ls.login_at >= ? AND ls.login_at < ?
@@ -38,7 +38,7 @@ func GetUserLoginHistory(username string, dateStr string, offsetMinutes int) ([]
 	} else {
 		// Default: Recent 10 items
 		query = `
-			SELECT a.name as app, a.logo_url, ls.login_at
+			SELECT a.name as app, ls.login_at
 			FROM login_sessions ls
 			JOIN applications a ON ls.app_id = a.id
 			WHERE ls.username = ?
@@ -55,17 +55,15 @@ func GetUserLoginHistory(username string, dateStr string, offsetMinutes int) ([]
 	var history []types.LoginHistoryItem
 	for rows.Next() {
 		var item types.LoginHistoryItem
-		var logo sql.NullString
-		if err := rows.Scan(&item.App, &logo, &item.Timestamp); err != nil {
+		if err := rows.Scan(&item.App, &item.Timestamp); err != nil {
 			return nil, err
 		}
-		item.LogoUrl = logo.String
 		history = append(history, item)
 	}
 	return history, nil
 }
 
-func GetUserAppsSummary(username string) ([]types.LoginHistoryItem, error) {
+func GetUserAppsSummary(username string) ([]types.AppLoginSummaryItem, error) {
 	// Returns distinct apps and last login time
 	query := `
 		SELECT a.name as app, a.logo_url, MAX(ls.login_at) as last_login
@@ -81,9 +79,9 @@ func GetUserAppsSummary(username string) ([]types.LoginHistoryItem, error) {
 	}
 	defer rows.Close()
 
-	var summary []types.LoginHistoryItem
+	var summary []types.AppLoginSummaryItem
 	for rows.Next() {
-		var item types.LoginHistoryItem
+		var item types.AppLoginSummaryItem
 		var logo sql.NullString
 		if err := rows.Scan(&item.App, &logo, &item.Timestamp); err != nil {
 			return nil, err
@@ -127,7 +125,6 @@ func GetAppLoginStats(appID string) ([]types.LoginHistoryItem, int, error) {
 		if err := rows.Scan(&user, &item.Timestamp); err != nil {
 			return nil, 0, err
 		}
-		item.App = appID // implied
 		item.User = user.String
 		history = append(history, item)
 	}
@@ -1107,7 +1104,6 @@ func GetAppHistory(appID string, dateStr string, offsetMinutes int) ([]types.Log
 		if err := rows.Scan(&user, &item.Timestamp); err != nil {
 			return nil, err
 		}
-		item.App = appID
 		item.User = user.String
 		history = append(history, item)
 	}
