@@ -1,9 +1,8 @@
 package handlers
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 
@@ -19,21 +18,34 @@ func InitiateSSOHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check API Key
-	apiKey := r.Header.Get("X-Api-Key")
-	if apiKey == "" {
-		WriteErrorResponse(w, http.StatusUnauthorized, "Missing API Key")
+	var req struct {
+		AppID string `json:"appId"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		WriteErrorResponse(w, http.StatusBadRequest, "Invalid request")
 		return
 	}
 
-	hash := sha256.Sum256([]byte(apiKey))
-	keyHash := hex.EncodeToString(hash[:])
+	var appID string
 
-	appID, err := db.GetAppIDByAPIKeyHash(keyHash)
+	apiKey := r.Header.Get("X-Api-Key")
+	if apiKey == "" {
+		WriteErrorResponse(w, http.StatusBadRequest, "Missing API Key")
+		return
+	}
+
+	hash := utils.Sha256(apiKey)
+	id, err := db.GetAppIDByAPIKeyHash(hash)
 	if err != nil {
 		WriteErrorResponse(w, http.StatusUnauthorized, "Invalid API Key")
 		return
 	}
+	// If AppID is provided in body, verify it matches
+	if req.AppID != "" && req.AppID != id {
+		WriteErrorResponse(w, http.StatusForbidden, "App ID mismatch")
+		return
+	}
+	appID = id
 
 	app, err := db.GetApplication(appID)
 	if err != nil {
@@ -49,16 +61,18 @@ func InitiateSSOHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create Session
-	sessionID := utils.GenerateToken()                // Reusing existing random string generator
-	err = db.CreateLoginSession(appID, sessionID, 10) // 10 minutes expiry
+	sessionID := utils.GenerateToken()
+	pollSecret := utils.GenerateToken()                           // Secret to polling status
+	err = db.CreateLoginSession(appID, sessionID, pollSecret, 10) // 10 minutes expiry
 	if err != nil {
 		WriteErrorResponse(w, http.StatusInternalServerError, "Failed to create session")
 		return
 	}
 
 	resp := map[string]string{
-		"sessionId": sessionID,
-		"loginUrl":  config.AppConfig.FrontendURL + "/login?sso=" + sessionID,
+		"sessionId":  sessionID,
+		"pollSecret": pollSecret,
+		"loginUrl":   config.AppConfig.FrontendURL + "/login?sso=" + sessionID,
 	}
 	WriteSuccessResponse(w, "Session initiated", resp)
 }
@@ -72,6 +86,7 @@ func GetSSODetailsHandler(w http.ResponseWriter, r *http.Request) {
 
 	session, err := db.GetLoginSession(sessionID)
 	if err != nil {
+		log.Printf("GetLoginSession error: %v", err)
 		WriteErrorResponse(w, http.StatusNotFound, "Session not found")
 		return
 	}
@@ -114,43 +129,37 @@ func ConfirmSSOHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		SessionID string `json:"sessionId"`
+		SessionID   string `json:"sessionId"`
+		RequestCode bool   `json:"requestCode"` // If true, code is returned and marked delivered
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		WriteErrorResponse(w, http.StatusBadRequest, "Invalid request")
 		return
 	}
 
-	// Check suspension
-	session, err := db.GetLoginSession(req.SessionID)
-	if err != nil {
-		WriteErrorResponse(w, http.StatusNotFound, "Session not found")
-		return
-	}
+	// Generate Auth Code
+	authCode := utils.GenerateToken()
 
-	app, err := db.GetApplication(session.AppID)
-	if err != nil {
-		WriteErrorResponse(w, http.StatusInternalServerError, "Failed to get app")
-		return
-	}
-	if app.SuspendUntil != nil {
-		t, err := time.Parse(time.RFC3339, *app.SuspendUntil)
-		if err == nil && t.After(time.Now().UTC()) {
-			WriteErrorResponse(w, http.StatusForbidden, "Application is suspended")
-			return
-		}
-	}
-
-	err = db.ConfirmLoginSession(req.SessionID, claims.Username)
+	// If client requests code (for redirect), we return it and set state='delivered'.
+	// Else we just confirm (state='confirmed').
+	err = db.ConfirmLoginSession(req.SessionID, claims.Username, authCode, req.RequestCode)
 	if err != nil {
 		WriteErrorResponse(w, http.StatusInternalServerError, "Failed to confirm")
 		return
 	}
-	WriteSuccessResponse(w, "Confirmed", nil)
+
+	var authCodeResp string
+	if req.RequestCode {
+		authCodeResp = authCode
+	}
+
+	WriteSuccessResponse(w, "Confirmed", map[string]string{"authCode": authCodeResp})
 }
 
 func PollSSOHandler(w http.ResponseWriter, r *http.Request) {
 	sessionID := r.URL.Query().Get("sessionId")
+	pollSecret := r.URL.Query().Get("secret") // New Requirement
+
 	if sessionID == "" {
 		WriteErrorResponse(w, http.StatusBadRequest, "Missing sessionId")
 		return
@@ -162,23 +171,93 @@ func PollSSOHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if session.LoginAt == nil {
+	// Verify Secret if it exists in DB (legacy/migrated rows might not have it, user didn't specify strict enforcement for old sessions, assuming new ones have it)
+	// If session has secret, enforce it.
+	if session.PollSecret != nil && *session.PollSecret != "" {
+		if pollSecret != *session.PollSecret {
+			WriteErrorResponse(w, http.StatusForbidden, "Invalid poll secret")
+			return
+		}
+	}
+
+	if session.State == "pending" || session.LoginAt == nil {
 		// Pending
 		WriteSuccessResponse(w, "pending", map[string]string{"status": "pending"})
 		return
 	}
 
-	// Confirmed, generate token
-	// This token IS the "ticket" the TPA uses to log the user in on their side
-	// and verifies against Mirpass.
-	token, err := utils.GenerateSSOToken(session.AppID, *session.Username)
+	// If state is 'confirmed', return code and set state='delivered'
+	if session.State == "confirmed" {
+		// Deliver code
+		var code string
+		if session.AuthCode != nil {
+			code = *session.AuthCode
+		}
+
+		// Update state to delivered
+		db.UpdateSessionState(session.SessionID, "delivered")
+
+		WriteSuccessResponse(w, "confirmed", map[string]string{
+			"status":   "confirmed",
+			"authCode": code,
+		})
+		return
+	}
+
+	// If already delivered or exchanged, do not return code
+	if session.State == "delivered" || session.State == "exchanged" {
+		// Already delivered
+		WriteSuccessResponse(w, "confirmed", map[string]string{
+			"status": "confirmed",
+			// No code returned
+		})
+		return
+	}
+
+	// Default fallback
+	WriteErrorResponse(w, http.StatusInternalServerError, "Unknown state")
+}
+
+func ExchangeSSOCodeHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		Code string `json:"code"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		WriteErrorResponse(w, http.StatusBadRequest, "Invalid request")
+		return
+	}
+
+	session, err := db.GetSessionByAuthCode(req.Code)
+	if err != nil {
+		WriteErrorResponse(w, http.StatusNotFound, "Invalid auth code")
+		return
+	}
+
+	// Check if used (state should not be 'exchanged')
+	if session.State == "exchanged" {
+		WriteErrorResponse(w, http.StatusForbidden, "Auth code already used")
+		return
+	}
+
+	// Mark as exchanged
+	if err := db.UpdateSessionState(session.SessionID, "exchanged"); err != nil {
+		WriteErrorResponse(w, http.StatusInternalServerError, "Failed to mark code used")
+		return
+	}
+
+	// Generate Token
+	token, err := utils.GenerateJWTToken(session.AppID, *session.Username)
 	if err != nil {
 		WriteErrorResponse(w, http.StatusInternalServerError, "Token gen failed")
 		return
 	}
 
-	WriteSuccessResponse(w, "confirmed", map[string]string{
-		"status":   "confirmed",
+	WriteSuccessResponse(w, "success", map[string]string{
 		"token":    token,
 		"username": *session.Username,
 	})

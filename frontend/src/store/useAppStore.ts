@@ -33,17 +33,17 @@ interface AppState {
     status: string;
   } | null;
   setSsoDetails: (details: AppState["ssoDetails"]) => void;
-    fetchSsoDetails: () => Promise<void>;
-    ssoConfirm: () => Promise<void>;
+  fetchSsoDetails: () => Promise<void>;
+  ssoConfirm: (requestCode: boolean) => Promise<void>;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
   token: localStorage.getItem("token"),
   setToken: (token) => {
     if (token) {
-        localStorage.setItem("token", token);
+      localStorage.setItem("token", token);
     } else {
-        localStorage.removeItem("token");
+      localStorage.removeItem("token");
     }
     set({ token });
   },
@@ -99,12 +99,16 @@ export const useAppStore = create<AppState>((set, get) => ({
     const { data } = await api.get(`/sso/details?sessionId=${sid}`);
     set({ ssoDetails: data.data });
   },
-    ssoConfirm: async () => {
-        const sid = get().ssoSessionId;
-        await api.post("/sso/confirm", { sessionId: sid });
-        const currentDetails = get().ssoDetails;
-        if (currentDetails) {
-            set({ ssoDetails: { ...currentDetails, status: "confirmed" } });
-        }
-    },
+  ssoConfirm: async (requestCode: boolean = false) => {
+    const sid = get().ssoSessionId;
+    const { data } = await api.post("/sso/confirm", {
+      sessionId: sid,
+      requestCode,
+    });
+    const currentDetails = get().ssoDetails;
+    if (currentDetails) {
+      set({ ssoDetails: { ...currentDetails, status: "confirmed" } });
+    }
+    return data.data; // Return the authCode payload
+  },
 }));

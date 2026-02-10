@@ -13,6 +13,7 @@ import {
   Tabs,
   DatePicker,
   Upload,
+  Avatar,
 } from "antd";
 import dayjs from "dayjs";
 import { parseDate } from "../utils/date";
@@ -304,7 +305,7 @@ function UserTab({ systemRole }: { systemRole: string }) {
           <Form.Item
             name="password"
             label="New Password"
-            rules={[{ required: true, min: 6 }]}
+            rules={[{ required: true}]}
           >
             <Input.Password />
           </Form.Item>
@@ -376,9 +377,7 @@ function AppsTab({ systemRole: _systemRole }: { systemRole: string }) {
       key: "name",
       render: (text: string, record: AdminAppView) => (
         <Space>
-          {record.logoUrl && (
-            <img src={record.logoUrl} alt="icon" className="w-6 h-6 rounded" />
-          )}
+          <Avatar src={record.logoUrl} size={"small"}>{text.charAt(0)}</Avatar>
           {text}
         </Space>
       ),
@@ -396,6 +395,7 @@ function AppsTab({ systemRole: _systemRole }: { systemRole: string }) {
       key: "suspendUntil",
       render: (date: string | null, record: AdminAppView) => (
         <DatePicker
+          size="small"
           showTime
           value={date ? parseDate(date) : null}
           onChange={(d) => handleSuspend(record.id, d)}

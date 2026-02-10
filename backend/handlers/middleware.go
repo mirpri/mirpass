@@ -17,7 +17,7 @@ func CORSMiddleware(next http.Handler) http.Handler {
 		// Set CORS headers
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
-		w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-Requested-With")
+		w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-Requested-With, X-Api-Key")
 
 		// Handle preflight requests
 		if r.Method == "OPTIONS" {
@@ -44,7 +44,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		}
 
 		tokenString := parts[1]
-		username, err := utils.ValidateJWTToken(tokenString)
+		username, err := utils.ValidateSysToken(tokenString)
 		if err != nil {
 			WriteErrorResponse(w, http.StatusUnauthorized, "Invalid or expired token")
 			return

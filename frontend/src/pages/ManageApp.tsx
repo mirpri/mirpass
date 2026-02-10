@@ -97,7 +97,7 @@ function ManageAppPage() {
     {
       key: "help",
       label: "Integration Guide",
-      children: <IntegrationGuideTab />,
+      children: <IntegrationGuideTab app={app} />,
     },
     {
       key: "settings",
@@ -663,26 +663,27 @@ function SettingsTab({
 
 // --- Guide Tab ---
 
-function IntegrationGuideTab() {
+function IntegrationGuideTab({ app }: { app: AppDetails }) {
   const backendUrl = config.API_URL;
+  if (backendUrl.endsWith("/")) {
+    backendUrl.slice(0, -1);
+  }
   const frontendUrl = window.location.origin;
 
-  const [apiKey, setApiKey] = useState("");
   const [redirectUrl, setRedirectUrl] = useState("");
+  const [apiKey, setApiKey] = useState("");
 
   const handleCreateTestSession = async () => {
     try {
       const { data } = await api.post(
         "/sso/init",
-        {},
+        { appId: app.id },
         {
           headers: {
             "X-Api-Key": apiKey,
           },
-        },
+        }
       );
-      // data.data is map[string]string from backend
-      // keys are now camelCase: sessionId, loginUrl
       const loginUrl =
         (data.data as any).loginUrl +
         (redirectUrl ? `&from=${encodeURIComponent(redirectUrl)}` : "");
@@ -704,12 +705,11 @@ function IntegrationGuideTab() {
         <Title level={3}>Mirpass SSO Integration Guide</Title>
         <Paragraph>
           Integrate secure Single Sign-On (SSO) into your application using
-          Mirpass. Use your API keys to initiate login sessions and retrieve
-          user credentials securely.
+          Mirpass. Initiate login sessions with your App ID.
         </Paragraph>
-        <Space direction="vertical" className="w-full max-w-xl">
+        <Space orientation="vertical" className="w-full max-w-xl">
           <Input
-            placeholder="Api Key"
+            placeholder="API Key"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
           />
@@ -718,7 +718,7 @@ function IntegrationGuideTab() {
             value={redirectUrl}
             onChange={(e) => setRedirectUrl(e.target.value)}
           />
-          <Button onClick={handleCreateTestSession} type="primary">
+          <Button onClick={handleCreateTestSession} type="primary" disabled={!apiKey}>
             Create test session
           </Button>
         </Space>
@@ -728,20 +728,24 @@ function IntegrationGuideTab() {
         <Title level={4}>1. Initiate Login Session</Title>
         <Paragraph>
           When a user clicks "Login with Mirpass" on your site, make a
-          server-to-server request to get a session ID. Do not expose your API
-          Key to the frontend.
+          server-to-server request to get a session ID.
         </Paragraph>
         <div className="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed">
           <span className="text-purple-400">POST</span> {backendUrl}/sso/init
           <br />
+          <span className="text-blue-300">Content-Type:</span> application/json
+          <br />
           <span className="text-blue-300">X-Api-Key:</span> YOUR_API_KEY
           <br />
+          <br />
+          {`{ "appId": "${app.id}" }`}
         </div>
         <div className="mt-2 bg-gray-100 dark:bg-gray-800 p-3 rounded text-sm text-gray-600 dark:text-gray-300 font-mono">
           {`{
   "status": "success",
   "data": {
     "sessionId": "sess_abc123...",
+    "pollSecret": "secret_xyz...",
     "loginUrl": "${frontendUrl}/login?sso=sess_abc123..." 
   }
 }`}
@@ -763,22 +767,20 @@ function IntegrationGuideTab() {
           After successful authorization, the user will be redirected to:
           <br />
           <code className="bg-gray-100 dark:bg-gray-800 p-1 rounded">
-            https://yoursite.com/callback?mirpass_sso=sess_abc123...
+            https://yoursite.com/callback?code=AUTH_CODE_123...
           </code>
         </Paragraph>
       </div>
 
       <div>
-        <Title level={4}>3. Poll for Status</Title>
+        <Title level={4}>3. Poll for Status (If not redirecting)</Title>
         <Paragraph>
-          While the user is logging in on Mirpass, your client can poll the
-          status endpoint using the `session_id`. Use this when your client is
-          not a web app and won't be able to receive redirects, or if you want
-          to show real-time status updates.
+          Use the `pollSecret` returned in step 1 to securely poll the status. 
+          Note: If the user is redirected (Step 2), the auth code will be delivered there, and subsequent polling will not satisfy the code delivery.
         </Paragraph>
         <div className="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed">
           <span className="text-green-400">GET</span> {backendUrl}
-          /sso/poll?sessionId=sess_abc123...
+          /sso/poll?sessionId=sess_abc123...&secret=secret_xyz...
         </div>
         <Paragraph className="mt-2 text-sm text-gray-500">
           Response (Pending):
@@ -792,14 +794,38 @@ function IntegrationGuideTab() {
         <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs font-mono">
           {`{
   "status": "confirmed",
-  "username": "john_doe",
-  "token": "eyJhbGciOiJIUzI1Ni..." // Short-lived SSO Token
+  "authCode": "AUTH_CODE_123..."
 }`}
         </div>
       </div>
 
       <div>
-        <Title level={4}>4. Verify Token (Optional)</Title>
+        <Title level={4}>4. Exchange Code for Token</Title>
+        <Paragraph>
+          Once you receive the `authCode` (via redirect or polling), exchange it for a user access token.
+          The code is valid for 10 minutes and can be used only once.
+        </Paragraph>
+        <div className="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed">
+          <span className="text-purple-400">POST</span> {backendUrl}/sso/token
+          <br />
+          <span className="text-blue-300">Content-Type:</span> application/json
+          <br />
+          <br />
+          {`{ "code": "AUTH_CODE_123..." }`}
+        </div>
+        <Paragraph className="mt-2 text-sm text-gray-500">
+          Response:
+        </Paragraph>
+        <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs font-mono">
+          {`{
+  "token": "eyJhbGciOiJIUzI1Ni...",
+  "username": "john_doe"
+}`}
+        </div>
+      </div>
+
+      <div>
+        <Title level={4}>5. Verify Token</Title>
         <Paragraph>
           To ensure the token is valid and get user claims, verify it against
           our server.
@@ -812,6 +838,11 @@ function IntegrationGuideTab() {
           <br />
           {`{ "token": "eyJhbGciOiJIUzI1Ni..." }`}
         </div>
+        <Paragraph className="mt-2 text-sm text-gray-500">
+          Response:
+        </Paragraph>
+        <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs font-mono">
+          </div>
       </div>
     </div>
   );

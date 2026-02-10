@@ -107,13 +107,16 @@ type RemoveMemberRequest struct {
 // SSO Types
 
 type SSOSession struct {
-	ID        int64   `json:"id"`
-	SessionID string  `json:"sessionId"`
-	AppID     string  `json:"appId"`
-	Username  *string `json:"username,omitempty"` // Pointer to handle NULL
-	CreatedAt string  `json:"createdAt"`
-	ExpiresAt string  `json:"expiresAt"`
-	LoginAt   *string `json:"loginAt,omitempty"`
+	ID         int64   `json:"id"`
+	SessionID  string  `json:"sessionId"`
+	AppID      string  `json:"appId"`
+	Username   *string `json:"username,omitempty"` // Pointer to handle NULL
+	CreatedAt  string  `json:"createdAt"`
+	ExpiresAt  string  `json:"expiresAt"`
+	LoginAt    *string `json:"loginAt,omitempty"`
+	AuthCode   *string `json:"authCode,omitempty"`
+	State      string  `json:"state"`
+	PollSecret *string `json:"pollSecret,omitempty"`
 }
 
 type SSOSessionDetails struct {

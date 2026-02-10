@@ -140,13 +140,22 @@ function LoginPage({ onLogin, isAuthenticated }: Props) {
     if (!ssoSessionId) return;
     setConfirming(true);
     try {
-      await ssoConfirm();
+      // Pass 'true' if we have a redirect URL (activeFrom), requesting the authCode
+      const confirmData = await ssoConfirm(!!activeFrom);
       setSsoSessionId(null); // clear SSO session to prevent confusion
       message.success(`Logged in to ${ssoDetails?.appName}`);
+      
       // Redirect to app or dashboard
       if (activeFrom) {
+        let redirectUrl = activeFrom;
+        const code = (confirmData as any)?.authCode;
+        if (code) {
+          const separator = activeFrom.includes("?") ? "&" : "?";
+          redirectUrl += `${separator}code=${encodeURIComponent(code)}`;
+        }
+
         setTimeout(() => {
-          window.location.href = activeFrom;
+          window.location.href = redirectUrl;
         }, 500);
       }
     } catch (e) {

@@ -856,11 +856,11 @@ func GetAppName(appID string) (string, error) {
 	return name, err
 }
 
-func CreateLoginSession(appID string, sessionID string, expiryMinutes int) error {
+func CreateLoginSession(appID string, sessionID string, pollSecret string, expiryMinutes int) error {
 	_, err := database.Exec(`
-        INSERT INTO login_sessions (app_id, session_id, expires_at) 
-        VALUES (?, ?, DATE_ADD(UTC_TIMESTAMP(), INTERVAL ? MINUTE))`,
-		appID, sessionID, expiryMinutes)
+        INSERT INTO login_sessions (app_id, session_id, poll_secret, state, expires_at) 
+        VALUES (?, ?, ?, 'pending', DATE_ADD(UTC_TIMESTAMP(), INTERVAL ? MINUTE))`,
+		appID, sessionID, pollSecret, expiryMinutes)
 	return err
 }
 
@@ -868,13 +868,15 @@ func GetLoginSession(sessionID string) (*types.SSOSession, error) {
 	s := &types.SSOSession{}
 	var username sql.NullString
 	var loginAt sql.NullString
+	var authCode sql.NullString
+	var pollSecret sql.NullString
 
 	var cAt, eAt sql.NullString
 
 	err := database.QueryRow(`
-        SELECT id, app_id, session_id, username, created_at, expires_at, login_at 
+        SELECT id, app_id, session_id, username, created_at, expires_at, login_at, auth_code, state, poll_secret
         FROM login_sessions WHERE session_id = ?`, sessionID).
-		Scan(&s.ID, &s.AppID, &s.SessionID, &username, &cAt, &eAt, &s.LoginAt)
+		Scan(&s.ID, &s.AppID, &s.SessionID, &username, &cAt, &eAt, &loginAt, &authCode, &s.State, &pollSecret)
 
 	if err != nil {
 		return nil, err
@@ -890,14 +892,65 @@ func GetLoginSession(sessionID string) (*types.SSOSession, error) {
 		l := loginAt.String
 		s.LoginAt = &l
 	}
+	if authCode.Valid {
+		ac := authCode.String
+		s.AuthCode = &ac
+	}
+	if pollSecret.Valid {
+		ps := pollSecret.String
+		s.PollSecret = &ps
+	}
 	return s, nil
 }
 
-func ConfirmLoginSession(sessionID string, username string) error {
+func ConfirmLoginSession(sessionID string, username string, authCode string, delivered bool) error {
+	newState := "confirmed"
+	if delivered {
+		newState = "delivered"
+	}
 	_, err := database.Exec(`
         UPDATE login_sessions 
-        SET username = ?, login_at = UTC_TIMESTAMP() 
-        WHERE session_id = ?`, username, sessionID)
+        SET username = ?, login_at = UTC_TIMESTAMP(), auth_code = ?, state = ? 
+        WHERE session_id = ? AND expires_at > UTC_TIMESTAMP()`, username, authCode, newState, sessionID)
+	return err
+}
+
+func GetSessionByAuthCode(code string) (*types.SSOSession, error) {
+	s := &types.SSOSession{}
+	var username sql.NullString
+	var loginAt sql.NullString
+	var authCode sql.NullString
+	var pollSecret sql.NullString
+	var cAt, eAt sql.NullString
+
+	err := database.QueryRow(`
+        SELECT id, app_id, session_id, username, created_at, expires_at, login_at, auth_code, state, poll_secret
+        FROM login_sessions WHERE auth_code = ? AND expires_at > UTC_TIMESTAMP()`, code).
+		Scan(&s.ID, &s.AppID, &s.SessionID, &username, &cAt, &eAt, &loginAt, &authCode, &s.State, &pollSecret)
+
+	if err != nil {
+		return nil, err
+	}
+	s.CreatedAt = cAt.String
+	s.ExpiresAt = eAt.String
+
+	if username.Valid {
+		u := username.String
+		s.Username = &u
+	}
+	if loginAt.Valid {
+		l := loginAt.String
+		s.LoginAt = &l
+	}
+	if authCode.Valid {
+		ac := authCode.String
+		s.AuthCode = &ac
+	}
+	return s, nil
+}
+
+func UpdateSessionState(sessionID string, state string) error {
+	_, err := database.Exec("UPDATE login_sessions SET state = ? WHERE session_id = ?", state, sessionID)
 	return err
 }
 

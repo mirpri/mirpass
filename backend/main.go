@@ -80,6 +80,7 @@ func main() {
 	mux.HandleFunc("/sso/details", handlers.GetSSODetailsHandler)
 	mux.HandleFunc("/sso/poll", handlers.PollSSOHandler)
 	mux.HandleFunc("/sso/verify", handlers.VerifySSOTokenHandler)
+	mux.HandleFunc("/sso/token", handlers.ExchangeSSOCodeHandler)
 	mux.Handle("/sso/confirm", handlers.AuthMiddleware(http.HandlerFunc(handlers.ConfirmSSOHandler)))
 
 	// Root routes

@@ -26,6 +26,10 @@ func AdminListApps(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	for i := range apps {
+		apps[i].LogoURL = FormatUrl(apps[i].LogoURL)
+	}
+
 	WriteSuccessResponse(w, "Apps fetched", apps)
 }
 

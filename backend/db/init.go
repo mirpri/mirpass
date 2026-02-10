@@ -123,6 +123,9 @@ func InitDB() error {
 	       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		   login_at TIMESTAMP NULL,
 	       expires_at TIMESTAMP NOT NULL,
+		   auth_code VARCHAR(255) DEFAULT NULL,
+		   state VARCHAR(50) DEFAULT 'pending',
+		   poll_secret VARCHAR(255) DEFAULT NULL,
 	       FOREIGN KEY (username) REFERENCES users(username) ON DELETE CASCADE,
 	       FOREIGN KEY (app_id) REFERENCES applications(id) ON DELETE CASCADE
 	   )`); err != nil {

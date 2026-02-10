@@ -45,7 +45,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token := utils.GenerateJWTToken(creds.Username)
+	token, _ := utils.GenerateSysToken(creds.Username)
 	WriteSuccessResponse(w, "Login Success", map[string]string{"token": token})
 }
 
