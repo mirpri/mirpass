@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"log"
 	"mirpass-backend/config"
 	"mirpass-backend/db"
 	"mirpass-backend/utils"
@@ -53,7 +52,6 @@ func DeviceFlowInitiateHandler(w http.ResponseWriter, r *http.Request) {
 	err = db.CreateDeviceFlowSession(app.ID, sessionId, deviceCode, userCode)
 	if err != nil {
 		WriteErrorResponse(w, http.StatusInternalServerError, "Failed to create device flow")
-		log.Printf("Error creating device flow session: %v", err)
 		return
 	}
 
@@ -131,7 +129,6 @@ func SessionDetailsByUsercodeHandler(w http.ResponseWriter, r *http.Request) {
 
 	session, err := db.GetSessionByUserCode(userCode)
 	if err != nil {
-		log.Printf("Error fetching session by user code: %v", err)
 		WriteErrorResponse(w, 400, "Invalid userCode")
 		return
 	}
@@ -178,7 +175,6 @@ func SessionDetailsHandler(w http.ResponseWriter, r *http.Request) {
 
 	session, err := db.GetSessionBySessionId(sessionId)
 	if err != nil {
-		log.Printf("Error fetching session by sessionId: %v", err)
 		WriteErrorResponse(w, 400, "Invalid sessionId")
 		return
 	}

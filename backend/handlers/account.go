@@ -3,7 +3,6 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
-	"log"
 	"mirpass-backend/db"
 	"net/http"
 	"regexp"
@@ -28,7 +27,6 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		if err == sql.ErrNoRows {
 			WriteErrorResponse(w, 401, "Invalid username or password")
 		} else {
-			log.Printf("GetUserByUsername error: %v", err)
 			WriteErrorResponse(w, 500, "Database error")
 		}
 		return
@@ -103,7 +101,6 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 	_, err = db.CreateUser(req.Username, req.Email, string(hashedPassword))
 	if err != nil {
-		log.Printf("CreateUser error: %v", err)
 		WriteErrorResponse(w, 500, "Error creating user")
 		return
 	}
@@ -112,7 +109,6 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	token := utils.GenerateToken()
 	err = db.CreateVerification(req.Username, token, "register", "")
 	if err != nil {
-		log.Printf("CreateVerification error: %v", err)
 		WriteErrorResponse(w, 500, "Error creating verification")
 		return
 	}

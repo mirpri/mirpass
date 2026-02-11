@@ -93,7 +93,7 @@ function AuthorizePage() {
     try {
       const confirmData = await ssoConfirm(!!urlFrom);
       
-      message.success(`Logged in to ${ssoDetails?.appId}`);
+      message.success(`Logged in to ${ssoDetails?.appName}`);
       if (setSsoSessionId) setSsoSessionId(null);
 
       if (urlFrom) {
@@ -138,10 +138,10 @@ function AuthorizePage() {
                rules={[{ required: true, message: "Please enter the code" }]}
             >
                <Input 
-                 placeholder="ABCD-1234" 
+                 placeholder="ABCD1234" 
                  size="large" 
                  className="text-center tracking-widest uppercase font-mono"
-                 maxLength={9}
+                 maxLength={8}
                  onChange={(e) => {
                     e.target.value = e.target.value.toUpperCase();
                  }}
@@ -162,7 +162,7 @@ function AuthorizePage() {
           <CircleCheck className="text-green-500 mb-4 mx-auto" size={64} />
           <Title level={3}>Success!</Title>
           <Text className="block mb-6">
-            You have logged in to {ssoDetails.appId}.
+            You have logged in to {ssoDetails.appName}.
             <br />
             You can close this window now.
           </Text>
@@ -180,9 +180,9 @@ function AuthorizePage() {
     <Card className="max-w-sm w-full shadow-2xl">
       <Space orientation="vertical" size="large" className="w-full text-center">
         <div className="flex flex-col items-center">
-          <AnyAvatar size={64} url={{url: ssoDetails.logoUrl, text: ssoDetails.appId}} className="m-5"/>
+          <AnyAvatar size={64} url={{url: ssoDetails.logoUrl, text: ssoDetails.appName}} className="m-5"/>
           <Title level={3} className="m-0">
-            {ssoDetails.appId}
+            {ssoDetails.appName}
           </Title>
           <Text type="secondary">wants to access your account</Text>
         </div>
@@ -212,7 +212,7 @@ function AuthorizePage() {
           onClick={handleConfirmSSO}
           loading={confirming}
         >
-          Continue to {ssoDetails.appId}
+          Continue to {ssoDetails.appName}
         </Button>
         <Button type="text" block onClick={logout}>
           Change Account

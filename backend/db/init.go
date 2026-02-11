@@ -139,7 +139,7 @@ func InitDB() error {
 			username           VARCHAR(64),
 			flow_type         ENUM('auth_code', 'device_code') NOT NULL,
 
-			-- Device Flow
+			-- Device Code Flow
 			device_code       VARCHAR(128),
 			user_code         VARCHAR(32),
 			last_poll          DATETIME DEFAULT CURRENT_TIMESTAMP,

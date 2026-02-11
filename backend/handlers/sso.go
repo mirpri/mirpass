@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"time"
 
@@ -86,7 +85,6 @@ func GetSSODetailsHandler(w http.ResponseWriter, r *http.Request) {
 
 	session, err := db.GetLoginSession(sessionID)
 	if err != nil {
-		log.Printf("GetLoginSession error: %v", err)
 		WriteErrorResponse(w, http.StatusNotFound, "Session not found")
 		return
 	}

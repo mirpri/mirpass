@@ -7,7 +7,7 @@ import { useAppStore } from "../store/useAppStore";
 interface AnyAvatarProps {
   username?: string;
   appId?: string;
-  url?: {url: string | undefined, text: string};
+  url?: {url: string | undefined, text: string | undefined};
   size?: number | "small" | "default" | "large";
   className?: string;
 }
@@ -25,8 +25,8 @@ export function AnyAvatar({
   useEffect(() => {
     const load = async () => {
       if (url) {
-        setSrc(url.url);
-        setAlt(url.text.charAt(0).toUpperCase());
+        if (url.url) setSrc(url.url);
+        setAlt(url.text ? url.text.charAt(0).toUpperCase() : "?");
       } else if (appId) {
         try {
           const { data } = await api.get<{

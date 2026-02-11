@@ -129,7 +129,7 @@ function ManageAppPage() {
       }
     >
       <Space size={10} align="center" className="mb-3">
-        <AnyAvatar size={48} url={{url: app.logoUrl, text: app.name}} />
+        <AnyAvatar size={48} url={{ url: app.logoUrl, text: app.name }} />
         <Title level={3} style={{ marginBottom: 0 }}>
           {app.name}
         </Title>
@@ -674,9 +674,6 @@ function IntegrationGuideTab({ app }: { app: AppDetails }) {
   }
   const frontendUrl = window.location.origin;
 
-  const [redirectUrl, setRedirectUrl] = useState("");
-  const [apiKey, setApiKey] = useState("");
-
   const [deviceCodeData, setDeviceCodeData] = useState<any>(null);
   const [pollStatus, setPollStatus] = useState<string>("");
   const [pollResult, setPollResult] = useState<any>(null);
@@ -686,38 +683,22 @@ function IntegrationGuideTab({ app }: { app: AppDetails }) {
     setPollResult(null);
     setPollStatus("Initiating...");
     try {
-      // Use Device Flow
+      // Use Device Code Flow
       const { data } = await api.post(
         "/oauth2/devicecode",
         { client_id: app.id },
-        // Device flow is public typically, but we might want to check app suspension etc.
-        // The backend handler checks app existence by client_id.
       );
-      
+
       setDeviceCodeData(data);
       setPollStatus("Waiting for user authorization...");
-      
-      // Construct URL if verification_uri_complete provided
-      let loginUrl = data.verification_uri_complete;
-      if (loginUrl && redirectUrl) {
-           // Not standard device flow, but for this "test" helper
-           // However, device flow user code is usually entered manually or via magic link.
-           // The backend returns keys as per RFC 8628? Yes map[string]string.
-      }
-      
+
       message.success("Session initiated");
-      if (loginUrl) {
-          window.open(loginUrl, "_blank");
-      }
+      // if (loginUrl) {
+      //   window.open(loginUrl, "_blank");
+      // }
     } catch (error: unknown) {
       const err = error as ErrorResponse;
-      // device flow errors might be different structure?
-      // WriteErrorResponse wraps in {error: message} or standard wrapper.
-      // handlers.WriteErrorResponse -> { status, message, error: ... } potentially?
-      // handlers.WriteOauthErrorResponse -> { error: message }
-      
       const msg = err.response?.error || "Failed";
-      console.error("Failed to create test session", err);
       setPollStatus("Failed: " + msg);
     }
   };
@@ -735,7 +716,7 @@ function IntegrationGuideTab({ app }: { app: AppDetails }) {
           device_code: deviceCodeData.device_code,
           grant_type: "urn:ietf:params:oauth:grant-type:device_code",
         });
-        
+
         // Success
         setPollResult(data);
         setPollStatus("Success! Token received.");
@@ -744,14 +725,14 @@ function IntegrationGuideTab({ app }: { app: AppDetails }) {
       } catch (e: any) {
         const errCode = e.response?.data?.error;
         if (errCode === "authorization_pending") {
-           // continue
-           timer = setTimeout(doPoll, intervalMs);
+          // continue
+          timer = setTimeout(doPoll, intervalMs);
         } else if (errCode === "slow_down") {
-           setPollStatus("Slowing down...");
-           timer = setTimeout(doPoll, intervalMs + 5000);
+          setPollStatus("Slowing down...");
+          timer = setTimeout(doPoll, intervalMs + 5000);
         } else {
-           setPollStatus("Failed or Expired: " + (errCode || "Unknown"));
-           setDeviceCodeData(null); 
+          setPollStatus("Failed or Expired: " + (errCode || "Unknown"));
+          setDeviceCodeData(null);
         }
       }
     };
@@ -763,69 +744,95 @@ function IntegrationGuideTab({ app }: { app: AppDetails }) {
   return (
     <div className="max-w-3xl space-y-8">
       <div>
-        <Title level={3}>Mirpass SSO / Device Flow Integration</Title>
+        <Title level={3}>Mirpass SSO Device Code Flow Integration</Title>
         <Paragraph>
-          Integrate secure authentication into your application using
-          Device Flow.
+          Integrate secure authentication into your application using Device Flow.
         </Paragraph>
-        <Space orientation="vertical" className="w-full max-w-xl">
-          <Input
-            placeholder="API Key (Not needed for Device Flow init, but good for reference)"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-          />
-          <Input
-            placeholder="Redirect URL (Optional, handled by User Code flow logic usually)"
-            value={redirectUrl}
-            onChange={(e) => setRedirectUrl(e.target.value)}
-          />
-          <Button
-            onClick={handleCreateTestSession}
-            type="primary"
-          >
-            Create test session (Device Flow)
+        <Space
+          orientation="vertical"
+          className="w-full bg-gray-50 dark:bg-gray-900/20 p-4 rounded border border-gray-200 dark:border-gray-700"
+        >
+          <Title level={4}>Test Device Code Flow</Title>
+          <Button onClick={handleCreateTestSession} type="primary">
+            Create test session
           </Button>
+          {pollStatus && (
+            <div className="mt-4">
+              <Text strong>Status: </Text> <Text>{pollStatus}</Text>
+            </div>
+          )}
+          {deviceCodeData && (
+            <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-100 dark:border-blue-900">
+              <Paragraph className="mb-1">
+                User Code:{" "}
+                <Text copyable strong code>
+                  {deviceCodeData.user_code}
+                </Text>
+              </Paragraph>
+              <Paragraph className="mb-0">
+                Input the above code at:{" "}
+                <a
+                  href={deviceCodeData.verification_uri}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {deviceCodeData.verification_uri}
+                </a>
+              </Paragraph>
+              <Paragraph className="mb-0">
+                Or visit:{" "}
+                <a
+                  href={deviceCodeData.verification_uri_complete}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {deviceCodeData.verification_uri_complete}
+                </a>
+              </Paragraph>
+            </div>
+          )}
+          {pollResult && (
+            <div className="mt-2 bg-green-50 dark:bg-green-900/20 p-4 rounded border border-green-200">
+              <Text strong className="text-green-600">
+                Access Token:
+              </Text>
+              <Paragraph className="break-all font-mono text-xs">
+                {pollResult.access_token}
+              </Paragraph>
+              {pollResult.refresh_token && (
+                <>
+                  <Text strong className="text-green-600">
+                    Refresh Token:
+                  </Text>
+                  <Paragraph className="break-all font-mono text-xs">
+                    {pollResult.refresh_token}
+                  </Paragraph>
+                </>
+              )}
+            </div>
+          )}
         </Space>
-        
-        <div className="mt-4">
-            <Text strong>Status: </Text> <Text>{pollStatus}</Text>
-        </div>
-        {pollResult && (
-           <div className="mt-2 bg-green-50 dark:bg-green-900/20 p-4 rounded border border-green-200">
-               <Text strong className="text-green-600">Access Token:</Text>
-               <Paragraph className="break-all font-mono text-xs">{pollResult.access_token}</Paragraph>
-               {pollResult.refresh_token && (
-                   <>
-                   <Text strong className="text-green-600">Refresh Token:</Text>
-                   <Paragraph className="break-all font-mono text-xs">{pollResult.refresh_token}</Paragraph>
-                   </>
-               )}
-           </div>
-        )}
       </div>
 
       <div>
-        <Title level={4}>1. Initiate Device Flow</Title>
-        <Paragraph>
-          Make a POST request to initiate the flow.
-        </Paragraph>
+        <Title level={4}>1. Initiate Device Code Flow</Title>
+        <Paragraph>Make a POST request to initiate the flow.</Paragraph>
         <div className="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed">
-          <span className="text-purple-400">POST</span> {backendUrl}/oauth2/devicecode
+          <span className="text-purple-400">POST</span> {backendUrl}
+          /oauth2/devicecode
           <br />
           <span className="text-blue-300">Content-Type:</span> application/json
           <br />
           <br />
           {`{ "client_id": "${app.id}" }`}
         </div>
-        <Paragraph className="mt-2 text-sm text-gray-500">
-          Response:
-        </Paragraph>
+        <Paragraph className="mt-2 text-sm text-gray-500">Response:</Paragraph>
         <div className="mt-2 bg-gray-100 dark:bg-gray-800 p-3 rounded text-sm text-gray-600 dark:text-gray-300 font-mono">
           {`{
   "device_code": "...",
-  "user_code": "WDJB-MJHT",
+  "user_code": "WDJBMJHT",
   "verification_uri": "${frontendUrl}/auth",
-  "verification_uri_complete": "${frontendUrl}/auth?user_code=WDJB-MJHT",
+  "verification_uri_complete": "${frontendUrl}/auth?user_code=WDJBMJHT",
   "expires_in": 900,
   "interval": 5
 }`}
@@ -835,10 +842,12 @@ function IntegrationGuideTab({ app }: { app: AppDetails }) {
       <div>
         <Title level={4}>2. Poll for Token</Title>
         <Paragraph>
-          Poll the token endpoint using the `device_code` until the user authorizes.
+          Poll the token endpoint using the `device_code` until the user
+          authorizes.
         </Paragraph>
         <div className="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed">
-          <span className="text-purple-400">POST</span> {backendUrl}/oauth2/token
+          <span className="text-purple-400">POST</span> {backendUrl}
+          /oauth2/token
           <br />
           <span className="text-blue-300">Content-Type:</span> application/json
           <br />
@@ -866,7 +875,6 @@ function IntegrationGuideTab({ app }: { app: AppDetails }) {
 }`}
         </div>
       </div>
-
     </div>
   );
 }
