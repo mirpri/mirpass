@@ -11,7 +11,6 @@ import {
   Tabs,
   DatePicker,
   Upload,
-  Avatar,
   App,
   Modal,
 } from "antd";
@@ -35,6 +34,7 @@ import type { AppRole, ErrorResponse } from "../types";
 import api from "../api/client";
 import { sha256 } from "../utils/crypto";
 import { LoadingView } from "../components/LoadingView";
+import { AnyAvatar } from "../components/Avatars";
 
 const { TextArea } = Input;
 
@@ -379,7 +379,7 @@ function AppsTab({ systemRole: _systemRole }: { systemRole: string }) {
       key: "name",
       render: (text: string, record: AdminAppView) => (
         <Space>
-          <Avatar src={record.logoUrl} size={"small"}>{text.charAt(0)}</Avatar>
+          <AnyAvatar url={{url: record.logoUrl, text: text}} size={"small"} />
           {text}
         </Space>
       ),

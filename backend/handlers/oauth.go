@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"mirpass-backend/config"
 	"mirpass-backend/db"
 	"mirpass-backend/utils"
@@ -52,6 +53,7 @@ func DeviceFlowInitiateHandler(w http.ResponseWriter, r *http.Request) {
 	err = db.CreateDeviceFlowSession(app.ID, sessionId, deviceCode, userCode)
 	if err != nil {
 		WriteErrorResponse(w, http.StatusInternalServerError, "Failed to create device flow")
+		log.Printf("Error creating device flow session: %v", err)
 		return
 	}
 
@@ -103,7 +105,7 @@ func DeviceFlowPollHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if session.Status == "authorized" {
-		accessToken, err := utils.GenerateJWTToken(session.AppID, *session.UserID, time.Hour*24*7) // TODO: let app set token expiry
+		accessToken, err := utils.GenerateJWTToken(session.ClientID, session.Username, time.Hour*24*7) // TODO: let app set token expiry
 		if err != nil {
 			WriteErrorResponse(w, 500, "Failed to generate access token")
 			return
@@ -113,21 +115,43 @@ func DeviceFlowPollHandler(w http.ResponseWriter, r *http.Request) {
 			"access_token": accessToken,
 			"expires_in":   "604800", // 7 days in seconds
 		}
-		db.UpdateDeviceFlowSessionStatus(session.SessionID, "consumed")
+		db.UpdateDeviceFlowSessionStatus(session.SessionID, "consumed", "")
 		WriteOauthSuccessResponse(w, res)
 		return
 	}
 	WriteErrorResponse(w, 500, "Failed to process request")
 }
 
-func DeviceFlowConsentHandler(w http.ResponseWriter, r *http.Request) {
+func SessionDetailsByUsercodeHandler(w http.ResponseWriter, r *http.Request) {
+	userCode := r.URL.Query().Get("userCode")
+	if userCode == "" {
+		WriteErrorResponse(w, 400, "Missing userCode")
+		return
+	}
+
+	session, err := db.GetSessionByUserCode(userCode)
+	if err != nil {
+		log.Printf("Error fetching session by user code: %v", err)
+		WriteErrorResponse(w, 400, "Invalid userCode")
+		return
+	}
+	res := map[string]string{
+		"sessionId": session.SessionID,
+		"appId":     session.ClientID,
+		"status":    session.Status,
+		"expiresAt": session.ExpiresAt,
+	}
+	WriteSuccessResponse(w, "Success", res)
+}
+
+func OAuthConsentHandler(w http.ResponseWriter, r *http.Request) {
 	username := GetUsernameFromContext(r.Context())
 	var req struct {
-		UserCode string `json:"userCode"`
-		Approve  bool   `json:"approve"`
+		SessionID string `json:"sessionId"`
+		Approve   bool   `json:"approve"`
 	}
 	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil || req.UserCode == "" {
+	if err != nil || req.SessionID == "" {
 		WriteErrorResponse(w, 400, "Invalid request body")
 		return
 	}
@@ -136,19 +160,34 @@ func DeviceFlowConsentHandler(w http.ResponseWriter, r *http.Request) {
 	if req.Approve {
 		status = "authorized"
 	}
-	session, err := db.GetSessionByDeviceCode(req.UserCode)
-	if err != nil || session.Status != "pending" {
-		WriteErrorResponse(w, 400, "Invalid session_id")
-		return
-	}
-	if session.UserID != nil && *session.UserID != username {
-		WriteErrorResponse(w, 401, "Unauthorized")
-		return
-	}
-	err = db.UpdateDeviceFlowSessionStatus(session.SessionID, status)
+
+	err = db.UpdateDeviceFlowSessionStatus(req.SessionID, status, username)
 	if err != nil {
 		WriteErrorResponse(w, 500, "Failed to update session status")
 		return
 	}
 	WriteSuccessResponse(w, "Consent recorded", nil)
+}
+
+func SessionDetailsHandler(w http.ResponseWriter, r *http.Request) {
+	sessionId := r.URL.Query().Get("sessionId")
+	if sessionId == "" {
+		WriteErrorResponse(w, 400, "Missing sessionId")
+		return
+	}
+
+	session, err := db.GetSessionBySessionId(sessionId)
+	if err != nil {
+		log.Printf("Error fetching session by sessionId: %v", err)
+		WriteErrorResponse(w, 400, "Invalid sessionId")
+		return
+	}
+
+	resp := map[string]interface{}{
+		"appId":     session.ClientID,
+		"username":  session.Username,
+		"status":    session.Status,
+		"expiresAt": session.ExpiresAt,
+	}
+	WriteSuccessResponse(w, "Success", resp)
 }

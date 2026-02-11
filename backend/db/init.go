@@ -133,17 +133,16 @@ func InitDB() error {
 	}
 
 	// Create OAuth2 sessions table
-	if _, err = adminConn.Exec(`CREATE TABLE oauth_sessions (
+	if _, err = adminConn.Exec(`CREATE TABLE IF NOT EXISTS oauth_sessions (
 			session_id        VARCHAR(128) PRIMARY KEY,
 			client_id         VARCHAR(64)  NOT NULL,
-			user_id           VARCHAR(64),
-			scope             VARCHAR(256),
+			username           VARCHAR(64),
 			flow_type         ENUM('auth_code', 'device_code') NOT NULL,
 
 			-- Device Flow
 			device_code       VARCHAR(128),
 			user_code         VARCHAR(32),
-			last_poll          DATETIME,
+			last_poll          DATETIME DEFAULT CURRENT_TIMESTAMP,
 
 			-- PKCE / Auth Code
 			code_challenge    VARCHAR(256),

@@ -1,7 +1,8 @@
-import { Avatar, Button } from "antd";
+import { Button } from "antd";
 import { InfoIcon, HomeIcon, LogOutIcon, LogInIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAppStore } from "../store/useAppStore";
+import { MyAvatar } from "./Avatars";
 
 function Nav() {
   const navigate = useNavigate();
@@ -28,11 +29,8 @@ function Nav() {
             style={{ height: "30px", padding: "0", borderRadius: "50%" }}
             onClick={() => navigate("/dashboard")}
             title={profile.username}
-          >
-          
-            <Avatar src={profile?.avatarUrl} size={30}>
-              {profile?.username?.charAt(0).toUpperCase()}
-            </Avatar>
+          >          
+            <MyAvatar size={30} />
         </Button>):(
         <Button
           type="text"

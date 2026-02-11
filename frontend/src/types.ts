@@ -14,6 +14,12 @@ export type Profile = {
   avatarUrl?: string;
 };
 
+export type ProfilePublic = {
+  username: string;
+  nickname?: string;
+  avatarUrl?: string;
+};
+
 export type AppRole = {
   appId: string;
   name: string;
@@ -28,6 +34,13 @@ export interface AppDetails {
   logoUrl?: string;
   suspendUntil?: string | null;
   createdAt?: string;
+}
+
+export interface AppPublicDetails {
+  id: string;
+  name: string;
+  description: string;
+  logoUrl?: string;
 }
 
 export interface AppMember {

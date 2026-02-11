@@ -1,13 +1,21 @@
 package types
 
 type DeviceFlowSession struct {
-	ID         string
-	AppID      string
 	SessionID  string
-	UserID     *string
+	ClientID   string
+	Username   string
 	DeviceCode string
 	UserCode   string
 	Status     string
 	ExpiresAt  string
 	LastPoll   string
+}
+
+type OAuthSession struct {
+	SessionID string
+	ClientID  string
+	Username  string
+	FlowType  string
+	Status    string
+	ExpiresAt string
 }

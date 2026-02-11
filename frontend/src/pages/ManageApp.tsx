@@ -16,7 +16,6 @@ import {
   Select,
   Popconfirm,
   Divider,
-  Avatar,
   Statistic,
   Row,
   Col,
@@ -50,6 +49,7 @@ import type {
 import { useAppStore } from "../store/useAppStore";
 import { LoadingView } from "../components/LoadingView";
 import { FailedView } from "../components/FailedView";
+import { AnyAvatar } from "../components/Avatars";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -129,9 +129,7 @@ function ManageAppPage() {
       }
     >
       <Space size={10} align="center" className="mb-3">
-        <Avatar size={48} src={app.logoUrl}>
-          {app.name.charAt(0).toUpperCase()}
-        </Avatar>
+        <AnyAvatar size={48} url={{url: app.logoUrl, text: app.name}} />
         <Title level={3} style={{ marginBottom: 0 }}>
           {app.name}
         </Title>
@@ -679,224 +677,196 @@ function IntegrationGuideTab({ app }: { app: AppDetails }) {
   const [redirectUrl, setRedirectUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
 
+  const [deviceCodeData, setDeviceCodeData] = useState<any>(null);
+  const [pollStatus, setPollStatus] = useState<string>("");
+  const [pollResult, setPollResult] = useState<any>(null);
+
   const handleCreateTestSession = async () => {
+    setDeviceCodeData(null);
+    setPollResult(null);
+    setPollStatus("Initiating...");
     try {
+      // Use Device Flow
       const { data } = await api.post(
-        "/sso/init",
-        { appId: app.id },
-        {
-          headers: {
-            "X-Api-Key": apiKey,
-          },
-        },
+        "/oauth2/devicecode",
+        { client_id: app.id },
+        // Device flow is public typically, but we might want to check app suspension etc.
+        // The backend handler checks app existence by client_id.
       );
-      const loginUrl =
-        (data.data as any).loginUrl +
-        (redirectUrl ? `&from=${encodeURIComponent(redirectUrl)}` : "");
-      message.success("Test session created");
-      window.open(loginUrl, "_blank");
+      
+      setDeviceCodeData(data);
+      setPollStatus("Waiting for user authorization...");
+      
+      // Construct URL if verification_uri_complete provided
+      let loginUrl = data.verification_uri_complete;
+      if (loginUrl && redirectUrl) {
+           // Not standard device flow, but for this "test" helper
+           // However, device flow user code is usually entered manually or via magic link.
+           // The backend returns keys as per RFC 8628? Yes map[string]string.
+      }
+      
+      message.success("Session initiated");
+      if (loginUrl) {
+          window.open(loginUrl, "_blank");
+      }
     } catch (error: unknown) {
       const err = error as ErrorResponse;
-      const status = err.response?.status;
-      const msg = err.response?.error;
+      // device flow errors might be different structure?
+      // WriteErrorResponse wraps in {error: message} or standard wrapper.
+      // handlers.WriteErrorResponse -> { status, message, error: ... } potentially?
+      // handlers.WriteOauthErrorResponse -> { error: message }
+      
+      const msg = err.response?.error || "Failed";
       console.error("Failed to create test session", err);
-      message.error(msg + ` (Status: ${status})`);
-      return null;
+      setPollStatus("Failed: " + msg);
     }
   };
+
+  useEffect(() => {
+    if (!deviceCodeData || pollResult) return;
+
+    let timer: any;
+    const intervalMs = (deviceCodeData.interval || 5) * 1000;
+
+    const doPoll = async () => {
+      try {
+        const { data } = await api.post("/oauth2/token", {
+          client_id: app.id,
+          device_code: deviceCodeData.device_code,
+          grant_type: "urn:ietf:params:oauth:grant-type:device_code",
+        });
+        
+        // Success
+        setPollResult(data);
+        setPollStatus("Success! Token received.");
+        message.success("Token received!");
+        setDeviceCodeData(null); // Stop polling
+      } catch (e: any) {
+        const errCode = e.response?.data?.error;
+        if (errCode === "authorization_pending") {
+           // continue
+           timer = setTimeout(doPoll, intervalMs);
+        } else if (errCode === "slow_down") {
+           setPollStatus("Slowing down...");
+           timer = setTimeout(doPoll, intervalMs + 5000);
+        } else {
+           setPollStatus("Failed or Expired: " + (errCode || "Unknown"));
+           setDeviceCodeData(null); 
+        }
+      }
+    };
+
+    timer = setTimeout(doPoll, intervalMs);
+    return () => clearTimeout(timer);
+  }, [deviceCodeData, pollResult, app.id]);
 
   return (
     <div className="max-w-3xl space-y-8">
       <div>
-        <Title level={3}>Mirpass SSO Integration Guide</Title>
+        <Title level={3}>Mirpass SSO / Device Flow Integration</Title>
         <Paragraph>
-          Integrate secure Single Sign-On (SSO) into your application using
-          Mirpass. Initiate login sessions with your App ID.
+          Integrate secure authentication into your application using
+          Device Flow.
         </Paragraph>
         <Space orientation="vertical" className="w-full max-w-xl">
           <Input
-            placeholder="API Key"
+            placeholder="API Key (Not needed for Device Flow init, but good for reference)"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
           />
           <Input
-            placeholder="Redirect URL (Optional)"
+            placeholder="Redirect URL (Optional, handled by User Code flow logic usually)"
             value={redirectUrl}
             onChange={(e) => setRedirectUrl(e.target.value)}
           />
           <Button
             onClick={handleCreateTestSession}
             type="primary"
-            disabled={!apiKey}
           >
-            Create test session
+            Create test session (Device Flow)
           </Button>
         </Space>
+        
+        <div className="mt-4">
+            <Text strong>Status: </Text> <Text>{pollStatus}</Text>
+        </div>
+        {pollResult && (
+           <div className="mt-2 bg-green-50 dark:bg-green-900/20 p-4 rounded border border-green-200">
+               <Text strong className="text-green-600">Access Token:</Text>
+               <Paragraph className="break-all font-mono text-xs">{pollResult.access_token}</Paragraph>
+               {pollResult.refresh_token && (
+                   <>
+                   <Text strong className="text-green-600">Refresh Token:</Text>
+                   <Paragraph className="break-all font-mono text-xs">{pollResult.refresh_token}</Paragraph>
+                   </>
+               )}
+           </div>
+        )}
       </div>
 
       <div>
-        <Title level={4}>1. Initiate Login Session</Title>
+        <Title level={4}>1. Initiate Device Flow</Title>
         <Paragraph>
-          When a user clicks "Login with Mirpass" on your site, make a
-          server-to-server request to get a session ID.
+          Make a POST request to initiate the flow.
         </Paragraph>
         <div className="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed">
-          <span className="text-purple-400">POST</span> {backendUrl}/oauth2/deviceflow
+          <span className="text-purple-400">POST</span> {backendUrl}/oauth2/devicecode
           <br />
           <span className="text-blue-300">Content-Type:</span> application/json
           <br />
-          <span className="text-blue-300">X-Api-Key:</span> YOUR_API_KEY
           <br />
-          <br />
-          {`{ "appId": "${app.id}" }`}
+          {`{ "client_id": "${app.id}" }`}
         </div>
         <Paragraph className="mt-2 text-sm text-gray-500">
-          Response (Failure):
+          Response:
         </Paragraph>
         <div className="mt-2 bg-gray-100 dark:bg-gray-800 p-3 rounded text-sm text-gray-600 dark:text-gray-300 font-mono">
           {`{
-  "status": 200,
-  "message": "Session initiated",
-  "data": {
-    "sessionId": "sess_abc123...",
-    "pollSecret": "secret_xyz...",
-    "loginUrl": "${frontendUrl}/login?sso=sess_abc123..." 
-  }
+  "device_code": "...",
+  "user_code": "WDJB-MJHT",
+  "verification_uri": "${frontendUrl}/auth",
+  "verification_uri_complete": "${frontendUrl}/auth?user_code=WDJB-MJHT",
+  "expires_in": 900,
+  "interval": 5
 }`}
         </div>
       </div>
 
       <div>
-        <Title level={4}>2. Poll for Status</Title>
+        <Title level={4}>2. Poll for Token</Title>
         <Paragraph>
-          Use the `pollSecret` returned in step 1 to securely poll the status.
-          Note: If the user is redirected (Step 2), the auth code will be
-          delivered there, and subsequent polling will not satisfy the code
-          delivery.
+          Poll the token endpoint using the `device_code` until the user authorizes.
         </Paragraph>
         <div className="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed">
-          <span className="text-green-400">GET</span> {backendUrl}
-          /sso/poll?sessionId=sess_abc123...&secret=secret_xyz...
+          <span className="text-purple-400">POST</span> {backendUrl}/oauth2/token
+          <br />
+          <span className="text-blue-300">Content-Type:</span> application/json
+          <br />
+          <br />
+          {`{
+  "client_id": "${app.id}",
+  "device_code": "...",
+  "grant_type": "urn:ietf:params:oauth:grant-type:device_code"
+}`}
         </div>
         <Paragraph className="mt-2 text-sm text-gray-500">
           Response (Pending):
         </Paragraph>
         <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs font-mono mb-2">
-          {`{
-  "status": 200,
-  "message": "pending",
-  "data": { "status": "pending" }
-}`}
+          {`{ "error": "authorization_pending" }`}
         </div>
         <Paragraph className="text-sm text-gray-500">
-          Response (Confirmed):
-        </Paragraph>
-        <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs font-mono">
-          {`{
-  "status": 200,
-  "message": "confirmed",
-  "data": {
-    "status": "confirmed",
-    "authCode": "AUTH_CODE_123..."
-  }
-}`}
-        </div>
-      </div>
-
-      <div>
-        <Title level={4}>3. Exchange Code for Token</Title>
-        <Paragraph>
-          Once you receive the `authCode` (via redirect or polling), exchange it
-          for a user access token. The code is valid for 10 minutes and can be
-          used only once.
-        </Paragraph>
-        <div className="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed">
-          <span className="text-purple-400">POST</span> {backendUrl}/sso/token
-          <br />
-          <span className="text-blue-300">Content-Type:</span> application/json
-          <br />
-          <br />
-          {`{ "code": "AUTH_CODE_123..." }`}
-        </div>
-        <Paragraph className="mt-2 text-sm text-gray-500">Response:</Paragraph>
-        <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs font-mono">
-          {`{
-  "token": "eyJhbGciOiJIUzI1Ni...",
-  "username": "john_doe"
-}`}
-        </div>
-      </div>
-
-      <div>
-        <Title level={4}>4. Verify Token</Title>
-        <Paragraph>
-          To ensure the token is valid and get user claims, verify it against
-          our server.
-        </Paragraph>
-        <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs font-mono">
-          {`{
-  "status": 200,
-  "message": "Token is valid",
-  "data": {
-    "valid": true,
-    "username": "john_doe",
-    "appId": "APP_ID"
-  }
-}`}
-        </div>
-        <Paragraph className="mt-2 text-sm text-gray-500">Response:</Paragraph>
-        <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs font-mono">
-          {`{
-  "valid": true,
-  "username": "john_doe",
-  "appId": "APP_ID"
-          }`}
-        </div>
-        <Paragraph className="mt-2 text-sm text-gray-500">
-          If not valid:
-        </Paragraph>
-        <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs font-mono">
-          {`{
-  "valid": false
-}`}
-        </div>
-      </div>
-
-      <div>
-        <Title level={4}>5. Fetch User Info</Title>
-        <Paragraph>
-          Once you have a valid token or a username, you can fetch user profile
-          information.
-        </Paragraph>
-
-        <Text strong>Option A: Using the Access Token (Recommended)</Text>
-        <div className="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed mt-2 mb-4">
-          <span className="text-purple-400">GET</span> {config.API_URL}
-          /myprofile
-          <br />
-          <span className="text-blue-400">Authorization:</span> Bearer
-          &lt;token&gt;
-        </div>
-
-        <Text strong>Option B: By Username (Public)</Text>
-        <div className="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed mt-2 mb-4">
-          <span className="text-purple-400">GET</span> {config.API_URL}
-          /user/info?username=john_doe
-        </div>
-        <Paragraph className="mt-2 text-sm text-gray-500">
           Response (Success):
         </Paragraph>
         <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs font-mono">
           {`{
-  "status": 200,
-  "message": "User info retrieved",
-  "data": {
-    "username": "john_doe",
-    "nickname": "John",
-    "avatarUrl": "..."
-  }`}
+  "access_token": "...",
+  "token_type": "Bearer",
+  "expires_in": 3600
+}`}
         </div>
       </div>
+
     </div>
   );
 }

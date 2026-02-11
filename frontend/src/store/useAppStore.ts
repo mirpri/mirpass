@@ -19,22 +19,26 @@ interface AppState {
   isLoadingApps: boolean;
   fetchMyApps: () => Promise<void>;
 
-  // Redirect / Nav
-  fromPath: string | null;
-  setFromPath: (path: string | null) => void;
-
   // SSO Context
+  ssoType: "device_code" | "auth_code" | null;
+  setSsoType: (type: "device_code" | "auth_code" | null) => void;
+  ssoUserCode: string | null;
+  setSsoUserCode: (code: string | null) => void;
+
   ssoSessionId: string | null;
   setSsoSessionId: (id: string | null) => void;
+
   ssoDetails: {
-    appName: string;
+    appId: string;
+    appName?: string;
     logoUrl?: string;
     sessionId: string;
     status: string;
+    expiresAt: string;
   } | null;
   setSsoDetails: (details: AppState["ssoDetails"]) => void;
   fetchSsoDetails: () => Promise<void>;
-  ssoConfirm: (requestCode: boolean) => Promise<void>;
+  ssoConfirm: (approve: boolean) => Promise<any>;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -86,29 +90,73 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  fromPath: null,
-  setFromPath: (path) => set({ fromPath: path }),
+  ssoType: null,
+  setSsoType: (type) => set({ ssoType: type }),
+
+  ssoUserCode: null,
+  setSsoUserCode: (code) => set({ ssoUserCode: code }),
 
   ssoSessionId: null,
   setSsoSessionId: (id) => set({ ssoSessionId: id }),
+
   ssoDetails: null,
   setSsoDetails: (details) => set({ ssoDetails: details }),
 
   fetchSsoDetails: async () => {
-    const sid = get().ssoSessionId;
-    const { data } = await api.get(`/sso/details?sessionId=${sid}`);
-    set({ ssoDetails: data.data });
-  },
-  ssoConfirm: async (requestCode: boolean = false) => {
-    const sid = get().ssoSessionId;
-    const { data } = await api.post("/sso/confirm", {
-      sessionId: sid,
-      requestCode,
-    });
-    const currentDetails = get().ssoDetails;
-    if (currentDetails) {
-      set({ ssoDetails: { ...currentDetails, status: "confirmed" } });
+    if (!get().ssoUserCode && !get().ssoSessionId) {
+      return;
     }
-    return data.data; // Return the authCode payload
+    const currentSid = get().ssoSessionId || get().ssoDetails?.sessionId;
+
+    if (
+      !currentSid &&
+      get().ssoType === "device_code" &&
+      get().ssoUserCode
+    ) {
+      const {data} = await api.get(
+        `/authorize/request/by-user-code?userCode=${get().ssoUserCode}`,
+      );
+      set({ ssoDetails: data.data, ssoSessionId: data.data.sessionId });
+    } else if (currentSid) {
+      const {data} = await api.get(`/authorize/request?sessionId=${currentSid}`);
+      set({ ssoDetails: data.data, ssoSessionId: data.data.sessionId });
+    } else {
+       return;
+    }
+
+    const { data } = await api.get(`/apps/info?id=${get().ssoDetails?.appId}`);
+    set((state) => ({
+      ssoDetails: state.ssoDetails
+        ? { ...state.ssoDetails, appName: data.data.name, logoUrl: data.data.logoUrl }
+        : null,
+    }));
+  },
+
+  ssoConfirm: async (approve: boolean) => {
+    const sid = get().ssoDetails?.sessionId;
+    let responseData; 
+
+    if (get().ssoType === "device_code") {
+      const { data } = await api.post("/authorize/request/consent", {
+        sessionId: sid,
+        approve: true,
+      });
+      responseData = data;
+    } else {
+      // Standard SSO Confirm
+      const { data } = await api.post("/sso/confirm", {
+        sessionId: sid,
+        requestCode: approve,
+      });
+      responseData = data;
+    }
+
+    get()
+      .fetchSsoDetails()
+      .catch(() => {
+        set({ ssoDetails: null });
+      });
+    
+    return responseData?.data;
   },
 }));

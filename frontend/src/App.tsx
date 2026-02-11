@@ -87,7 +87,7 @@ function App() {
                   }
                 />
                 <Route
-                  path="/authorize"
+                  path="/auth"
                   element={
                     <AuthorizePage />
                   }
