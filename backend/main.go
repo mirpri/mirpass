@@ -83,7 +83,9 @@ func main() {
 	mux.HandleFunc("/sso/token", handlers.ExchangeSSOCodeHandler)
 	mux.Handle("/sso/confirm", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.ConfirmSSOHandler)))
 
-	// Root routes
+	// OAuth2 Device Flow Routes
+	mux.HandleFunc("/oauth2/deviceflow", handlers.DeviceFlowInitiateHandler)
+	mux.HandleFunc("/oauth2/deviceflow/token", handlers.DeviceFlowPollHandler)
 
 	// Root routes
 	mux.Handle("/root/user/role", handlers.AuthSysMiddleware(handlers.RequireRoot("system", http.HandlerFunc(handlers.RootUpdateRole))))

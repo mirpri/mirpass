@@ -251,7 +251,7 @@ func ExchangeSSOCodeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Generate Token
-	token, err := utils.GenerateJWTToken(session.AppID, *session.Username)
+	token, err := utils.GenerateJWTToken(session.AppID, *session.Username, time.Hour*24*7)
 	if err != nil {
 		WriteErrorResponse(w, http.StatusInternalServerError, "Token gen failed")
 		return

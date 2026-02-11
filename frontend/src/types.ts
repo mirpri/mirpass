@@ -4,7 +4,7 @@ export type SimpleResponse = {
 };
 
 export type ErrorResponse = {
-  response?: { status?: number; data?: { message?: string } };
+  response?: { status?: number; error?: string };
 };
 
 export type Profile = {

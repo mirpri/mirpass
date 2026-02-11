@@ -150,8 +150,8 @@ function DashboardPage() {
       message.success(data?.message || "nickname updated");
       toggleEditing("nickname", false);
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
-      message.error(err.response?.data?.message || "Could not update nickname");
+      const err = error as ErrorResponse;
+      message.error(err.response?.error || "Could not update nickname");
     } finally {
       setLoadingKey(null);
     }
@@ -192,7 +192,7 @@ function DashboardPage() {
       setSelectedFile(null);
     } catch (error: unknown) {
       const err = error as ErrorResponse;
-      message.error(err.response?.data?.message || "Could not update avatar");
+      message.error(err.response?.error || "Could not update avatar");
     } finally {
       setLoadingKey(null);
     }
@@ -215,8 +215,9 @@ function DashboardPage() {
       setIsPasswordModalOpen(false);
       passwordForm.resetFields();
     } catch (error: any) {
+      const err = error as ErrorResponse;
       message.error(
-        error.response?.data?.message || "Failed to update password",
+        err.response?.error || "Failed to update password",
       );
     }
   };
@@ -232,8 +233,9 @@ function DashboardPage() {
       setIsEmailModalOpen(false);
       emailForm.resetFields();
     } catch (error: any) {
+      const err = error as ErrorResponse;
       message.error(
-        error.response?.data?.message || "Failed to request email change",
+        err.response?.error || "Failed to request email change",
       );
     }
   };

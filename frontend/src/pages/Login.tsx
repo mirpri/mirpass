@@ -16,6 +16,7 @@ import {
 import api from "../api/client";
 import { useAppStore } from "../store/useAppStore";
 import { sha256 } from "../utils/crypto";
+import type { ErrorResponse } from "../types";
 
 const { Title, Text } = Typography;
 
@@ -104,9 +105,9 @@ function LoginPage({ onLogin, isAuthenticated }: Props) {
       }
       
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
+      const err = error as ErrorResponse;
       message.error(
-        err.response?.data?.message || "Failed to login",
+        err.response?.error || "Failed to login",
       );
     } finally {
       setLoading(false);

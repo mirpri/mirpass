@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button, Card, Form, Input, Typography, message, Space } from "antd";
 import { useNavigate } from "react-router-dom";
+import type { ErrorResponse } from "../types";
 import api from "../api/client";
 
 const { Title, Text } = Typography;
@@ -17,7 +18,8 @@ function CreateAppPage() {
       const appId = data.data.id; 
       navigate(`/manage/${appId}`);
     } catch (error: any) {
-      const msg = error.response?.data?.message || "Could not create app";
+      const err = error as ErrorResponse;
+      const msg = err.response?.error || "Could not create app";
       message.error(msg);
     } finally {
       setLoading(false);

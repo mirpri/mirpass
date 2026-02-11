@@ -12,6 +12,7 @@ import {
 import { MailOutlined, UserOutlined, LockOutlined } from '@ant-design/icons'
 import api from '../api/client'
 import { sha256 } from '../utils/crypto'
+import type { ErrorResponse } from '../types'
 
 const { Title, Text } = Typography
 
@@ -43,8 +44,8 @@ function RegisterPage() {
       message.success(data?.message || 'Registration successful. Please verify your email.')
       navigate('/login', { replace: true })
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } }
-      message.error(err.response?.data?.message || 'Registration failed')
+      const err = error as ErrorResponse
+      message.error(err.response?.error || 'Registration failed')
     } finally {
       setLoading(false)
     }

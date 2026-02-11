@@ -9,12 +9,12 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func GenerateJWTToken(appID, username string) (string, error) {
+func GenerateJWTToken(appID, username string, exp time.Duration) (string, error) {
 	claims := jwt.MapClaims{
 		"username": username,
 		"appId":    appID,
 		"iss":      config.AppConfig.BackendURL,
-		"exp":      jwt.NewNumericDate(time.Now().UTC().Add(time.Second * time.Duration(config.AppConfig.JWTExpiresIn))),
+		"exp":      jwt.NewNumericDate(time.Now().UTC().Add(exp)),
 		"iat":      jwt.NewNumericDate(time.Now().UTC()),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -22,7 +22,7 @@ func GenerateJWTToken(appID, username string) (string, error) {
 }
 
 func GenerateSysToken(userID string) (string, error) {
-	return GenerateJWTToken("system", userID)
+	return GenerateJWTToken("system", userID, time.Hour*24*7)
 }
 
 func ValidateToken(tokenString string) (Claims, error) {

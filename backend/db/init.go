@@ -132,6 +132,37 @@ func InitDB() error {
 		return fmt.Errorf("create login_sessions table: %w", err)
 	}
 
+	// Create OAuth2 sessions table
+	if _, err = adminConn.Exec(`CREATE TABLE oauth_sessions (
+			session_id        VARCHAR(128) PRIMARY KEY,
+			client_id         VARCHAR(64)  NOT NULL,
+			user_id           VARCHAR(64),
+			scope             VARCHAR(256),
+			flow_type         ENUM('auth_code', 'device_code') NOT NULL,
+
+			-- Device Flow
+			device_code       VARCHAR(128),
+			user_code         VARCHAR(32),
+			last_poll          DATETIME,
+
+			-- PKCE / Auth Code
+			code_challenge    VARCHAR(256),
+			redirect_uri      VARCHAR(512),
+
+			status            ENUM(
+								'pending',
+								'authorized',
+								'consumed',
+								'denied',
+								'expired'
+								) NOT NULL,
+			expires_at        DATETIME DEFAULT ADDDATE(CURRENT_TIMESTAMP, INTERVAL 15 MINUTE),
+			created_at        DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at        DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+		);`); err != nil {
+		return fmt.Errorf("create oauth_sessions table: %w", err)
+	}
+
 	// Create blobs table
 	_, err = adminConn.Exec(`CREATE TABLE IF NOT EXISTS blobs (
 		id VARCHAR(64) PRIMARY KEY,

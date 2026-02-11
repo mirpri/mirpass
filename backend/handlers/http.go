@@ -21,8 +21,8 @@ func WriteSuccessResponse(w http.ResponseWriter, message string, data interface{
 
 func WriteErrorResponse(w http.ResponseWriter, status int, message string) {
 	response := types.Response{
-		Status:  status,
-		Message: message,
+		Status: status,
+		Error:  message,
 	}
 
 	if status == 500 {

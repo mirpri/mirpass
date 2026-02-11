@@ -8,6 +8,7 @@ import {
 import { MailCheckIcon } from "lucide-react"
 import api from "../api/client";
 import { sha256 } from "../utils/crypto";
+import type { ErrorResponse } from "../types";
 
 const { Title, Text } = Typography;
 
@@ -31,10 +32,9 @@ function ForgetPage() {
         "A verification email has been sent",
       );
     } catch (error: any) {
-      // Always show success message for security/privacy to prevent user enumeration
-      setSubmitted(true);
-      message.success(
-        "A verification email has been sent",
+      const err = error as ErrorResponse;
+      message.error(
+        err.response?.error || "Failed to reset password",
       );
     } finally {
       setLoading(false);

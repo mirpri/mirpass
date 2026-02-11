@@ -31,7 +31,7 @@ import {
   Check,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import type { AppRole } from "../types";
+import type { AppRole, ErrorResponse } from "../types";
 import api from "../api/client";
 import { sha256 } from "../utils/crypto";
 import { LoadingView } from "../components/LoadingView";
@@ -576,8 +576,9 @@ function AdminPage() {
         return;
       }
       setSystemRole(sys.role);
-    } catch (error) {
-      message.error("Failed to authenticate");
+    } catch (error: any) {
+      const err = error as ErrorResponse;
+      message.error(err.response?.error || "Failed to authenticate");
     } finally {
       setCheckingAuth(false);
     }
@@ -593,7 +594,8 @@ function AdminPage() {
       setSqlResult(data.data);
       message.success("Query executed");
     } catch (error: any) {
-      message.error(error.response?.data?.message || "Query failed");
+      const err = error as ErrorResponse;
+      message.error(err.response?.error || "Query failed");
       setSqlResult(null);
     }
   };

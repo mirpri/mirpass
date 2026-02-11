@@ -18,3 +18,8 @@ func GenerateToken() string {
 	generate, _ := nanoid.Standard(32)
 	return generate()
 }
+
+func GenerateUserCode() string {
+	generate, _ := nanoid.CustomASCII("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 8)
+	return generate()
+}

@@ -698,7 +698,7 @@ function IntegrationGuideTab({ app }: { app: AppDetails }) {
     } catch (error: unknown) {
       const err = error as ErrorResponse;
       const status = err.response?.status;
-      const msg = err.response?.data?.message;
+      const msg = err.response?.error;
       console.error("Failed to create test session", err);
       message.error(msg + ` (Status: ${status})`);
       return null;
@@ -741,7 +741,7 @@ function IntegrationGuideTab({ app }: { app: AppDetails }) {
           server-to-server request to get a session ID.
         </Paragraph>
         <div className="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed">
-          <span className="text-purple-400">POST</span> {backendUrl}/sso/init
+          <span className="text-purple-400">POST</span> {backendUrl}/oauth2/deviceflow
           <br />
           <span className="text-blue-300">Content-Type:</span> application/json
           <br />
@@ -767,27 +767,7 @@ function IntegrationGuideTab({ app }: { app: AppDetails }) {
       </div>
 
       <div>
-        <Title level={4}>2. Redirect User</Title>
-        <Paragraph>
-          Redirect the user's browser to the returned `login_url` (appended to
-          the Mirpass frontend domain). You can optionally include a `from`
-          parameter to redirect the user back to your site after login.
-        </Paragraph>
-        <div className="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed">
-          {frontendUrl}
-          /login?sso=sess_abc123...&from=https://yoursite.com/callback
-        </div>
-        <Paragraph className="mt-2 text-sm">
-          After successful authorization, the user will be redirected to:
-          <br />
-          <code className="bg-gray-100 dark:bg-gray-800 p-1 rounded">
-            https://yoursite.com/callback?code=AUTH_CODE_123...
-          </code>
-        </Paragraph>
-      </div>
-
-      <div>
-        <Title level={4}>3. Poll for Status (If not redirecting)</Title>
+        <Title level={4}>2. Poll for Status</Title>
         <Paragraph>
           Use the `pollSecret` returned in step 1 to securely poll the status.
           Note: If the user is redirected (Step 2), the auth code will be
@@ -824,7 +804,7 @@ function IntegrationGuideTab({ app }: { app: AppDetails }) {
       </div>
 
       <div>
-        <Title level={4}>4. Exchange Code for Token</Title>
+        <Title level={4}>3. Exchange Code for Token</Title>
         <Paragraph>
           Once you receive the `authCode` (via redirect or polling), exchange it
           for a user access token. The code is valid for 10 minutes and can be
@@ -848,7 +828,7 @@ function IntegrationGuideTab({ app }: { app: AppDetails }) {
       </div>
 
       <div>
-        <Title level={4}>5. Verify Token</Title>
+        <Title level={4}>4. Verify Token</Title>
         <Paragraph>
           To ensure the token is valid and get user claims, verify it against
           our server.
@@ -883,7 +863,7 @@ function IntegrationGuideTab({ app }: { app: AppDetails }) {
       </div>
 
       <div>
-        <Title level={4}>6. Fetch User Info</Title>
+        <Title level={4}>5. Fetch User Info</Title>
         <Paragraph>
           Once you have a valid token or a username, you can fetch user profile
           information.
