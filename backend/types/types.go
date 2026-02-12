@@ -69,63 +69,10 @@ type APIKey struct {
 	CreatedAt string `json:"createdAt"`
 }
 
-type CreateAppRequest struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-}
-
-type UpdateAppRequest struct {
-	AppID        string  `json:"appId"`
-	Name         string  `json:"name"`
-	Description  string  `json:"description"`
-	LogoURL      string  `json:"logoUrl,omitempty"`
-	SuspendUntil *string `json:"suspendUntil,omitempty"` // If provided
-}
-
 type AppMember struct {
 	Username  string `json:"username"`
 	Role      string `json:"role"`
-	AvatarUrl string `json:"avatarUrl,omitempty"`
-}
-
-type AddMemberRequest struct {
-	AppID    string `json:"appId"`
-	Username string `json:"username"`
-	Role     string `json:"role"` // 'admin' or 'root' (though mostly 'admin')
-}
-
-type UpdateMemberRoleRequest struct {
-	AppID    string `json:"appId"`
-	Username string `json:"username"`
-	Role     string `json:"role"`
-}
-
-type RemoveMemberRequest struct {
-	AppID    string `json:"appId"`
-	Username string `json:"username"`
-}
-
-// SSO Types
-
-type SSOSession struct {
-	ID         int64   `json:"id"`
-	SessionID  string  `json:"sessionId"`
-	AppID      string  `json:"appId"`
-	Username   *string `json:"username,omitempty"` // Pointer to handle NULL
-	CreatedAt  string  `json:"createdAt"`
-	ExpiresAt  string  `json:"expiresAt"`
-	LoginAt    *string `json:"loginAt,omitempty"`
-	AuthCode   *string `json:"authCode,omitempty"`
-	State      string  `json:"state"`
-	PollSecret *string `json:"pollSecret,omitempty"`
-}
-
-type SSOSessionDetails struct {
-	SessionID string `json:"sessionId"`
-	AppID     string `json:"appId"`
-	AppName   string `json:"appName"`
-	LogoURL   string `json:"logoUrl,omitempty"`
-	Status    string `json:"status"` // pending, confirmed
+	AvatarURL string `json:"avatarUrl,omitempty"`
 }
 
 type DailyStats struct {

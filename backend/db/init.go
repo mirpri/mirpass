@@ -114,24 +114,6 @@ func InitDB() error {
 		return fmt.Errorf("create api_keys table: %w", err)
 	}
 
-	// Create App login sessions table
-	if _, err = adminConn.Exec(`CREATE TABLE IF NOT EXISTS login_sessions (
-	       id INT AUTO_INCREMENT PRIMARY KEY,
-	       username VARCHAR(255) DEFAULT NULL,
-	       app_id VARCHAR(127) NOT NULL,
-	       session_id VARCHAR(255) NOT NULL UNIQUE,
-	       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		   login_at TIMESTAMP NULL,
-	       expires_at TIMESTAMP NOT NULL,
-		   auth_code VARCHAR(255) DEFAULT NULL,
-		   state VARCHAR(50) DEFAULT 'pending',
-		   poll_secret VARCHAR(255) DEFAULT NULL,
-	       FOREIGN KEY (username) REFERENCES users(username) ON DELETE CASCADE,
-	       FOREIGN KEY (app_id) REFERENCES applications(id) ON DELETE CASCADE
-	   )`); err != nil {
-		return fmt.Errorf("create login_sessions table: %w", err)
-	}
-
 	// Create OAuth2 sessions table
 	if _, err = adminConn.Exec(`CREATE TABLE IF NOT EXISTS oauth_sessions (
 			session_id        VARCHAR(128) PRIMARY KEY,

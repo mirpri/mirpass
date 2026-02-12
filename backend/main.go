@@ -49,7 +49,7 @@ func main() {
 
 	// System App Management
 	mux.Handle("/admin/apps", handlers.AuthSysMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminListApps))))
-	mux.Handle("/admin/app/delete", handlers.AuthSysMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminDeleteApp)))) // Maybe restrict to root? using Admin for now as requested
+	mux.Handle("/admin/app/delete", handlers.AuthSysMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminDeleteApp))))
 	mux.Handle("/admin/app/update", handlers.AuthSysMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminUpdateApp))))
 	mux.Handle("/admin/app/suspend", handlers.AuthSysMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminSuspendApp))))
 
@@ -74,14 +74,6 @@ func main() {
 	mux.Handle("/apps/members/add", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.AddAppMemberHandler)))
 	mux.Handle("/apps/members/remove", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.RemoveAppMemberHandler)))
 	mux.Handle("/apps/members/role", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.UpdateAppMemberRoleHandler)))
-
-	// SSO Routes
-	mux.HandleFunc("/sso/init", handlers.InitiateSSOHandler)
-	mux.HandleFunc("/sso/details", handlers.GetSSODetailsHandler)
-	mux.HandleFunc("/sso/poll", handlers.PollSSOHandler)
-	mux.HandleFunc("/sso/verify", handlers.VerifySSOTokenHandler)
-	mux.HandleFunc("/sso/token", handlers.ExchangeSSOCodeHandler)
-	mux.Handle("/sso/confirm", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.ConfirmSSOHandler)))
 
 	//OAuth2 Routes
 	mux.HandleFunc("/authorize/request", handlers.SessionDetailsHandler)

@@ -84,6 +84,10 @@ func UpdateDeviceFlowSessionStatus(sessionId string, status string, username str
 		}
 	}
 
+	if session.Status == "consumed" {
+		return nil
+	}
+
 	t, err := time.Parse(time.RFC3339, session.ExpiresAt)
 	if err != nil || time.Now().After(t) {
 		_, err = database.Exec(`UPDATE oauth_sessions SET status = 'expired' WHERE session_id = ?`, sessionId)

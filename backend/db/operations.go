@@ -28,21 +28,22 @@ func GetUserLoginHistory(username string, dateStr string, offsetMinutes int) ([]
 		utcEnd := utcStart.Add(24 * time.Hour)
 
 		query = `
-			SELECT a.name as app, ls.login_at
-			FROM login_sessions ls
-			JOIN applications a ON ls.app_id = a.id
-			WHERE ls.username = ? AND ls.login_at >= ? AND ls.login_at < ?
-			ORDER BY ls.login_at DESC
+			SELECT a.name as app, os.updated_at as login_at
+			FROM oauth_sessions os
+			JOIN applications a ON os.client_id = a.id
+			WHERE os.username = ? AND os.status = 'consumed'
+			AND os.updated_at >= ? AND os.updated_at < ?
+			ORDER BY os.updated_at DESC
 		`
 		args = append(args, utcStart, utcEnd)
 	} else {
 		// Default: Recent 10 items
 		query = `
-			SELECT a.name as app, ls.login_at
-			FROM login_sessions ls
-			JOIN applications a ON ls.app_id = a.id
-			WHERE ls.username = ?
-			ORDER BY ls.login_at DESC LIMIT 10
+			SELECT a.name as app, os.updated_at as login_at
+			FROM oauth_sessions os
+			JOIN applications a ON os.client_id = a.id
+			WHERE os.username = ? AND os.status = 'consumed'
+			ORDER BY os.updated_at DESC LIMIT 10
 		`
 	}
 
@@ -66,10 +67,10 @@ func GetUserLoginHistory(username string, dateStr string, offsetMinutes int) ([]
 func GetUserAppsSummary(username string) ([]types.AppLoginSummaryItem, error) {
 	// Returns distinct apps and last login time
 	query := `
-		SELECT a.name as app, a.logo_url, MAX(ls.login_at) as last_login
-		FROM login_sessions ls
-		JOIN applications a ON ls.app_id = a.id
-		WHERE ls.username = ?
+		SELECT a.name as app, a.logo_url, MAX(os.updated_at) as last_login
+		FROM oauth_sessions os
+		JOIN applications a ON os.client_id = a.id
+		WHERE os.username = ? AND os.status = 'consumed'
 		GROUP BY a.name, a.logo_url
 		ORDER BY last_login DESC
 	`
@@ -95,7 +96,7 @@ func GetUserAppsSummary(username string) ([]types.AppLoginSummaryItem, error) {
 func GetAppLoginStats(appID string) ([]types.LoginHistoryItem, int, error) {
 	// Total users count (distinct users who have ever logged in to this app)
 	var totalUsers int
-	countQuery := `SELECT COUNT(DISTINCT username) FROM login_sessions WHERE app_id = ? AND login_at IS NOT NULL`
+	countQuery := `SELECT COUNT(DISTINCT username) FROM oauth_sessions WHERE client_id = ? AND status = 'consumed'`
 	if err := database.QueryRow(countQuery, appID).Scan(&totalUsers); err != nil {
 		return nil, 0, err
 	}
@@ -107,10 +108,10 @@ func GetAppLoginStats(appID string) ([]types.LoginHistoryItem, int, error) {
 	// Let's return the raw history list for the last 7 days.
 
 	query := `
-		SELECT username, login_at
-		FROM login_sessions
-		WHERE app_id = ? AND login_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 7 DAY)
-		ORDER BY login_at DESC
+		SELECT username, updated_at
+		FROM oauth_sessions
+		WHERE client_id = ? AND status='consumed' AND updated_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 7 DAY)
+		ORDER BY updated_at DESC
 	`
 	rows, err := database.Query(query, appID)
 	if err != nil {
@@ -830,7 +831,7 @@ func GetAppMembers(appID string) ([]types.AppMember, error) {
 		if err := rows.Scan(&m.Username, &m.Role, &avatar); err != nil {
 			return nil, err
 		}
-		m.AvatarUrl = avatar.String
+		m.AvatarURL = avatar.String
 		members = append(members, m)
 	}
 	return members, nil
@@ -853,121 +854,25 @@ func GetAppName(appID string) (string, error) {
 	return name, err
 }
 
-func CreateLoginSession(appID string, sessionID string, pollSecret string, expiryMinutes int) error {
-	_, err := database.Exec(`
-        INSERT INTO login_sessions (app_id, session_id, poll_secret, state, expires_at) 
-        VALUES (?, ?, ?, 'pending', DATE_ADD(UTC_TIMESTAMP(), INTERVAL ? MINUTE))`,
-		appID, sessionID, pollSecret, expiryMinutes)
-	return err
-}
-
-func GetLoginSession(sessionID string) (*types.SSOSession, error) {
-	s := &types.SSOSession{}
-	var username sql.NullString
-	var loginAt sql.NullString
-	var authCode sql.NullString
-	var pollSecret sql.NullString
-
-	var cAt, eAt sql.NullString
-
-	err := database.QueryRow(`
-        SELECT id, app_id, session_id, username, created_at, expires_at, login_at, auth_code, state, poll_secret
-        FROM login_sessions WHERE session_id = ?`, sessionID).
-		Scan(&s.ID, &s.AppID, &s.SessionID, &username, &cAt, &eAt, &loginAt, &authCode, &s.State, &pollSecret)
-
-	if err != nil {
-		return nil, err
-	}
-	s.CreatedAt = cAt.String
-	s.ExpiresAt = eAt.String
-
-	if username.Valid {
-		u := username.String
-		s.Username = &u
-	}
-	if loginAt.Valid {
-		l := loginAt.String
-		s.LoginAt = &l
-	}
-	if authCode.Valid {
-		ac := authCode.String
-		s.AuthCode = &ac
-	}
-	if pollSecret.Valid {
-		ps := pollSecret.String
-		s.PollSecret = &ps
-	}
-	return s, nil
-}
-
-func ConfirmLoginSession(sessionID string, username string, authCode string, delivered bool) error {
-	newState := "confirmed"
-	if delivered {
-		newState = "delivered"
-	}
-	_, err := database.Exec(`
-        UPDATE login_sessions 
-        SET username = ?, login_at = UTC_TIMESTAMP(), auth_code = ?, state = ? 
-        WHERE session_id = ? AND expires_at > UTC_TIMESTAMP()`, username, authCode, newState, sessionID)
-	return err
-}
-
-func GetSessionByAuthCode(code string) (*types.SSOSession, error) {
-	s := &types.SSOSession{}
-	var username sql.NullString
-	var loginAt sql.NullString
-	var authCode sql.NullString
-	var pollSecret sql.NullString
-	var cAt, eAt sql.NullString
-
-	err := database.QueryRow(`
-        SELECT id, app_id, session_id, username, created_at, expires_at, login_at, auth_code, state, poll_secret
-        FROM login_sessions WHERE auth_code = ? AND expires_at > UTC_TIMESTAMP()`, code).
-		Scan(&s.ID, &s.AppID, &s.SessionID, &username, &cAt, &eAt, &loginAt, &authCode, &s.State, &pollSecret)
-
-	if err != nil {
-		return nil, err
-	}
-	s.CreatedAt = cAt.String
-	s.ExpiresAt = eAt.String
-
-	if username.Valid {
-		u := username.String
-		s.Username = &u
-	}
-	if loginAt.Valid {
-		l := loginAt.String
-		s.LoginAt = &l
-	}
-	if authCode.Valid {
-		ac := authCode.String
-		s.AuthCode = &ac
-	}
-	return s, nil
-}
-
-func UpdateSessionState(sessionID string, state string) error {
-	_, err := database.Exec("UPDATE login_sessions SET state = ? WHERE session_id = ?", state, sessionID)
-	return err
-}
+// SSO Functions deleted (Legacy)
 
 func GetAppStatsSummary(appID string) (*types.AppStatsSummary, error) {
 	summary := &types.AppStatsSummary{}
 
 	// 1. Total Users
-	err := database.QueryRow("SELECT COUNT(DISTINCT username) FROM login_sessions WHERE app_id = ? AND login_at IS NOT NULL", appID).Scan(&summary.TotalUsers)
+	err := database.QueryRow("SELECT COUNT(DISTINCT username) FROM oauth_sessions WHERE client_id = ? AND status = 'consumed'", appID).Scan(&summary.TotalUsers)
 	if err != nil {
 		return nil, err
 	}
 
 	// 2. Total Logins
-	err = database.QueryRow("SELECT COUNT(*) FROM login_sessions WHERE app_id = ? AND login_at IS NOT NULL", appID).Scan(&summary.TotalLogins)
+	err = database.QueryRow("SELECT COUNT(*) FROM oauth_sessions WHERE client_id = ? AND status = 'consumed'", appID).Scan(&summary.TotalLogins)
 	if err != nil {
 		return nil, err
 	}
 
 	// 3. Active Users 24h
-	err = database.QueryRow("SELECT COUNT(DISTINCT username) FROM login_sessions WHERE app_id = ? AND login_at >= UTC_TIMESTAMP() - INTERVAL 24 HOUR", appID).Scan(&summary.ActiveUsers24h)
+	err = database.QueryRow("SELECT COUNT(DISTINCT username) FROM oauth_sessions WHERE client_id = ? AND status = 'consumed' AND updated_at >= UTC_TIMESTAMP() - INTERVAL 24 HOUR", appID).Scan(&summary.ActiveUsers24h)
 	if err != nil {
 		return nil, err
 	}
@@ -977,10 +882,10 @@ func GetAppStatsSummary(appID string) (*types.AppStatsSummary, error) {
 	queryNewUsers := `
 		SELECT COUNT(*) FROM (
 			SELECT username 
-			FROM login_sessions 
-			WHERE app_id = ? AND login_at IS NOT NULL 
+			FROM oauth_sessions 
+			WHERE client_id = ? AND status = 'consumed' 
 			GROUP BY username 
-			HAVING MIN(login_at) >= UTC_TIMESTAMP() - INTERVAL 24 HOUR
+			HAVING MIN(updated_at) >= UTC_TIMESTAMP() - INTERVAL 24 HOUR
 		) as new_u`
 	err = database.QueryRow(queryNewUsers, appID).Scan(&summary.NewUsers24h)
 	if err != nil {
@@ -992,13 +897,13 @@ func GetAppStatsSummary(appID string) (*types.AppStatsSummary, error) {
 
 	dailyQuery := `
 		SELECT 
-			DATE_FORMAT(login_at, '%Y-%m-%d') as date_str, 
+			DATE_FORMAT(updated_at, '%Y-%m-%d') as date_str, 
 			COUNT(*) as logins, 
 			COUNT(DISTINCT username) as active
-		FROM login_sessions 
-		WHERE app_id = ? AND login_at >= DATE_SUB(UTC_DATE(), INTERVAL 6 DAY)
-		GROUP BY DATE(login_at)
-		ORDER BY DATE(login_at) ASC
+		FROM oauth_sessions 
+		WHERE client_id = ? AND status = 'consumed' AND updated_at >= DATE_SUB(UTC_DATE(), INTERVAL 6 DAY)
+		GROUP BY DATE(updated_at)
+		ORDER BY DATE(updated_at) ASC
 	`
 	rows, err := database.Query(dailyQuery, appID)
 	if err != nil {
@@ -1021,9 +926,9 @@ func GetAppStatsSummary(appID string) (*types.AppStatsSummary, error) {
 	newUsersQuery := `
 		SELECT DATE_FORMAT(min_date, '%Y-%m-%d'), COUNT(*)
 		FROM (
-			SELECT MIN(login_at) as min_date 
-			FROM login_sessions 
-			WHERE app_id = ? 
+			SELECT MIN(updated_at) as min_date 
+			FROM oauth_sessions 
+			WHERE client_id = ? AND status = 'consumed'
 			GROUP BY username
 		) as user_firsts
 		WHERE min_date >= DATE_SUB(UTC_DATE(), INTERVAL 6 DAY)
@@ -1077,18 +982,18 @@ func GetAppHistory(appID string, dateStr string, offsetMinutes int) ([]types.Log
 		utcEnd := utcStart.Add(24 * time.Hour)
 
 		query = `
-			SELECT username, login_at 
-			FROM login_sessions 
-			WHERE app_id = ? AND login_at >= ? AND login_at < ?
-			ORDER BY login_at DESC`
+			SELECT username, updated_at 
+			FROM oauth_sessions 
+			WHERE client_id = ? AND status = 'consumed' AND updated_at >= ? AND updated_at < ?
+			ORDER BY updated_at DESC`
 		args = append(args, utcStart, utcEnd)
 	} else {
 		// Default history (last 10)
 		query = `
-			SELECT username, login_at 
-			FROM login_sessions 
-			WHERE app_id = ? AND login_at IS NOT NULL
-			ORDER BY login_at DESC LIMIT 10`
+			SELECT username, updated_at 
+			FROM oauth_sessions 
+			WHERE client_id = ? AND status = 'consumed'
+			ORDER BY updated_at DESC LIMIT 10`
 	}
 
 	rows, err := database.Query(query, args...)
