@@ -44,8 +44,8 @@ function LoginPage({ onLogin, isAuthenticated }: Props) {
   
   const [searchParams, setSearchParams] = useSearchParams();
   const {
-    ssoIdentifier: storeSsoId,
-    setSsoIdentifier: setSsoSessionId,
+    ssoSessionId: storeSsoId,
+    setSsoSessionId,
   } = useAppStore();
 
   const urlSsoId = searchParams.get("sso");

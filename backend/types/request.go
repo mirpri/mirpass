@@ -28,3 +28,12 @@ type RemoveMemberRequest struct {
 	AppID    string `json:"appId"`
 	Username string `json:"username"`
 }
+
+type AuthCodeFlowRequest struct {
+	ClientID            string `json:"client_id"`
+	RedirectURI         string `json:"redirect_uri"`
+	ResponseType        string `json:"response_type"`
+	CodeChallenge       string `json:"code_challenge"`
+	CodeChallengeMethod string `json:"code_challenge_method"`
+	State               string `json:"state"`
+}

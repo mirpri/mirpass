@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"log"
 	"mirpass-backend/config"
 	"net/http"
 	"strings"
@@ -58,18 +59,31 @@ func ValidateSysToken(tokenString string) (string, error) {
 }
 
 func ExtractClaims(r *http.Request) (*Claims, error) {
+	// 1. Try Authorization Header
 	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" {
-		return nil, jwt.ErrTokenMalformed
+	if authHeader != "" {
+		parts := strings.Split(authHeader, " ")
+		if len(parts) == 2 && parts[0] == "Bearer" {
+			claims, err := ValidateToken(parts[1])
+			if err == nil {
+				return &claims, nil
+			}
+			// Use this error log for debugging
+			log.Printf("Header token failed: %v", err)
+		}
 	}
-	parts := strings.Split(authHeader, " ")
-	if len(parts) != 2 || parts[0] != "Bearer" {
-		return nil, jwt.ErrTokenMalformed
-	}
-	tokenString := parts[1]
-	claims, err := ValidateToken(tokenString)
-	if err != nil {
+
+	// 2. Try Cookie
+	cookie, err := r.Cookie("auth_token")
+	if err == nil && cookie.Value != "" {
+		claims, err := ValidateToken(cookie.Value)
+		if err == nil {
+			return &claims, nil
+		}
+		log.Printf("Cookie token failed: %v", err)
 		return nil, err
 	}
-	return &claims, nil
+
+	log.Println("JWT ExtractClaims failed: no valid header or cookie found")
+	return nil, jwt.ErrTokenMalformed
 }

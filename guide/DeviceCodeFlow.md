@@ -1,3 +1,5 @@
+# Device Code Flow
+
 ## Device authorization request
 
 The client must first check with the authentication server for a device and user code used to initiate authentication. The client collects this request from the /devicecode endpoint. In the request, the client should also include the permissions it needs to acquire from the user.

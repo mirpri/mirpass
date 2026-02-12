@@ -43,6 +43,15 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	token, _ := utils.GenerateSysToken(creds.Username)
+	http.SetCookie(w, &http.Cookie{
+		Name:     "auth_token",
+		Value:    token,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false, // Set to true in production with HTTPS
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   3600 * 24 * 7, // 7 days
+	})
 	WriteSuccessResponse(w, "Login Success", map[string]string{"token": token})
 }
 

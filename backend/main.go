@@ -82,7 +82,11 @@ func main() {
 
 	// OAuth2 Device Code Flow Routes
 	mux.HandleFunc("/oauth2/devicecode", handlers.DeviceFlowInitiateHandler)
-	mux.HandleFunc("/oauth2/token", handlers.DeviceFlowPollHandler)
+	mux.HandleFunc("/oauth2/token", handlers.GetTokenHandler)
+
+	// Auth Code Flow Consent Handler
+	mux.HandleFunc("/oauth2/authorize", handlers.AuthCodeFlowHandler)
+	mux.HandleFunc("/authorize/consent/redirect", handlers.AuthCodeFlowConsentHandler)
 
 	// Root routes
 	mux.Handle("/root/user/role", handlers.AuthSysMiddleware(handlers.RequireRoot("system", http.HandlerFunc(handlers.RootUpdateRole))))

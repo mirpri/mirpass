@@ -114,12 +114,23 @@ func InitDB() error {
 		return fmt.Errorf("create api_keys table: %w", err)
 	}
 
+	// Create trusted_uris table
+	if _, err = adminConn.Exec(`CREATE TABLE IF NOT EXISTS trusted_uris (
+	       id INT AUTO_INCREMENT PRIMARY KEY,
+	       app_id VARCHAR(127) NOT NULL,
+	       uri VARCHAR(512) NOT NULL,
+	       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	       FOREIGN KEY (app_id) REFERENCES applications(id) ON DELETE CASCADE
+	   )`); err != nil {
+		return fmt.Errorf("create trusted_uris table: %w", err)
+	}
+
 	// Create OAuth2 sessions table
 	if _, err = adminConn.Exec(`CREATE TABLE IF NOT EXISTS oauth_sessions (
 			session_id        VARCHAR(128) PRIMARY KEY,
 			client_id         VARCHAR(64)  NOT NULL,
 			username           VARCHAR(64),
-			flow_type         ENUM('auth_code', 'device_code') NOT NULL,
+			flow_type         ENUM('authorization_code', 'device_code') NOT NULL,
 
 			-- Device Code Flow
 			device_code       VARCHAR(128),
@@ -128,7 +139,10 @@ func InitDB() error {
 
 			-- PKCE / Auth Code
 			code_challenge    VARCHAR(256),
+			code_challenge_method ENUM('S256', 'plain'),
 			redirect_uri      VARCHAR(512),
+			auth_code         VARCHAR(128),
+			state			 VARCHAR(50),
 
 			status            ENUM(
 								'pending',
@@ -142,6 +156,19 @@ func InitDB() error {
 			updated_at        DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 		);`); err != nil {
 		return fmt.Errorf("create oauth_sessions table: %w", err)
+	}
+
+	// Create login history table
+	_, err = adminConn.Exec(`CREATE TABLE IF NOT EXISTS history (
+		id INT AUTO_INCREMENT PRIMARY KEY,
+		username VARCHAR(255) NOT NULL,
+		app_id VARCHAR(127) NOT NULL,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (username) REFERENCES users(username) ON DELETE CASCADE,
+		FOREIGN KEY (app_id) REFERENCES applications(id) ON DELETE CASCADE
+	)`)
+	if err != nil {
+		return fmt.Errorf("create history table: %w", err)
 	}
 
 	// Create blobs table

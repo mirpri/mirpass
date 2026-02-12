@@ -14,6 +14,8 @@ import { useAppStore } from "../store/useAppStore";
 import type { ErrorResponse } from "../types";
 import { CircleCheck, XCircle } from "lucide-react";
 import { AnyAvatar, MyAvatar } from "../components/Avatars";
+import { LoadingView } from "../components/LoadingView";
+import { config } from "../config";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -29,27 +31,29 @@ function AuthorizePage() {
     profile,
     token,
     logout,
-    ssoSessionId: storeSsoId,
+    ssoSessionId: storeSessionId,
     setSsoSessionId,
+    ssoType: storeSsoType,
     setSsoType,
+    ssoUserCode: storeUserCode,
     setSsoUserCode
   } = useAppStore();
 
-  const urlSsoId = searchParams.get("sso");
+  const urlSessionId = searchParams.get("session_id");
   const urlFrom = searchParams.get("from");
   const urlUserCode = searchParams.get("user_code");
   
   // Prioritize URL params
-  const ssoSessionId = urlSsoId || storeSsoId;
+  const ssoSessionId = urlSessionId || storeSessionId;
   const [confirming, setConfirming] = useState(false);
 
-  // Sync URL ID to store if needed
+  // Sync URL ID to store
   useEffect(() => {
-    if (urlSsoId) {
-      if (setSsoSessionId && urlSsoId !== storeSsoId) setSsoSessionId(urlSsoId);
+    if (urlSessionId) {
+      if (setSsoSessionId && urlSessionId !== storeSessionId) setSsoSessionId(urlSessionId);
       if (setSsoType) setSsoType("auth_code");
     }
-  }, [urlSsoId, storeSsoId, setSsoSessionId, setSsoType]);
+  }, [urlSessionId, storeSessionId, setSsoSessionId, setSsoType]);
   
   // Sync Device Code
   useEffect(() => {
@@ -67,7 +71,7 @@ function AuthorizePage() {
       // Not authenticated, redirect to logic with params
       const fromParam = urlFrom ? `&from=${encodeURIComponent(urlFrom)}` : "";
       const qParams = [];
-      if (ssoSessionId) qParams.push(`sso=${ssoSessionId}`);
+      if (ssoSessionId) qParams.push(`session_id=${ssoSessionId}`);
       if (urlUserCode) qParams.push(`user_code=${urlUserCode}`);
       
       const qStr = qParams.length > 0 ? `?${qParams.join("&")}${fromParam}` : "";
@@ -88,32 +92,32 @@ function AuthorizePage() {
   }, []);
 
   const handleConfirmSSO = async () => {
-    if (!ssoDetails?.sessionId) return;
+    if (!ssoDetails || !ssoSessionId) {
+      message.error("Missing SSO session details");
+      return;
+    }
     setConfirming(true);
+    if (storeSsoType === "auth_code") {
+      window.location.href = `${config.API_URL}/authorize/consent/redirect?sessionId=${ssoSessionId}&approve=true`;
+      setConfirming(false);
+      return;
+    }
     try {
-      const confirmData = await ssoConfirm(!!urlFrom);
-      
+      await ssoConfirm(true);      
       message.success(`Logged in to ${ssoDetails?.appName}`);
       if (setSsoSessionId) setSsoSessionId(null);
-
-      if (urlFrom) {
-        let redirectUrl = urlFrom;
-        const code = (confirmData as any)?.authCode;
-        if (code) {
-          const separator = urlFrom.includes("?") ? "&" : "?";
-          redirectUrl += `${separator}code=${encodeURIComponent(code)}`;
-        }
-
-        setTimeout(() => {
-          window.location.href = redirectUrl;
-        }, 500);
-      }
     } catch (e) {
       message.error("Failed to confirm login");
     } finally {
       setConfirming(false);
     }
   };
+
+  if (!ssoDetails && (ssoSessionId || storeUserCode)) {
+    return (
+      <LoadingView />
+    )
+  }
   
   if (!ssoDetails) {
       return (

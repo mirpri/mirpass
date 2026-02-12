@@ -30,12 +30,14 @@ import {
   SaveOutlined,
   UserAddOutlined,
   UploadOutlined,
+  ReloadOutlined,
 } from "@ant-design/icons";
 import { BanIcon, CopyIcon } from "lucide-react";
 import ImgCrop from "antd-img-crop";
 
 import dayjs from "dayjs";
 import { formatDateTime, toUtcDateString } from "../utils/date";
+import { sha256, generateRandomString } from "../utils/crypto";
 
 import api from "../api/client";
 import { config } from "../config";
@@ -668,6 +670,162 @@ function SettingsTab({
 // --- Guide Tab ---
 
 function IntegrationGuideTab({ app }: { app: AppDetails }) {
+  const items = [
+    {
+      key: "authcode",
+      label: "Authorization Code Flow (Recommended)",
+      children: <AuthCodeFlowGuide app={app} />,
+    },
+    {
+      key: "device",
+      label: "Device Code Flow",
+      children: <DeviceCodeFlowGuide app={app} />,
+    },
+  ];
+
+  return (
+    <div className="max-w-4xl space-y-8">
+      <div>
+        <Title level={3}>Integration Guide</Title>
+        <Paragraph>
+          Select the authentication flow that best suits your application.
+        </Paragraph>
+        <Tabs items={items} />
+      </div>
+    </div>
+  );
+}
+
+function AuthCodeFlowGuide({ app }: { app: AppDetails }) {
+  const [redirectUri, setRedirectUri] = useState<string>("http://localhost:3000/callback");
+  const [state, setState] = useState<string>(generateRandomString(16));
+  const [verifier, setVerifier] = useState<string>(generateRandomString(43));
+  const [challenge, setChallenge] = useState<string>("");
+  
+  const [authCode, setAuthCode] = useState<string>("");
+  const [tokenResult, setTokenResult] = useState<any>(null);
+
+  useEffect(() => {
+    sha256(verifier).then(setChallenge);
+  }, [verifier]);
+
+  const regenerateParams = () => {
+    const v = generateRandomString(43);
+    setVerifier(v);
+    setState(generateRandomString(16));
+  };
+
+  const handleAuthorize = () => {
+    const params = new URLSearchParams({
+      response_type: "code",
+      client_id: app.id,
+      redirect_uri: redirectUri,
+      state: state,
+      code_challenge: challenge,
+      code_challenge_method: "S256",
+    });
+    const url = `${config.API_URL}/oauth2/authorize?${params.toString()}`;
+    window.open(url, "_blank");
+    message.info("Opens provider authorization page. After approval, copy the 'code' from the URL.");
+  };
+
+  const handleExchange = async () => {
+    if (!authCode) {
+      message.error("Please enter the authorization code");
+      return;
+    }
+    try {
+      const { data } = await api.post("/oauth2/token", {
+        grant_type: "authorization_code",
+        client_id: app.id,
+        code: authCode,
+        code_verifier: verifier,
+      });
+      setTokenResult(data);
+      message.success("Token exchanged successfully!");
+    } catch (error: any) {
+      const msg = error.response?.data?.error || "Failed to exchange token";
+      message.error(msg);
+      setTokenResult({ error: msg });
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <Alert
+        message="Recommended for Web/Mobile Apps"
+        description="Authorization Code Flow with PKCE is the most secure method for authenticating users in public clients."
+        type="info"
+        showIcon
+      />
+      
+      <Card title="1. Initiate Authorization" size="small">
+        <Space direction="vertical" className="w-full">
+          <Paragraph>
+            Construct the authorization URL and redirect the user. Poking endpoints manually:
+          </Paragraph>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Text strong>Client ID</Text>
+              <Input value={app.id} disabled />
+            </div>
+            <div>
+              <Text strong>Redirect URI</Text>
+              <Input value={redirectUri} onChange={(e) => setRedirectUri(e.target.value)} />
+            </div>
+            <div>
+               <Text strong>State (Random)</Text>
+               <div className="flex gap-2">
+                 <Input value={state} disabled />
+               </div>
+            </div>
+             <div>
+               <Text strong>Code Verifier (PKCE)</Text>
+               <div className="flex gap-2">
+                 <Input value={verifier} disabled />
+                 <Button icon={<ReloadOutlined />} onClick={regenerateParams} />
+               </div>
+            </div>
+             <div className="col-span-1 md:col-span-2">
+               <Text strong>Code Challenge (S256(Verifier))</Text>
+               <Input value={challenge} disabled />
+            </div>
+          </div>
+          <Button type="primary" onClick={handleAuthorize} disabled={!challenge}>
+            Simulate Authorization Request
+          </Button>
+        </Space>
+      </Card>
+
+      <Card title="2. Exchange Code for Token" size="small">
+         <Space direction="vertical" className="w-full">
+           <Paragraph>
+             After redirection, you will receive a <code>code</code> in the URL query parameters. Paste it here to exchange for a token.
+           </Paragraph>
+           <div>
+             <Text strong>Authorization Code</Text>
+             <Input 
+                placeholder="Paste code here..." 
+                value={authCode} 
+                onChange={(e) => setAuthCode(e.target.value)} 
+              />
+           </div>
+           <Button type="primary" onClick={handleExchange} disabled={!authCode}>
+             Exchange Token
+           </Button>
+
+           {tokenResult && (
+             <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 overflow-x-auto">
+               <pre className="text-xs">{JSON.stringify(tokenResult, null, 2)}</pre>
+             </div>
+           )}
+         </Space>
+      </Card>
+    </div>
+  );
+}
+
+function DeviceCodeFlowGuide({ app }: { app: AppDetails }) {
   const backendUrl = config.API_URL;
   if (backendUrl.endsWith("/")) {
     backendUrl.slice(0, -1);
@@ -744,10 +902,13 @@ function IntegrationGuideTab({ app }: { app: AppDetails }) {
   return (
     <div className="max-w-3xl space-y-8">
       <div>
-        <Title level={3}>Mirpass SSO Device Code Flow Integration</Title>
-        <Paragraph>
-          Integrate secure authentication into your application using Device Flow.
-        </Paragraph>
+        <Alert
+          message="Suitable for CLI / Limited Input Devices"
+          description="Device Flow allows users to sign in on a secondary device using a short code."
+          type="info"
+          showIcon
+          className="mb-4"
+        />
         <Space
           orientation="vertical"
           className="w-full bg-gray-50 dark:bg-gray-900/20 p-4 rounded border border-gray-200 dark:border-gray-700"

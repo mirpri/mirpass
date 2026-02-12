@@ -32,7 +32,6 @@ interface AppState {
     appId: string;
     appName?: string;
     logoUrl?: string;
-    sessionId: string;
     status: string;
     expiresAt: string;
   } | null;
@@ -106,7 +105,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!get().ssoUserCode && !get().ssoSessionId) {
       return;
     }
-    const currentSid = get().ssoSessionId || get().ssoDetails?.sessionId;
+    const currentSid = get().ssoSessionId;
 
     if (
       !currentSid &&
@@ -133,23 +132,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   ssoConfirm: async (approve: boolean) => {
-    const sid = get().ssoDetails?.sessionId;
+    const sid = get().ssoSessionId;
     let responseData; 
 
-    if (get().ssoType === "device_code") {
-      const { data } = await api.post("/authorize/request/consent", {
-        sessionId: sid,
-        approve: true,
-      });
-      responseData = data;
-    } else {
-      // Standard SSO Confirm
-      const { data } = await api.post("/sso/confirm", {
-        sessionId: sid,
-        requestCode: approve,
-      });
-      responseData = data;
-    }
+    const { data } = await api.post("/authorize/request/consent", {
+      sessionId: sid,
+      approve: approve,
+    });
+    responseData = data;
 
     get()
       .fetchSsoDetails()

@@ -11,6 +11,18 @@ type DeviceFlowSession struct {
 	LastPoll   string
 }
 
+type AuthCodeFlowSession struct {
+	SessionID           string
+	ClientID            string
+	Username            string
+	RedirectURI         string
+	CodeChallenge       string
+	CodeChallengeMethod string
+	State               string
+	Status              string
+	ExpiresAt           string
+}
+
 type OAuthSession struct {
 	SessionID string
 	ClientID  string

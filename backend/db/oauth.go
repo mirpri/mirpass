@@ -15,12 +15,32 @@ func CreateDeviceFlowSession(clientId string, sessionId string, deviceCode strin
 }
 
 func GetSessionByDeviceCode(deviceCode string) (*types.DeviceFlowSession, error) {
-	row := database.QueryRow(`SELECT client_id, session_id, device_code, user_code, status, expires_at, last_poll FROM oauth_sessions WHERE device_code = ?`, deviceCode)
+	row := database.QueryRow(`SELECT client_id, session_id, device_code, user_code, status, expires_at, last_poll FROM oauth_sessions WHERE device_code = ? AND status = 'pending'`, deviceCode)
 
 	var s types.DeviceFlowSession
 	err := row.Scan(&s.ClientID, &s.SessionID, &s.DeviceCode, &s.UserCode, &s.Status, &s.ExpiresAt, &s.LastPoll)
 	if err != nil {
 		return nil, err
+	}
+	t, err := time.Parse(time.RFC3339, s.ExpiresAt)
+	if err != nil || time.Now().After(t) {
+		UpdateDeviceFlowSessionStatus(s.SessionID, "", "")
+		s.Status = "expired"
+	}
+	return &s, nil
+}
+
+func GetAuthCodeSessionBySessionId(sessionId string) (*types.AuthCodeFlowSession, error) {
+	row := database.QueryRow(`SELECT client_id, session_id, redirect_uri, code_challenge, code_challenge_method, state, status, expires_at FROM oauth_sessions WHERE session_id = ? AND status = 'pending'`, sessionId)
+
+	var s types.AuthCodeFlowSession
+	var state sql.NullString
+	err := row.Scan(&s.ClientID, &s.SessionID, &s.RedirectURI, &s.CodeChallenge, &s.CodeChallengeMethod, &state, &s.Status, &s.ExpiresAt)
+	if err != nil {
+		return nil, err
+	}
+	if state.Valid {
+		s.State = state.String
 	}
 	t, err := time.Parse(time.RFC3339, s.ExpiresAt)
 	if err != nil || time.Now().After(t) {
@@ -99,5 +119,42 @@ func UpdateDeviceFlowSessionStatus(sessionId string, status string, username str
 	}
 
 	_, err = database.Exec(`UPDATE oauth_sessions SET status = ?, username = ? WHERE session_id = ?`, status, username, sessionId)
+	return err
+}
+
+func CreateAuthCodeSession(clientId string, sessionId string, redirect_uri string, code_challenge string, code_challenge_method string, state string) error {
+	_, err := database.Exec(`INSERT INTO oauth_sessions (client_id, session_id, redirect_uri, code_challenge, code_challenge_method, state, flow_type, status) VALUES (?, ?, ?, ?, ?, ?, 'authorization_code', 'pending')`, clientId, sessionId, redirect_uri, code_challenge, code_challenge_method, state)
+	return err
+}
+
+func UpdateAuthCodeSessionCode(sessionId string, code string, username string) error {
+	_, err := database.Exec(`UPDATE oauth_sessions SET status = 'authorized', auth_code = ?, username = ? WHERE session_id = ?`, code, username, sessionId)
+	return err
+}
+
+func GetAuthCodeSessionByCode(code string) (*types.AuthCodeFlowSession, error) {
+	row := database.QueryRow(`SELECT client_id, session_id, redirect_uri, code_challenge, code_challenge_method, state, status, expires_at, username FROM oauth_sessions WHERE auth_code = ?`, code)
+
+	var s types.AuthCodeFlowSession
+	var State sql.NullString
+	var Username sql.NullString
+	err := row.Scan(&s.ClientID, &s.SessionID, &s.RedirectURI, &s.CodeChallenge, &s.CodeChallengeMethod, &State, &s.Status, &s.ExpiresAt, &Username)
+	if err != nil {
+		return nil, err
+	}
+	s.State = State.String
+	if Username.Valid {
+		s.Username = Username.String
+	}
+	t, err := time.Parse(time.RFC3339, s.ExpiresAt)
+	if err != nil || time.Now().After(t) {
+		UpdateDeviceFlowSessionStatus(s.SessionID, "", "")
+		s.Status = "expired"
+	}
+	return &s, nil
+}
+
+func AddHistory(username string, appId string) error {
+	_, err := database.Exec(`INSERT INTO history (username, app_id) VALUES (?, ?)`, username, appId)
 	return err
 }

@@ -3,6 +3,7 @@ import { config } from '../config'
 
 const api = axios.create({
   baseURL: config.API_URL,
+  withCredentials: true // Important for setting/sending cookies
 })
 
 api.interceptors.request.use((config) => {
