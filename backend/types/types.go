@@ -24,9 +24,10 @@ type UserProfile struct {
 }
 
 type AppRole struct {
-	AppID string `json:"appId"`
-	Name  string `json:"name"`
-	Role  string `json:"role"`
+	AppID   string `json:"appId"`
+	LogoURL string `json:"logoUrl,omitempty"`
+	Name    string `json:"name"`
+	Role    string `json:"role"`
 }
 
 type UserWithSystemRole struct {
@@ -66,6 +67,14 @@ type APIKey struct {
 	ID        int64  `json:"id"`
 	AppID     string `json:"appId"`
 	Name      string `json:"name,omitempty"`
+	CreatedAt string `json:"createdAt"`
+}
+
+type TrustedURI struct {
+	ID        int64  `json:"id"`
+	AppID     string `json:"appId"`
+	Name      string `json:"name,omitempty"`
+	URI       string `json:"uri"`
 	CreatedAt string `json:"createdAt"`
 }
 

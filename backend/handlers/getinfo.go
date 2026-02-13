@@ -81,6 +81,9 @@ func MyAppsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	apps, err := db.GetAdminApps(user.Username)
+	for i := range apps {
+		apps[i].LogoURL = FormatUrl(apps[i].LogoURL)
+	}
 	if err != nil {
 		WriteErrorResponse(w, 500, "Database error")
 		return

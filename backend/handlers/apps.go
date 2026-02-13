@@ -1,13 +1,13 @@
 package handlers
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 
+	"mirpass-backend/config"
 	"mirpass-backend/db"
 	"mirpass-backend/types"
 	"mirpass-backend/utils"
@@ -84,7 +84,7 @@ func AppDetailsHandler(w http.ResponseWriter, r *http.Request) {
 	WriteSuccessResponse(w, "App details", app)
 }
 
-func GetAppKeysHandler(w http.ResponseWriter, r *http.Request) {
+func GetAppTrustedURIsHandler(w http.ResponseWriter, r *http.Request) {
 	appID := r.URL.Query().Get("id")
 	if appID == "" {
 		WriteErrorResponse(w, http.StatusBadRequest, "App ID is required")
@@ -97,32 +97,28 @@ func GetAppKeysHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check access
 	isAdmin, err := db.IsAppAdmin(claims.Username, appID)
 	if err != nil || !isAdmin {
 		WriteErrorResponse(w, http.StatusForbidden, "Forbidden")
 		return
 	}
 
-	keys, err := db.GetAppKeys(appID)
+	uris, err := db.GetTrustedURIs(appID)
 	if err != nil {
-		WriteErrorResponse(w, http.StatusInternalServerError, "Could not fetch keys")
+		WriteErrorResponse(w, http.StatusInternalServerError, "Could not fetch trusted URIs")
 		return
 	}
 
-	WriteSuccessResponse(w, "App keys", keys)
+	WriteSuccessResponse(w, "Trusted URIs", uris)
 }
 
-func CreateAppKeyHandler(w http.ResponseWriter, r *http.Request) {
+func AddAppTrustedURIHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	var req struct {
-		AppID string `json:"appId"`
-		Name  string `json:"name"`
-	}
+	var req types.AddTrustedURIRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		WriteErrorResponse(w, http.StatusBadRequest, "Invalid request")
 		return
@@ -134,66 +130,69 @@ func CreateAppKeyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check access EXTERNAL admin can't create keys
-	isAdmin, err := db.IsAppAdminExplicit(claims.Username, req.AppID)
-	if err != nil || !isAdmin {
-		WriteErrorResponse(w, http.StatusForbidden, "Forbidden")
-		return
-	}
-
-	// Generate key
-	rawKey := utils.GenerateApiKey()
-	// Hash it
-	hash := sha256.Sum256([]byte(rawKey))
-	keyHash := hex.EncodeToString(hash[:])
-
-	id, err := db.CreateAPIKey(req.AppID, keyHash, req.Name)
-	if err != nil {
-		WriteErrorResponse(w, http.StatusInternalServerError, "Could not create key")
-		return
-	}
-
-	WriteSuccessResponse(w, "Key created", map[string]interface{}{
-		"id":  id,
-		"key": rawKey,
-	})
-}
-
-func DeleteAppKeyHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	var req struct {
-		AppID string `json:"appId"`
-		KeyID int64  `json:"keyId"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		WriteErrorResponse(w, http.StatusBadRequest, "Invalid request")
-		return
-	}
-
-	claims, err := utils.ExtractClaims(r)
-	if err != nil {
-		WriteErrorResponse(w, http.StatusUnauthorized, "Unauthorized")
-		return
-	}
-
-	// Check access (only root or admin can delete keys? assuming admins can)
 	isAdmin, err := db.IsAppAdmin(claims.Username, req.AppID)
 	if err != nil || !isAdmin {
 		WriteErrorResponse(w, http.StatusForbidden, "Forbidden")
 		return
 	}
 
-	err = db.DeleteAPIKey(req.KeyID, req.AppID)
-	if err != nil {
-		WriteErrorResponse(w, http.StatusInternalServerError, "Could not delete key")
+	req.URI = strings.TrimSpace(req.URI)
+	req.Name = strings.TrimSpace(req.Name)
+	if req.URI == "" {
+		WriteErrorResponse(w, http.StatusBadRequest, "URI is required")
 		return
 	}
 
-	WriteSuccessResponse(w, "Key deleted", nil)
+	u, err := url.ParseRequestURI(req.URI)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") {
+		WriteErrorResponse(w, http.StatusBadRequest, "Invalid URI")
+		return
+	}
+
+	id, err := db.AddTrustedURI(req.AppID, req.Name, req.URI)
+	if err != nil {
+		if strings.Contains(err.Error(), "already exists") {
+			WriteErrorResponse(w, http.StatusBadRequest, "Trusted URI already exists")
+			return
+		}
+		WriteErrorResponse(w, http.StatusInternalServerError, "Could not add trusted URI")
+		return
+	}
+
+	WriteSuccessResponse(w, "Trusted URI added", map[string]interface{}{"id": id})
+}
+
+func DeleteAppTrustedURIHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req types.DeleteTrustedURIRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		WriteErrorResponse(w, http.StatusBadRequest, "Invalid request")
+		return
+	}
+
+	claims, err := utils.ExtractClaims(r)
+	if err != nil {
+		WriteErrorResponse(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	isAdmin, err := db.IsAppAdmin(claims.Username, req.AppID)
+	if err != nil || !isAdmin {
+		WriteErrorResponse(w, http.StatusForbidden, "Forbidden")
+		return
+	}
+
+	err = db.DeleteTrustedURI(req.URIID, req.AppID)
+	if err != nil {
+		WriteErrorResponse(w, http.StatusInternalServerError, "Could not delete trusted URI")
+		return
+	}
+
+	WriteSuccessResponse(w, "Trusted URI deleted", nil)
 }
 
 func UpdateAppHandler(w http.ResponseWriter, r *http.Request) {
@@ -271,24 +270,31 @@ func UpdateAppHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	oldLogo := oldApp.LogoURL
 
-	// External URL blob
-	if strings.HasPrefix(logoURL, "http") {
-		processedData, err := utils.DownloadAndProcessImage(logoURL)
-		if err == nil {
-			blobID := utils.GenerateID()
-			if err := db.SaveBlob(blobID, processedData, "image/jpeg"); err == nil {
-				logoURL = "/blob/" + blobID
+	if logoURL != config.AppConfig.BackendURL+oldLogo {
+		// External URL blob
+		if strings.HasPrefix(logoURL, "http") {
+			processedData, err := utils.DownloadAndProcessImage(logoURL)
+			if err == nil {
+				blobID := utils.GenerateID()
+				if err := db.SaveBlob(blobID, processedData, "image/jpeg"); err == nil {
+					logoURL = "/blob/" + blobID
+				}
 			}
 		}
+		if oldLogo != "" && oldLogo != logoURL {
+			db.DeleteBlobByURL(oldLogo)
+		}
+	} else {
+		logoURL = oldLogo
 	}
 
 	if err := db.UpdateAppInfo(appID, name, description, logoURL); err != nil {
+		if strings.Contains(err.Error(), "Duplicate entry") {
+			WriteErrorResponse(w, http.StatusBadRequest, "App name already exists")
+			return
+		}
 		WriteErrorResponse(w, http.StatusInternalServerError, "Could not update app")
 		return
-	}
-
-	if oldLogo != "" && oldLogo != logoURL {
-		db.DeleteBlobByURL(oldLogo)
 	}
 
 	WriteSuccessResponse(w, "App updated", nil)

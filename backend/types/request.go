@@ -29,6 +29,17 @@ type RemoveMemberRequest struct {
 	Username string `json:"username"`
 }
 
+type AddTrustedURIRequest struct {
+	AppID string `json:"appId"`
+	Name  string `json:"name"`
+	URI   string `json:"uri"`
+}
+
+type DeleteTrustedURIRequest struct {
+	AppID string `json:"appId"`
+	URIID int64  `json:"uriId"`
+}
+
 type AuthCodeFlowRequest struct {
 	ClientID            string `json:"client_id"`
 	RedirectURI         string `json:"redirect_uri"`

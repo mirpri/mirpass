@@ -4,7 +4,7 @@ export type SimpleResponse = {
 };
 
 export type ErrorResponse = {
-  response?: { status?: number; error?: string };
+  response?: {data?: { status?: number; error?: string }};
 };
 
 export type Profile = {
@@ -22,6 +22,7 @@ export type ProfilePublic = {
 
 export type AppRole = {
   appId: string;
+  logoUrl?: string;
   name: string;
   role: string;
 };
@@ -54,6 +55,13 @@ export interface APIKey {
   id: number;
   keyValue: string; 
   name?: string;
+  createdAt: string;
+}
+
+export interface TrustedUri {
+  id: number;
+  name?: string;
+  uri: string;
   createdAt: string;
 }
 

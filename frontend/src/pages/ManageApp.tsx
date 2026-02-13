@@ -6,7 +6,7 @@ import {
   Card,
   Table,
   Typography,
-  message,
+  App,
   Modal,
   Tag,
   Space,
@@ -32,7 +32,7 @@ import {
   UploadOutlined,
   ReloadOutlined,
 } from "@ant-design/icons";
-import { BanIcon, CopyIcon } from "lucide-react";
+import { BanIcon } from "lucide-react";
 import ImgCrop from "antd-img-crop";
 
 import dayjs from "dayjs";
@@ -42,11 +42,11 @@ import { sha256, generateRandomString } from "../utils/crypto";
 import api from "../api/client";
 import { config } from "../config";
 import type {
-  APIKey,
   AppDetails,
   AppMember,
   LoginHistoryItem,
   AppStatsSummary,
+  TrustedUri,
 } from "../types";
 import { useAppStore } from "../store/useAppStore";
 import { LoadingView } from "../components/LoadingView";
@@ -76,7 +76,7 @@ function ManageAppPage() {
       );
       setApp(data.data);
     } catch (e) {
-      message.error("Could not load app details");
+      App.useApp().message.error("Could not load app details");
       navigate("/dashboard");
     } finally {
       setLoading(false);
@@ -93,9 +93,9 @@ function ManageAppPage() {
       children: <StatsTab app={app} />,
     },
     {
-      key: "keys",
-      label: "API Keys",
-      children: <KeysTab app={app} />,
+      key: "trusted_uris",
+      label: "Trusted URIs",
+      children: <TrustedUrisTab app={app} />,
     },
     {
       key: "members",
@@ -150,29 +150,27 @@ function ManageAppPage() {
   );
 }
 
-// --- Keys Tab ---
+// --- Trusted URIs Tab ---
 
-function KeysTab({ app }: { app: AppDetails }) {
-  const [keys, setKeys] = useState<APIKey[]>([]);
+function TrustedUrisTab({ app }: { app: AppDetails }) {
+  const { message } = App.useApp();
+  const [uris, setUris] = useState<TrustedUri[]>([]);
   const [loading, setLoading] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [keyName, setKeyName] = useState("");
-
-  // Result Modal
-  const [resultModalOpen, setResultModalOpen] = useState(false);
-  const [newKeyValue, setNewKeyValue] = useState("");
+  const [newName, setNewName] = useState("");
+  const [newUri, setNewUri] = useState("");
 
   useEffect(() => {
-    fetchKeys();
+    fetchUris();
   }, [app.id]);
 
-  const fetchKeys = async () => {
+  const fetchUris = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get<{ data: APIKey[] }>(
-        `/apps/keys?id=${app.id}`,
+      const { data } = await api.get<{ data: TrustedUri[] }>(
+        `/apps/uris?id=${app.id}`,
       );
-      setKeys(data.data || []);
+      setUris(data.data || []);
     } catch (e) {
       // ignore
     } finally {
@@ -180,32 +178,39 @@ function KeysTab({ app }: { app: AppDetails }) {
     }
   };
 
-  const handleCreateKey = async () => {
+  const handleCreateUri = async () => {
+    const trimmed = newUri.trim();
+    if (!trimmed) {
+      message.error("URI is required");
+      return;
+    }
+
     try {
-      const { data } = await api.post<{ data: { key: string } }>(
-        "/apps/keys/create",
-        {
-          appId: app.id,
-          name: keyName,
-        },
-      );
-      setNewKeyValue(data.data.key);
+      await api.post("/apps/uris/add", {
+        appId: app.id,
+        name: newName.trim(),
+        uri: trimmed,
+      });
+      message.success("Trusted URI added");
       setCreateModalOpen(false);
-      setResultModalOpen(true);
-      setKeyName("");
-      fetchKeys();
-    } catch (e) {
-      message.error("Failed to create API key");
+      setNewName("");
+      setNewUri("");
+      fetchUris();
+    } catch (e: any) {
+      const msg = e.response?.data?.message || "Failed to add trusted URI";
+      message.error(msg);
     }
   };
 
-  const deleteKey = async (keyId: number) => {
+  const handleDeleteUri = async (uriId: number) => {
     try {
-      await api.post("/apps/keys/delete", { appId: app.id, keyId });
-      message.success("Key deleted");
-      fetchKeys();
-    } catch (e) {
-      message.error("Could not delete key");
+      await api.post("/apps/uris/delete", { appId: app.id, uriId });
+      message.success("Trusted URI removed");
+      fetchUris();
+    } catch (e: any) {
+      const msg =
+        e.response?.data?.message || "Failed to remove trusted URI";
+      message.error(msg);
     }
   };
 
@@ -214,15 +219,16 @@ function KeysTab({ app }: { app: AppDetails }) {
       title: "Name",
       dataIndex: "name",
       key: "name",
-      render: (text: string) => text || <Text type="secondary">Unnamed</Text>,
+      render: (text?: string) => text || <Text type="secondary">Unnamed</Text>,
     },
     {
-      title: "ID",
-      dataIndex: "id",
-      key: "id",
+      title: "URI",
+      dataIndex: "uri",
+      key: "uri",
+      render: (text: string) => <Text copyable>{text}</Text>,
     },
     {
-      title: "Created At",
+      title: "Added At",
       dataIndex: "createdAt",
       key: "createdAt",
       render: (text: string) => formatDateTime(text),
@@ -230,94 +236,72 @@ function KeysTab({ app }: { app: AppDetails }) {
     {
       title: "Action",
       key: "action",
-      render: (_: any, record: APIKey) => (
+      render: (_: any, record: TrustedUri) => (
         <Popconfirm
-          title="Delete this key?"
-          onConfirm={() => deleteKey(record.id)}
+          title="Delete this URI?"
+          onConfirm={() => handleDeleteUri(record.id)}
           okText="Yes"
           cancelText="No"
         >
-          <Button danger size="small" icon={<DeleteOutlined />}>
-            Delete
-          </Button>
+          <Button type="text" danger icon={<DeleteOutlined />} />
         </Popconfirm>
       ),
     },
   ];
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-4">
-        <Text>Manage your API keys for accessing the service.</Text>
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <Text>Manage redirect URIs allowed by Authorization Code flow.</Text>
         {app.role !== "external" && (
           <Button
             type="primary"
             icon={<PlusOutlined />}
             onClick={() => setCreateModalOpen(true)}
           >
-            Create New Key
+            Add URI
           </Button>
         )}
       </div>
 
       <Table
-        dataSource={keys}
+        dataSource={uris}
         columns={columns}
         rowKey="id"
         loading={loading}
         pagination={false}
       />
 
-      {/* Creation Modal */}
       <Modal
-        title="Create New API Key"
+        title="Add Trusted URI"
         open={createModalOpen}
-        onCancel={() => setCreateModalOpen(false)}
-        onOk={handleCreateKey}
-        okText="Create"
+        onCancel={() => {
+          setCreateModalOpen(false);
+          setNewName("");
+          setNewUri("");
+        }}
+        onOk={handleCreateUri}
+        okText="Add"
       >
         <Form layout="vertical">
-          <Form.Item label="Key Name (Optional)">
+          <Form.Item label="Name">
             <Input
-              placeholder="e.g. Production Key"
-              value={keyName}
-              onChange={(e) => setKeyName(e.target.value)}
+              placeholder="e.g. Local dev callback"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+            />
+          </Form.Item>
+          <Form.Item label="URI" required>
+            <Input
+              placeholder="https://example.com/callback"
+              value={newUri}
+              onChange={(e) => setNewUri(e.target.value)}
             />
           </Form.Item>
         </Form>
-      </Modal>
-
-      {/* Result Modal */}
-      <Modal
-        title="API Key Created"
-        open={resultModalOpen}
-        onCancel={() => setResultModalOpen(false)}
-        footer={[
-          <Button
-            key="close"
-            type="primary"
-            onClick={() => setResultModalOpen(false)}
-          >
-            Done
-          </Button>,
-        ]}
-      >
-        <div className="flex flex-col gap-2">
-          <Text type="secondary">
-            Copy this key now. You won't see it again.
-          </Text>
-          <Space.Compact style={{ width: "100%" }}>
-            <Input value={newKeyValue} readOnly />
-            <Button
-              onClick={() => {
-                navigator.clipboard.writeText(newKeyValue);
-                message.success("Copied to clipboard");
-              }}
-            >
-              <CopyIcon size={16} />
-            </Button>
-          </Space.Compact>
-        </div>
+        <Paragraph>
+          Enter full URI including scheme. Wildcards(*) are not allowed.
+        </Paragraph>
       </Modal>
     </div>
   );
@@ -333,7 +317,7 @@ function MembersTab({ app }: { app: AppDetails }) {
   // Add Member Form
   const [newUser, setNewUser] = useState("");
   const [newRole, setNewRole] = useState("admin");
-
+  const { message } = App.useApp();
   const { profile } = useAppStore();
 
   useEffect(() => {
@@ -525,6 +509,7 @@ function SettingsTab({
   onUpdate: () => void;
   onDelete: () => void;
 }) {
+  const { message } = App.useApp();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -564,8 +549,10 @@ function SettingsTab({
       onUpdate();
       setSelectedFile(null); // Reset file selection after success
     } catch (e) {
-      console.error(e);
-      message.error("Failed to update app");
+      const err = e as ErrorResponse;
+      console.error("Failed to update app", err.response);
+
+      message.error(err.response?.data?.error || "Failed to update app");
     } finally {
       setLoading(false);
     }
@@ -697,11 +684,19 @@ function IntegrationGuideTab({ app }: { app: AppDetails }) {
 }
 
 function AuthCodeFlowGuide({ app }: { app: AppDetails }) {
-  const [redirectUri, setRedirectUri] = useState<string>("http://localhost:3000/callback");
+  let backendUrl = config.API_URL;
+  if (backendUrl.endsWith("/")) {
+    backendUrl = backendUrl.slice(0, -1);
+  }
+  
+  const { message } = App.useApp();
+  const [redirectUri, setRedirectUri] = useState<string>(
+    "",
+  );
   const [state, setState] = useState<string>(generateRandomString(16));
   const [verifier, setVerifier] = useState<string>(generateRandomString(43));
   const [challenge, setChallenge] = useState<string>("");
-  
+
   const [authCode, setAuthCode] = useState<string>("");
   const [tokenResult, setTokenResult] = useState<any>(null);
 
@@ -726,7 +721,9 @@ function AuthCodeFlowGuide({ app }: { app: AppDetails }) {
     });
     const url = `${config.API_URL}/oauth2/authorize?${params.toString()}`;
     window.open(url, "_blank");
-    message.info("Opens provider authorization page. After approval, copy the 'code' from the URL.");
+    message.info(
+      "Opens provider authorization page. After approval, copy the 'code' from the URL.",
+    );
   };
 
   const handleExchange = async () => {
@@ -753,82 +750,141 @@ function AuthCodeFlowGuide({ app }: { app: AppDetails }) {
   return (
     <div className="space-y-6">
       <Alert
-        message="Recommended for Web/Mobile Apps"
-        description="Authorization Code Flow with PKCE is the most secure method for authenticating users in public clients."
+        title="Recommended for Web / Mobile Apps"
+        description="Authorization Code Flow with PKCE is the most secure method for authenticating users in public clients. Use this as long as your app can securely handle redirects."
         type="info"
         showIcon
       />
-      
-      <Card title="1. Initiate Authorization" size="small">
-        <Space direction="vertical" className="w-full">
-          <Paragraph>
-            Construct the authorization URL and redirect the user. Poking endpoints manually:
-          </Paragraph>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Text strong>Client ID</Text>
-              <Input value={app.id} disabled />
-            </div>
-            <div>
-              <Text strong>Redirect URI</Text>
-              <Input value={redirectUri} onChange={(e) => setRedirectUri(e.target.value)} />
-            </div>
-            <div>
-               <Text strong>State (Random)</Text>
-               <div className="flex gap-2">
-                 <Input value={state} disabled />
-               </div>
-            </div>
-             <div>
-               <Text strong>Code Verifier (PKCE)</Text>
-               <div className="flex gap-2">
-                 <Input value={verifier} disabled />
-                 <Button icon={<ReloadOutlined />} onClick={regenerateParams} />
-               </div>
-            </div>
-             <div className="col-span-1 md:col-span-2">
-               <Text strong>Code Challenge (S256(Verifier))</Text>
-               <Input value={challenge} disabled />
+
+      <Space
+        direction="vertical"
+        className="w-full bg-gray-50 dark:bg-gray-900/20 p-4 rounded border border-gray-200 dark:border-gray-700 mt-4"
+      >
+        <Title level={4}>Test Authorization Code Flow</Title>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Text strong>Client ID</Text>
+            <Input value={app.id} disabled />
+          </div>
+          <div>
+            <Text strong>Redirect URI</Text>
+            <Input
+              value={redirectUri}
+              onChange={(e) => setRedirectUri(e.target.value)}
+            />
+          </div>
+          <div>
+            <Text strong>State (Random)</Text>
+            <Input value={state} disabled />
+          </div>
+          <div>
+            <Text strong>Code Verifier (PKCE)</Text>
+            <Space.Compact style={{ width: "100%" }}>
+              <Input value={verifier} disabled />
+              <Button icon={<ReloadOutlined />} onClick={regenerateParams} />
+            </Space.Compact>
+          </div>
+          <div className="col-span-1 md:col-span-2">
+            <Text strong>Code Challenge (S256(Verifier))</Text>
+            <Input value={challenge} disabled />
+          </div>
+        </div>
+
+        <Button type="primary" onClick={handleAuthorize} disabled={!challenge}>
+          Simulate authorization request
+        </Button>
+
+        <Paragraph className="mb-0">
+          After approval, copy the <code>code</code> query value from your
+          redirect URI.
+        </Paragraph>
+        <Space.Compact style={{ width: "100%" }}>
+          <Input
+            placeholder="Paste authorization code here..."
+            value={authCode}
+            onChange={(e) => setAuthCode(e.target.value)}
+          />
+          <Button type="primary" onClick={handleExchange} disabled={!authCode}>
+            Exchange token
+          </Button>
+        </Space.Compact>
+
+        {tokenResult && (
+          <div className="mt-2 bg-green-50 dark:bg-green-900/20 p-4 rounded border border-green-200">
+            <Text strong className="text-green-600">
+              Token Response:
+            </Text>
+            <div className="mt-2 bg-gray-100 dark:bg-gray-800 p-3 rounded text-sm text-gray-600 dark:text-gray-300 font-mono overflow-x-auto">
+              {JSON.stringify(tokenResult, null, 2)}
             </div>
           </div>
-          <Button type="primary" onClick={handleAuthorize} disabled={!challenge}>
-            Simulate Authorization Request
-          </Button>
-        </Space>
-      </Card>
+        )}
+      </Space>
 
-      <Card title="2. Exchange Code for Token" size="small">
-         <Space direction="vertical" className="w-full">
-           <Paragraph>
-             After redirection, you will receive a <code>code</code> in the URL query parameters. Paste it here to exchange for a token.
-           </Paragraph>
-           <div>
-             <Text strong>Authorization Code</Text>
-             <Input 
-                placeholder="Paste code here..." 
-                value={authCode} 
-                onChange={(e) => setAuthCode(e.target.value)} 
-              />
-           </div>
-           <Button type="primary" onClick={handleExchange} disabled={!authCode}>
-             Exchange Token
-           </Button>
+      <div>
+        <Title level={4}>1. Initiate Authorization</Title>
+        <Paragraph>Send the user to the authorization endpoint.</Paragraph>
+        <div className="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed">
+          <span className="text-purple-400">GET</span> {backendUrl}
+          /oauth2/authorize
+          <br />
+          ?client_id={app.id}
+          <br />
+          &response_type=code
+          <br />
+          &redirect_uri={encodeURIComponent(redirectUri)}
+          <br />
+          &state={state}
+          <br />
+          &code_challenge={challenge}
+          <br />
+          &code_challenge_method=S256
+        </div>
+      </div>
+      <Alert
+        title={"The redirected_uri must match one of the app's registered trusted URIs."}
+        type="warning"
+        showIcon
+      />
 
-           {tokenResult && (
-             <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 overflow-x-auto">
-               <pre className="text-xs">{JSON.stringify(tokenResult, null, 2)}</pre>
-             </div>
-           )}
-         </Space>
-      </Card>
+      <div className="mt-6">
+        <Title level={4}>2. Exchange Code for Token</Title>
+        <Paragraph>Exchange the received code for tokens.</Paragraph>
+        <div className="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed">
+          <span className="text-purple-400">POST</span> {backendUrl}
+          /oauth2/token
+          <br />
+          <span className="text-blue-300">Content-Type:</span> application/json
+          <br />
+          <br />
+          {`{
+  "grant_type": "authorization_code",
+  "client_id": "${app.id}",
+  "code": "${authCode || "AUTHORIZATION_CODE"}",
+  "code_verifier": "${verifier}"
+}`}
+        </div>
+      </div>
+      <Paragraph className="text-sm text-gray-500">
+          Response (Success):
+        </Paragraph>
+        <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs font-mono">
+          {`{
+  "access_token": "...",
+  "token_type": "Bearer",
+  "expires_in": 3600
+}`}
+        </div>
     </div>
   );
 }
 
 function DeviceCodeFlowGuide({ app }: { app: AppDetails }) {
-  const backendUrl = config.API_URL;
+  const { message } = App.useApp();
+  let backendUrl = config.API_URL;
   if (backendUrl.endsWith("/")) {
-    backendUrl.slice(0, -1);
+    backendUrl = backendUrl.slice(0, -1);
   }
   const frontendUrl = window.location.origin;
 
@@ -842,10 +898,9 @@ function DeviceCodeFlowGuide({ app }: { app: AppDetails }) {
     setPollStatus("Initiating...");
     try {
       // Use Device Code Flow
-      const { data } = await api.post(
-        "/oauth2/devicecode",
-        { client_id: app.id },
-      );
+      const { data } = await api.post("/oauth2/devicecode", {
+        client_id: app.id,
+      });
 
       setDeviceCodeData(data);
       setPollStatus("Waiting for user authorization...");
@@ -856,7 +911,7 @@ function DeviceCodeFlowGuide({ app }: { app: AppDetails }) {
       // }
     } catch (error: unknown) {
       const err = error as ErrorResponse;
-      const msg = err.response?.error || "Failed";
+      const msg = err.response?.data?.error || "Failed";
       setPollStatus("Failed: " + msg);
     }
   };
@@ -904,14 +959,13 @@ function DeviceCodeFlowGuide({ app }: { app: AppDetails }) {
       <div>
         <Alert
           message="Suitable for CLI / Limited Input Devices"
-          description="Device Flow allows users to sign in on a secondary device using a short code."
+          description="Device Flow allows users to sign in on a secondary device using a short code or link. Only use this if your app cannot securely handle redirects or has limited input capabilities."
           type="info"
           showIcon
-          className="mb-4"
         />
         <Space
           orientation="vertical"
-          className="w-full bg-gray-50 dark:bg-gray-900/20 p-4 rounded border border-gray-200 dark:border-gray-700"
+          className="w-full bg-gray-50 dark:bg-gray-900/20 p-4 rounded border border-gray-200 dark:border-gray-700 mt-4"
         >
           <Title level={4}>Test Device Code Flow</Title>
           <Button onClick={handleCreateTestSession} type="primary">
@@ -1116,7 +1170,11 @@ function StatsTab({ app }: { app: AppDetails }) {
 
       <Row gutter={16}>
         <Col xs={24} xl={12}>
-          <Card title="Traffic (Last 7 Days)" style={{ margin: "10px 0" }}>
+          <Card
+            title="Traffic"
+            style={{ margin: "10px 0" }}
+            extra={<Text type="secondary">Days split by UTC</Text>}
+          >
             <div>
               <div className="flex items-end justify-between h-56 gap-2 px-2">
                 {chartData.map((d) => {

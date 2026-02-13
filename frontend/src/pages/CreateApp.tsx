@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, Card, Form, Input, Typography, message, Space } from "antd";
+import { Button, Card, Form, Input, Typography, Space, App } from "antd";
 import { useNavigate } from "react-router-dom";
 import type { ErrorResponse } from "../types";
 import api from "../api/client";
@@ -9,6 +9,7 @@ const { Title, Text } = Typography;
 function CreateAppPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { message } = App.useApp();
 
   const onFinish = async (values: { name: string; description: string }) => {
     setLoading(true);
@@ -19,7 +20,7 @@ function CreateAppPage() {
       navigate(`/manage/${appId}`);
     } catch (error: any) {
       const err = error as ErrorResponse;
-      const msg = err.response?.error || "Could not create app";
+      const msg = err.response?.data?.error || "Could not create app";
       message.error(msg);
     } finally {
       setLoading(false);

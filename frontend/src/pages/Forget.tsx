@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Button, Card, Form, Input, Space, Typography, message } from "antd";
+import { Button, Card, Form, Input, Space, Typography, App } from "antd";
 import {
   UserOutlined,
   LockOutlined,
@@ -13,6 +13,7 @@ import type { ErrorResponse } from "../types";
 const { Title, Text } = Typography;
 
 function ForgetPage() {
+  const {message} = App.useApp();
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
   const [submitted, setSubmitted] = useState(false);
@@ -34,7 +35,7 @@ function ForgetPage() {
     } catch (error: any) {
       const err = error as ErrorResponse;
       message.error(
-        err.response?.error || "Failed to reset password",
+        err.response?.data?.error || "Failed to reset password",
       );
     } finally {
       setLoading(false);

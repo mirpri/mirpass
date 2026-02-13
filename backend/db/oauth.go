@@ -24,7 +24,7 @@ func GetSessionByDeviceCode(deviceCode string) (*types.DeviceFlowSession, error)
 	}
 	t, err := time.Parse(time.RFC3339, s.ExpiresAt)
 	if err != nil || time.Now().After(t) {
-		UpdateDeviceFlowSessionStatus(s.SessionID, "", "")
+		UpdateSessionStatus(s.SessionID, "", "")
 		s.Status = "expired"
 	}
 	return &s, nil
@@ -44,7 +44,7 @@ func GetAuthCodeSessionBySessionId(sessionId string) (*types.AuthCodeFlowSession
 	}
 	t, err := time.Parse(time.RFC3339, s.ExpiresAt)
 	if err != nil || time.Now().After(t) {
-		UpdateDeviceFlowSessionStatus(s.SessionID, "", "")
+		UpdateSessionStatus(s.SessionID, "", "")
 		s.Status = "expired"
 	}
 	return &s, nil
@@ -65,7 +65,7 @@ func GetSessionByUserCode(userCode string) (*types.DeviceFlowSession, error) {
 	}
 	t, err := time.Parse(time.RFC3339, s.ExpiresAt)
 	if err != nil || time.Now().After(t) {
-		UpdateDeviceFlowSessionStatus(s.SessionID, "", "")
+		UpdateSessionStatus(s.SessionID, "", "")
 		return nil, fmt.Errorf("Session expired")
 	}
 	return &s, nil
@@ -91,7 +91,7 @@ func UpdateSessionPoll(sessionId string) error {
 	return err
 }
 
-func UpdateDeviceFlowSessionStatus(sessionId string, status string, username string) error {
+func UpdateSessionStatus(sessionId string, status string, username string) error {
 	session, err := GetSessionBySessionId(sessionId)
 	if err != nil {
 		return err
@@ -148,7 +148,7 @@ func GetAuthCodeSessionByCode(code string) (*types.AuthCodeFlowSession, error) {
 	}
 	t, err := time.Parse(time.RFC3339, s.ExpiresAt)
 	if err != nil || time.Now().After(t) {
-		UpdateDeviceFlowSessionStatus(s.SessionID, "", "")
+		UpdateSessionStatus(s.SessionID, "", "")
 		s.Status = "expired"
 	}
 	return &s, nil

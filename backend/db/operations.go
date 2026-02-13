@@ -567,7 +567,7 @@ func SearchUsersWithSystemRole(query string) ([]types.UserWithSystemRole, error)
 
 func GetAdminApps(username string) ([]types.AppRole, error) {
 	query := `
-		SELECT a.app, COALESCE(app_tbl.name, a.app), a.role 
+		SELECT a.app, COALESCE(app_tbl.name, a.app), app_tbl.logo_url, a.role 
 		FROM admins a 
 		LEFT JOIN applications app_tbl ON a.app = app_tbl.id 
 		WHERE a.username = ?`
@@ -581,8 +581,12 @@ func GetAdminApps(username string) ([]types.AppRole, error) {
 	var apps []types.AppRole
 	for rows.Next() {
 		var ar types.AppRole
-		if err := rows.Scan(&ar.AppID, &ar.Name, &ar.Role); err != nil {
+		var logo sql.NullString
+		if err := rows.Scan(&ar.AppID, &ar.Name, &logo, &ar.Role); err != nil {
 			return nil, err
+		}
+		if logo.Valid {
+			ar.LogoURL = logo.String
 		}
 		apps = append(apps, ar)
 	}
@@ -678,36 +682,45 @@ func IsAppRoot(username, appID string) (bool, error) {
 	return count > 0, nil
 }
 
-func GetAppKeys(appID string) ([]types.APIKey, error) {
-	rows, err := database.Query("SELECT id, app_id, COALESCE(name, ''), created_at FROM api_keys WHERE app_id = ? ORDER BY created_at DESC", appID)
+func GetTrustedURIs(appID string) ([]types.TrustedURI, error) {
+	rows, err := database.Query("SELECT id, app_id, COALESCE(name, ''), uri, created_at FROM trusted_uris WHERE app_id = ? ORDER BY created_at DESC", appID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var keys []types.APIKey
+	var uris []types.TrustedURI
 	for rows.Next() {
-		var k types.APIKey
+		var u types.TrustedURI
 		var createdAt sql.NullString
-		if err := rows.Scan(&k.ID, &k.AppID, &k.Name, &createdAt); err != nil {
+		if err := rows.Scan(&u.ID, &u.AppID, &u.Name, &u.URI, &createdAt); err != nil {
 			return nil, err
 		}
-		k.CreatedAt = createdAt.String
-		keys = append(keys, k)
+		u.CreatedAt = createdAt.String
+		uris = append(uris, u)
 	}
-	return keys, nil
+	return uris, nil
 }
 
-func CreateAPIKey(appID, keyHash, name string) (int64, error) {
-	res, err := database.Exec("INSERT INTO api_keys (app_id, key_hash, name) VALUES (?, ?, ?)", appID, keyHash, name)
+func AddTrustedURI(appID, name, uri string) (int64, error) {
+	var count int
+	err := database.QueryRow("SELECT COUNT(*) FROM trusted_uris WHERE app_id = ? AND uri = ?", appID, uri).Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+	if count > 0 {
+		return 0, fmt.Errorf("trusted uri already exists")
+	}
+
+	res, err := database.Exec("INSERT INTO trusted_uris (app_id, name, uri) VALUES (?, ?, ?)", appID, name, uri)
 	if err != nil {
 		return 0, err
 	}
 	return res.LastInsertId()
 }
 
-func DeleteAPIKey(keyID int64, appID string) error {
-	res, err := database.Exec("DELETE FROM api_keys WHERE id = ? AND app_id = ?", keyID, appID)
+func DeleteTrustedURI(uriID int64, appID string) error {
+	res, err := database.Exec("DELETE FROM trusted_uris WHERE id = ? AND app_id = ?", uriID, appID)
 	if err != nil {
 		return err
 	}
@@ -719,6 +732,15 @@ func DeleteAPIKey(keyID int64, appID string) error {
 		return sql.ErrNoRows
 	}
 	return nil
+}
+
+func IsTrustedURI(appID, uri string) (bool, error) {
+	var count int
+	err := database.QueryRow("SELECT COUNT(*) FROM trusted_uris WHERE app_id = ? AND uri = ?", appID, uri).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }
 
 func UpdateAppInfo(appID, name, description, logoUrl string) error {
@@ -838,15 +860,6 @@ func GetAppMembers(appID string) ([]types.AppMember, error) {
 }
 
 // --- SSO Operations ---
-
-func GetAppIDByAPIKeyHash(hash string) (string, error) {
-	var appID string
-	err := database.QueryRow("SELECT app_id FROM api_keys WHERE key_hash = ?", hash).Scan(&appID)
-	if err != nil {
-		return "", err
-	}
-	return appID, nil
-}
 
 func GetAppName(appID string) (string, error) {
 	var name string

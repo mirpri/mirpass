@@ -1,6 +1,6 @@
 import { useState, useEffect, Suspense, lazy } from "react";
 import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
-import { ConfigProvider, App as AntdApp, theme, message } from "antd";
+import { ConfigProvider, App as AntdApp, theme } from "antd";
 import { LoadingView } from "./components/LoadingView";
 
 const LoginPage = lazy(() => import("./pages/Login"));
@@ -20,7 +20,7 @@ import { useAppStore } from "./store/useAppStore";
 function App() {
   const navigate = useNavigate();
   const { fetchProfile, ssoSessionId, token, setToken, logout } = useAppStore();
-
+  const { message } = AntdApp.useApp();
   const [isDarkMode, setIsDarkMode] = useState(
     window.matchMedia &&
       window.matchMedia("(prefers-color-scheme: dark)").matches,
