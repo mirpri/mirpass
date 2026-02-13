@@ -63,9 +63,9 @@ export default function AboutPage() {
           >
             GitHub Repository
           </Button>
-          <Button size="large" onClick={() => navigate("/app/create")}>
+          <Button size="large" href="https://github.com/mirpri/mirpass/tree/master/guide">
             <BookPlusIcon size={18} />
-            Create Your App
+            How to Integrate
           </Button>
         </div>
 

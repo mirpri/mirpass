@@ -578,7 +578,7 @@ function AdminPage() {
       setSystemRole(sys.role);
     } catch (error: any) {
       const err = error as ErrorResponse;
-      message.error(err.response?.error || "Failed to authenticate");
+      message.error(err.response?.data?.error || "Failed to authenticate");
     } finally {
       setCheckingAuth(false);
     }
@@ -595,7 +595,7 @@ function AdminPage() {
       message.success("Query executed");
     } catch (error: any) {
       const err = error as ErrorResponse;
-      message.error(err.response?.error || "Query failed");
+      message.error(err.response?.data?.error || "Query failed");
       setSqlResult(null);
     }
   };

@@ -149,7 +149,7 @@ func DeviceFlowPollHandler(w http.ResponseWriter, r *http.Request) {
 			"access_token": accessToken,
 			"expires_in":   "604800", // 7 days in seconds
 		}
-		db.UpdateDeviceFlowSessionStatus(session.SessionID, "consumed", "")
+		db.UpdateSessionStatus(session.SessionID, "consumed", "")
 		db.AddHistory(session.Username, session.ClientID)
 		WriteOauthSuccessResponse(w, res)
 		return
@@ -207,7 +207,7 @@ func AuthCodeFlowTokenHandler(w http.ResponseWriter, r *http.Request) {
 		"access_token": accessToken,
 		"expires_in":   "604800", // 7 days in seconds
 	}
-	db.UpdateDeviceFlowSessionStatus(session.SessionID, "consumed", "")
+	db.UpdateSessionStatus(session.SessionID, "consumed", "")
 	db.AddHistory(session.Username, session.ClientID)
 	WriteOauthSuccessResponse(w, res)
 }
@@ -219,7 +219,7 @@ func SessionDetailsByUsercodeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err := db.GetSessionByUserCode(userCode)
+	session, err := db.GetActiveSessionByUserCode(userCode)
 	if err != nil {
 		WriteErrorResponse(w, 400, "Invalid userCode")
 		return
@@ -250,7 +250,7 @@ func OAuthConsentHandler(w http.ResponseWriter, r *http.Request) {
 		status = "authorized"
 	}
 
-	err = db.UpdateDeviceFlowSessionStatus(req.SessionID, status, username)
+	err = db.UpdateSessionStatus(req.SessionID, status, username)
 	if err != nil {
 		WriteErrorResponse(w, 500, "Failed to update session status")
 		return
@@ -291,29 +291,52 @@ func AuthCodeFlowHandler(w http.ResponseWriter, r *http.Request) {
 		CodeChallengeMethod: q.Get("code_challenge_method"),
 	}
 
+	if req.RedirectURI == "" {
+		http.Error(w, "missing redirect_uri", http.StatusBadRequest)
+		return
+	}
+
+	redirectTarget := req.RedirectURI
+	if strings.Contains(redirectTarget, "?") {
+		redirectTarget += "&"
+	} else {
+		redirectTarget += "?"
+	}
+
 	if req.ResponseType != "code" {
-		http.Redirect(w, r, req.RedirectURI+"?error=unsupported_response_type&state="+req.State, http.StatusFound)
+		http.Redirect(w, r, redirectTarget+"error=unsupported_response_type&state="+req.State, http.StatusFound)
 		return
 	}
 
 	app, err := db.GetApplication(req.ClientID)
 	if err != nil {
-		http.Redirect(w, r, req.RedirectURI+"?error=invalid_client&state="+req.State, http.StatusFound)
+		http.Redirect(w, r, redirectTarget+"error=invalid_client&state="+req.State, http.StatusFound)
 		return
 	}
 	if app.SuspendUntil != nil {
 		t, _ := time.Parse(time.RFC3339, *app.SuspendUntil)
 		if t.After(time.Now()) {
-			http.Redirect(w, r, req.RedirectURI+"?error=access_denied&state="+req.State, http.StatusFound)
+			http.Redirect(w, r, redirectTarget+"error=access_denied&state="+req.State, http.StatusFound)
 			return
 		}
+	}
+
+	trusted, err := db.IsTrustedURI(req.ClientID, req.RedirectURI)
+	if err != nil {
+		log.Print("Failed to validate trusted URI:", err)
+		http.Error(w, "server error", http.StatusInternalServerError)
+		return
+	}
+	if !trusted {
+		http.Error(w, "redirect_uri not registered", http.StatusBadRequest)
+		return
 	}
 
 	sessionId := utils.GenerateToken()
 	err = db.CreateAuthCodeSession(req.ClientID, sessionId, req.RedirectURI, req.CodeChallenge, req.CodeChallengeMethod, req.State)
 	if err != nil {
 		log.Fatal("Error creating auth code session:", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		http.Error(w, "server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -322,6 +345,11 @@ func AuthCodeFlowHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func AuthCodeFlowConsentHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	claims, err := utils.ExtractClaims(r)
 	if err != nil {
 		log.Print("Failed to extract claims on AuthCodeFlowConsent:", err)
@@ -343,30 +371,23 @@ func AuthCodeFlowConsentHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid session", http.StatusBadRequest)
 		return
 	}
+	redirectTarget := session.RedirectURI
+	if strings.Contains(redirectTarget, "?") {
+		redirectTarget += "&"
+	} else {
+		redirectTarget += "?"
+	}
 
 	if session.Status != "pending" {
-		// Maybe already approved?
-		if session.Status == "authorized" {
-			http.Error(w, "Session already processed", http.StatusBadRequest)
-			return
-		}
-		target := session.RedirectURI + "?error=access_denied&state=" + session.State
-		if strings.Contains(r.Header.Get("Accept"), "application/json") {
-			WriteSuccessResponse(w, "Redirect", map[string]string{"redirectUrl": target})
-			return
-		}
+		target := config.AppConfig.FrontendURL + "/auth?session_id=" + sessID
 		http.Redirect(w, r, target, http.StatusFound)
 		return
 	}
 
 	if appv != "true" {
 		// User denied
-		db.UpdateDeviceFlowSessionStatus(sessID, "denied", username)
-		target := session.RedirectURI + "?error=access_denied&state=" + session.State
-		if strings.Contains(r.Header.Get("Accept"), "application/json") {
-			WriteSuccessResponse(w, "Redirect", map[string]string{"redirectUrl": target})
-			return
-		}
+		db.UpdateSessionStatus(sessID, "denied", username)
+		target := redirectTarget + "error=access_denied&state=" + session.State
 		http.Redirect(w, r, target, http.StatusFound)
 		return
 	}
@@ -381,17 +402,7 @@ func AuthCodeFlowConsentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Redirect to redirect_uri with code
-	redirectTarget := session.RedirectURI
-	if strings.Contains(redirectTarget, "?") {
-		redirectTarget += "&code=" + authCode + "&state=" + session.State
-	} else {
-		redirectTarget += "?code=" + authCode + "&state=" + session.State
-	}
+	redirectTarget += "code=" + authCode + "&state=" + session.State
 
-	log.Print("redirecting to: ", redirectTarget)
-	if strings.Contains(r.Header.Get("Accept"), "application/json") {
-		WriteSuccessResponse(w, "Authorized", map[string]string{"redirectUrl": redirectTarget})
-		return
-	}
 	http.Redirect(w, r, redirectTarget, http.StatusFound)
 }

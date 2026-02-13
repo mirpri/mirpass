@@ -33,8 +33,5 @@ func runMigration(db *sql.DB) error {
 		return fmt.Errorf("assigning root role: %w", err)
 	}
 
-	// Drop auth_code_used
-	db.Exec("ALTER TABLE login_sessions DROP COLUMN auth_code_used")
-
 	return nil
 }

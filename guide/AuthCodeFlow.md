@@ -1,6 +1,16 @@
 # Auth Code Flow
 
 ## Authorization Request
+Redirect user to:
+```http
+https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize?
+client_id=9pvG8HgeZ1mCKxeq3rI-Z
+&response_type=code
+&redirect_uri=http%3A%2F%2Flocalhost%2Fmyapp%2F
+&state=12345
+&code_challenge=YTFjNjI1OWYzMzA3MTI4ZDY2Njg5M2RkNmVjNDE5YmEyZGRhOGYyM2IzNjdmZWFhMTQ1ODg3NDcxY2Nl
+&code_challenge_method=S256
+```
 
 | Parameter             | Required/optional | Description                                     |
 | --------------------- | ----------------- | ------------------------------------------------|
@@ -11,8 +21,9 @@
 | code_challenge_method | recommended       | The method used to encode the `code_verifier` for the code_challenge parameter. This SHOULD be `S256`, only use `plain` if the client can't support SHA256. If excluded, code_challenge is assumed to be plaintext.|
 | state                 | recommended       | An opaque value used by the client to maintain state between the request and callback. The authorization server includes this value when redirecting the user-agent back to the client. The parameter SHOULD be used for preventing cross-site request forgery |
 
-### Sucess Response
+User will be redirected back after loging in.
 
+### Sucess Response
 ```http
 GET http://your-website.com/callback
 code=AwABAAAAvPM1KaPlrEqdFSBzjqfTGBCmLdgfSTLEMPGYuNHSUYBrq...
@@ -41,8 +52,8 @@ error=access_denied
 
 ```json
 {
-  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsIng1dCI6Ik5HVEZ2ZEstZnl0aEV1Q...",
+  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGc...",
   "token_type": "Bearer",
-  "expires_in": 3599
+  "expires_in": 3600
 }
 ```

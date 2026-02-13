@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"mirpass-backend/config"
 	"mirpass-backend/db"
 	"mirpass-backend/utils"
 )
@@ -143,24 +144,27 @@ func UpdateAvatarHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// If it's a new external URL (http...), fetch and blob it
-	if strings.HasPrefix(newAvatarURL, "http") {
-		processedData, err := utils.DownloadAndProcessImage(newAvatarURL)
-		if err == nil {
-			blobID := utils.GenerateID()
-			if err := db.SaveBlob(blobID, processedData, "image/jpeg"); err == nil {
-				newAvatarURL = "/blob/" + blobID
+	if newAvatarURL != config.AppConfig.BackendURL+oldAvatar {
+		// If it's a new external URL, fetch and blob it
+		if strings.HasPrefix(newAvatarURL, "http") {
+			processedData, err := utils.DownloadAndProcessImage(newAvatarURL)
+			if err == nil {
+				blobID := utils.GenerateID()
+				if err := db.SaveBlob(blobID, processedData, "image/jpeg"); err == nil {
+					newAvatarURL = "/blob/" + blobID
+				}
 			}
 		}
+		if oldAvatar != "" && oldAvatar != newAvatarURL {
+			deleteOldBlob(oldAvatar)
+		}
+	} else {
+		newAvatarURL = oldAvatar
 	}
 
 	if err := db.UpdateUserAvatar(username, newAvatarURL); err != nil {
 		WriteErrorResponse(w, http.StatusInternalServerError, "Could not update avatar")
 		return
-	}
-
-	if oldAvatar != "" && oldAvatar != newAvatarURL {
-		deleteOldBlob(oldAvatar)
 	}
 
 	WriteSuccessResponse(w, "Avatar updated", map[string]string{"avatarUrl": newAvatarURL})

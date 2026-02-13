@@ -45,7 +45,7 @@ function RegisterPage() {
       navigate('/login', { replace: true })
     } catch (error: unknown) {
       const err = error as ErrorResponse
-      message.error(err.response?.error || 'Registration failed')
+      message.error(err.response?.data?.error || 'Registration failed')
     } finally {
       setLoading(false)
     }

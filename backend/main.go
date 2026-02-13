@@ -50,7 +50,6 @@ func main() {
 	// System App Management
 	mux.Handle("/admin/apps", handlers.AuthSysMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminListApps))))
 	mux.Handle("/admin/app/delete", handlers.AuthSysMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminDeleteApp))))
-	mux.Handle("/admin/app/update", handlers.AuthSysMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminUpdateApp))))
 	mux.Handle("/admin/app/suspend", handlers.AuthSysMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminSuspendApp))))
 
 	// My Apps endpoint
@@ -61,9 +60,9 @@ func main() {
 	// App Management
 	mux.Handle("/apps/create", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.CreateAppHandler)))
 	mux.Handle("/apps/details", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.AppDetailsHandler)))
-	mux.Handle("/apps/keys", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.GetAppKeysHandler)))
-	mux.Handle("/apps/keys/create", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.CreateAppKeyHandler)))
-	mux.Handle("/apps/keys/delete", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.DeleteAppKeyHandler)))
+	mux.Handle("/apps/uris", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.GetAppTrustedURIsHandler)))
+	mux.Handle("/apps/uris/add", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.AddAppTrustedURIHandler)))
+	mux.Handle("/apps/uris/delete", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.DeleteAppTrustedURIHandler)))
 
 	mux.Handle("/apps/update", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.UpdateAppHandler)))
 	mux.Handle("/apps/delete", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.DeleteAppHandler)))

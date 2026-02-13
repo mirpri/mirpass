@@ -10,11 +10,11 @@ import {
   Space,
   Table,
   Typography,
-  message,
-  Modal,
   Form,
   Upload,
   DatePicker,
+  App,
+  Modal,
 } from "antd";
 import {
   EditOutlined,
@@ -32,7 +32,7 @@ import {
   UserCircle,
   TagIcon,
   AppWindowIcon,
-  ShieldEllipsis,
+  ShieldIcon,
   PlusIcon,
   ClockIcon,
   KeyRound,
@@ -59,6 +59,7 @@ function DashboardPage() {
     updateProfile,
     isLoadingProfile,
   } = useAppStore();
+  const { message } = App.useApp();
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
   const [loginHistory, setLoginHistory] = useState<LoginHistoryItem[]>([]);
   const [appsSummary, setAppsSummary] = useState<LoginHistoryItem[]>([]);
@@ -151,7 +152,7 @@ function DashboardPage() {
       toggleEditing("nickname", false);
     } catch (error: unknown) {
       const err = error as ErrorResponse;
-      message.error(err.response?.error || "Could not update nickname");
+      message.error(err.response?.data?.error || "Could not update nickname");
     } finally {
       setLoadingKey(null);
     }
@@ -192,7 +193,7 @@ function DashboardPage() {
       setSelectedFile(null);
     } catch (error: unknown) {
       const err = error as ErrorResponse;
-      message.error(err.response?.error || "Could not update avatar");
+      message.error(err.response?.data?.error || "Could not update avatar");
     } finally {
       setLoadingKey(null);
     }
@@ -216,9 +217,7 @@ function DashboardPage() {
       passwordForm.resetFields();
     } catch (error: any) {
       const err = error as ErrorResponse;
-      message.error(
-        err.response?.error || "Failed to update password",
-      );
+      message.error(err.response?.data?.error || "Failed to update password");
     }
   };
 
@@ -235,7 +234,7 @@ function DashboardPage() {
     } catch (error: any) {
       const err = error as ErrorResponse;
       message.error(
-        err.response?.error || "Failed to request email change",
+        err.response?.data?.error || "Failed to request email change",
       );
     }
   };
@@ -259,7 +258,7 @@ function DashboardPage() {
       <Row gutter={[24, 24]} align="stretch">
         <Col xs={24} sm={9}>
           <Space orientation="vertical" size={16} className="w-full p-4">
-            <MyAvatar size={96}/>
+            <MyAvatar size={96} />
             <Text strong className="text-xl">
               {profile?.nickname || profile?.username || "—"}
             </Text>
@@ -443,7 +442,14 @@ function DashboardPage() {
                     }
                   >
                     <Button>
-                      <ShieldEllipsis size={14} />
+                      {app.name === "system" ? (
+                        <ShieldIcon size={14} />
+                      ) : (
+                        <AnyAvatar
+                          size={20}
+                          url={{ url: app.logoUrl, text: app.name }}
+                        />
+                      )}{" "}
                       {app.name}
                     </Button>
                   </Link>
@@ -477,7 +483,10 @@ function DashboardPage() {
               <Card size="small" className="hover:shadow-md transition-shadow">
                 <div className="flex flex-col gap-2">
                   <Flex align="center" gap={10}>
-                    <AnyAvatar url={{url: app.logoUrl, text: app.app}} size={"small"} />
+                    <AnyAvatar
+                      url={{ url: app.logoUrl, text: app.app }}
+                      size={"small"}
+                    />
                     <Text strong>{app.app}</Text>
                   </Flex>
                   <div className="text-xs text-gray-500">

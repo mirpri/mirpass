@@ -7,7 +7,7 @@ import {
   Input,
   Space,
   Typography,
-  message,
+  App
 } from "antd";
 import {
   LockOutlined,
@@ -39,6 +39,7 @@ type Props = {
 };
 
 function LoginPage({ onLogin, isAuthenticated }: Props) {
+  const { message } = App.useApp();
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   
@@ -107,7 +108,7 @@ function LoginPage({ onLogin, isAuthenticated }: Props) {
     } catch (error: unknown) {
       const err = error as ErrorResponse;
       message.error(
-        err.response?.error || "Failed to login",
+        err.response?.data?.error || "Failed to login",
       );
     } finally {
       setLoading(false);

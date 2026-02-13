@@ -15,7 +15,7 @@ func CreateDeviceFlowSession(clientId string, sessionId string, deviceCode strin
 }
 
 func GetSessionByDeviceCode(deviceCode string) (*types.DeviceFlowSession, error) {
-	row := database.QueryRow(`SELECT client_id, session_id, device_code, user_code, status, expires_at, last_poll FROM oauth_sessions WHERE device_code = ? AND status = 'pending'`, deviceCode)
+	row := database.QueryRow(`SELECT client_id, session_id, device_code, user_code, status, expires_at, last_poll FROM oauth_sessions WHERE device_code = ?`, deviceCode)
 
 	var s types.DeviceFlowSession
 	err := row.Scan(&s.ClientID, &s.SessionID, &s.DeviceCode, &s.UserCode, &s.Status, &s.ExpiresAt, &s.LastPoll)
@@ -24,14 +24,14 @@ func GetSessionByDeviceCode(deviceCode string) (*types.DeviceFlowSession, error)
 	}
 	t, err := time.Parse(time.RFC3339, s.ExpiresAt)
 	if err != nil || time.Now().After(t) {
-		UpdateDeviceFlowSessionStatus(s.SessionID, "", "")
+		UpdateSessionStatus(s.SessionID, "", "")
 		s.Status = "expired"
 	}
 	return &s, nil
 }
 
 func GetAuthCodeSessionBySessionId(sessionId string) (*types.AuthCodeFlowSession, error) {
-	row := database.QueryRow(`SELECT client_id, session_id, redirect_uri, code_challenge, code_challenge_method, state, status, expires_at FROM oauth_sessions WHERE session_id = ? AND status = 'pending'`, sessionId)
+	row := database.QueryRow(`SELECT client_id, session_id, redirect_uri, code_challenge, code_challenge_method, state, status, expires_at FROM oauth_sessions WHERE session_id = ?`, sessionId)
 
 	var s types.AuthCodeFlowSession
 	var state sql.NullString
@@ -44,13 +44,13 @@ func GetAuthCodeSessionBySessionId(sessionId string) (*types.AuthCodeFlowSession
 	}
 	t, err := time.Parse(time.RFC3339, s.ExpiresAt)
 	if err != nil || time.Now().After(t) {
-		UpdateDeviceFlowSessionStatus(s.SessionID, "", "")
+		UpdateSessionStatus(s.SessionID, "", "")
 		s.Status = "expired"
 	}
 	return &s, nil
 }
 
-func GetSessionByUserCode(userCode string) (*types.DeviceFlowSession, error) {
+func GetActiveSessionByUserCode(userCode string) (*types.DeviceFlowSession, error) {
 	userCode = strings.ToUpper(userCode)
 	row := database.QueryRow(`SELECT session_id, client_id, username, device_code, user_code, status, expires_at, last_poll FROM oauth_sessions WHERE user_code = ? AND status = 'pending'`, userCode)
 
@@ -65,7 +65,7 @@ func GetSessionByUserCode(userCode string) (*types.DeviceFlowSession, error) {
 	}
 	t, err := time.Parse(time.RFC3339, s.ExpiresAt)
 	if err != nil || time.Now().After(t) {
-		UpdateDeviceFlowSessionStatus(s.SessionID, "", "")
+		UpdateSessionStatus(s.SessionID, "", "")
 		return nil, fmt.Errorf("Session expired")
 	}
 	return &s, nil
@@ -91,7 +91,7 @@ func UpdateSessionPoll(sessionId string) error {
 	return err
 }
 
-func UpdateDeviceFlowSessionStatus(sessionId string, status string, username string) error {
+func UpdateSessionStatus(sessionId string, status string, username string) error {
 	session, err := GetSessionBySessionId(sessionId)
 	if err != nil {
 		return err
@@ -148,7 +148,7 @@ func GetAuthCodeSessionByCode(code string) (*types.AuthCodeFlowSession, error) {
 	}
 	t, err := time.Parse(time.RFC3339, s.ExpiresAt)
 	if err != nil || time.Now().After(t) {
-		UpdateDeviceFlowSessionStatus(s.SessionID, "", "")
+		UpdateSessionStatus(s.SessionID, "", "")
 		s.Status = "expired"
 	}
 	return &s, nil
