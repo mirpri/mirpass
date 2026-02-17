@@ -15,7 +15,7 @@ import type { ErrorResponse } from "../types";
 import { ArrowRight, CircleCheck, CircleX, XCircle } from "lucide-react";
 import { AnyAvatar, MyAvatar } from "../components/Avatars";
 import { LoadingView } from "../components/LoadingView";
-import { config } from "../config";
+import api from "../api/client";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -106,8 +106,22 @@ function AuthorizePage() {
     }
     setConfirming(true);
     if (storeSsoType === "auth_code") {
-      window.location.href = `${config.API_URL}/authorize/consent/redirect?sessionId=${ssoSessionId}&approve=${approve}`;
-      setConfirming(false);
+      try {
+        const { data } = await api.post("/authorize/consent/redirect", {
+          sessionId: ssoSessionId,
+          approve: approve,
+        });
+
+        if (data?.data?.redirectUrl) {
+           window.location.href = data.data.redirectUrl;
+        } else {
+           message.error("Invalid response from server");
+        }
+      } catch (e) {
+        message.error("Failed to authorize request");
+      } finally {
+        setConfirming(false);
+      }
       return;
     }
     try {

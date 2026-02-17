@@ -59,7 +59,6 @@ func ValidateSysToken(tokenString string) (string, error) {
 }
 
 func ExtractClaims(r *http.Request) (*Claims, error) {
-	// 1. Try Authorization Header
 	authHeader := r.Header.Get("Authorization")
 	if authHeader != "" {
 		parts := strings.Split(authHeader, " ")
@@ -72,18 +71,5 @@ func ExtractClaims(r *http.Request) (*Claims, error) {
 			log.Printf("Header token failed: %v", err)
 		}
 	}
-
-	// 2. Try Cookie
-	cookie, err := r.Cookie("auth_token")
-	if err == nil && cookie.Value != "" {
-		claims, err := ValidateToken(cookie.Value)
-		if err == nil {
-			return &claims, nil
-		}
-		log.Printf("Cookie token failed: %v", err)
-		return nil, err
-	}
-
-	log.Println("JWT ExtractClaims failed: no valid header or cookie found")
 	return nil, jwt.ErrTokenMalformed
 }

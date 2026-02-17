@@ -72,11 +72,11 @@ func GetActiveSessionByUserCode(userCode string) (*types.DeviceFlowSession, erro
 }
 
 func GetSessionBySessionId(sessionId string) (*types.OAuthSession, error) {
-	row := database.QueryRow(`SELECT session_id, client_id, username, status, expires_at FROM oauth_sessions WHERE session_id = ?`, sessionId)
+	row := database.QueryRow(`SELECT session_id, client_id, username, flow_type, status, expires_at FROM oauth_sessions WHERE session_id = ?`, sessionId)
 
 	var s types.OAuthSession
 	var Username sql.NullString
-	err := row.Scan(&s.SessionID, &s.ClientID, &Username, &s.Status, &s.ExpiresAt)
+	err := row.Scan(&s.SessionID, &s.ClientID, &Username, &s.FlowType, &s.Status, &s.ExpiresAt)
 	if err != nil {
 		return nil, err
 	}
