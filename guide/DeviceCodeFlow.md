@@ -78,3 +78,101 @@ A successful token response looks like:
 token_type|String|Always Bearer.
 expires_in|int|Number of seconds the access token is valid for.
 access_token|JWT|The issued token.
+
+### Node.js Example
+
+```javascript
+const axios = require('axios');
+
+const clientId = 'YOUR_CLIENT_ID';
+const authServerUrl = 'https://mirpass-api.puppygoapp.com';
+
+async function deviceFlow() {
+    try {
+        // Step 1: Request Device Code
+        const deviceResponse = await axios.post(`${authServerUrl}/oauth2/devicecode`, {
+            client_id: clientId
+        });
+
+        const { device_code, user_code, verification_uri, interval, expires_in } = deviceResponse.data;
+
+        console.log(`Please visit ${verification_uri} and enter code: ${user_code}`);
+
+        // Step 2: Poll for Token
+        const pollInterval = interval * 1000;
+        const endTime = Date.now() + expires_in * 1000;
+
+        while (Date.now() < endTime) {
+            await new Promise(resolve => setTimeout(resolve, pollInterval));
+
+            try {
+                const tokenResponse = await axios.post(`${authServerUrl}/oauth2/token`, {
+                    client_id: clientId,
+                    grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
+                    device_code: device_code
+                });
+
+                const { access_token } = tokenResponse.data;
+                console.log('Access Token:', access_token);
+
+                // 1. Verify token
+                // This endpoint returns validity, appId, and username
+                const verifyResponse = await axios.post(`${authServerUrl}/token/verify`, {
+                    token: access_token
+                });
+                
+                console.log('Token Info:', verifyResponse.data);
+
+                // 2. Use token to get User Info
+                const userResponse = await axios.get(`${authServerUrl}/myprofile`, {
+                    headers: { Authorization: `Bearer ${access_token}` }
+                });
+
+                console.log('User Profile:', userResponse.data);
+                return;
+            } catch (error) {
+                if (error.response && error.response.data.error === 'authorization_pending') {
+                    console.log('Waiting for user authorization...');
+                } else {
+                    throw error;
+                }
+            }
+        }
+        console.log('Device code expired');
+
+    } catch (error) {
+        console.error('Error:', error.response ? error.response.data : error.message);
+    }
+}
+
+deviceFlow();
+```
+
+## Implementation Details
+
+### Using the Token
+To access protected resources (like `/myprofile` or `/myusername`), include the Access Token in the **Authorization** header:
+
+```http
+Authorization: Bearer <YOUR_ACCESS_TOKEN>
+```
+
+### Verifying the Token
+To validate a token and retrieve its associated `appId` and `username` server-side, use the verification endpoint:
+
+**POST** `/token/verify`
+
+**Body:**
+```json
+{
+  "token": "YOUR_ACCESS_TOKEN"
+}
+```
+
+**Response:**
+```json
+{
+  "appid": "your-app-id",
+  "username": "linked-username"
+}
+```

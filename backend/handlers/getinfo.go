@@ -2,9 +2,11 @@ package handlers
 
 import (
 	"database/sql"
+	"encoding/json"
 	"mirpass-backend/config"
 	"mirpass-backend/db"
 	"mirpass-backend/types"
+	"mirpass-backend/utils"
 	"net/http"
 	"strings"
 )
@@ -138,4 +140,44 @@ func AppPublicInfoHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	WriteSuccessResponse(w, "App details", res)
+}
+
+type VerifyTokenRequest struct {
+	Token string `json:"token"`
+}
+
+type VerifyTokenResponse struct {
+	AppID    string `json:"appid"`
+	Username string `json:"username"`
+}
+
+func VerifyTokenHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		WriteErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	var req VerifyTokenRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		WriteErrorResponse(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	if req.Token == "" {
+		WriteErrorResponse(w, http.StatusBadRequest, "Token is required")
+		return
+	}
+
+	claims, err := utils.ValidateToken(req.Token)
+	if err != nil {
+		WriteErrorResponse(w, http.StatusUnauthorized, "Invalid or expired token")
+		return
+	}
+
+	resp := VerifyTokenResponse{
+		AppID:    claims.AppID,
+		Username: claims.Username,
+	}
+
+	WriteSuccessResponse(w, "Token verified successfully", resp)
 }

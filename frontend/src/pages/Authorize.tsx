@@ -45,6 +45,7 @@ function AuthorizePage() {
   // Prioritize URL params
   const ssoSessionId = urlSessionId || storeSessionId;
   const [confirming, setConfirming] = useState(false);
+  const [denying, setDenying] = useState(false);
   const [fetchingDetails, setFetchingDetails] = useState(false);
 
   // Sync URL ID to store
@@ -104,7 +105,11 @@ function AuthorizePage() {
       message.error("Missing SSO session details");
       return;
     }
-    setConfirming(true);
+    if (approve) {
+      setConfirming(true);
+    } else {
+      setDenying(true);
+    }
     if (storeSsoType === "auth_code") {
       try {
         const { data } = await api.post("/authorize/consent/redirect", {
@@ -113,14 +118,15 @@ function AuthorizePage() {
         });
 
         if (data?.data?.redirectUrl) {
-           window.location.href = data.data.redirectUrl;
+          window.location.href = data.data.redirectUrl;
         } else {
-           message.error("Invalid response from server");
+          message.error("Invalid response from server");
         }
       } catch (e) {
         message.error("Failed to authorize request");
       } finally {
         setConfirming(false);
+        setDenying(false);
       }
       return;
     }
@@ -133,6 +139,7 @@ function AuthorizePage() {
       message.error("Failed to confirm login");
     } finally {
       setConfirming(false);
+      setDenying(false);
     }
   };
 
@@ -247,7 +254,7 @@ function AuthorizePage() {
             }
           </div>
 
-          <Divider style={{margin: 0}} />
+          <Divider style={{ margin: 0 }} />
 
           <div className="text-left bg-gray-50 dark:bg-gray-800 p-4 rounded-lg mb-4">
             <Text
@@ -283,7 +290,7 @@ function AuthorizePage() {
             <Button
               type="text"
               onClick={() => handleConfirmSSO(false)}
-              loading={confirming}
+              loading={denying}
             >
               Cancel
             </Button>

@@ -37,9 +37,15 @@ func ValidateToken(tokenString string) (Claims, error) {
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 
-	if ok && token.Valid && claims["appId"] == "system" {
+	// Allow any valid appId
+	if ok && token.Valid {
+		appID, ok := claims["appId"].(string)
+		if !ok {
+			return Claims{}, jwt.ErrInvalidKey
+		}
+
 		userID := claims["username"].(string)
-		return Claims{Username: userID, AppID: "system"}, nil
+		return Claims{Username: userID, AppID: appID}, nil
 	}
 
 	return Claims{}, jwt.ErrSignatureInvalid
@@ -54,6 +60,10 @@ func ValidateSysToken(tokenString string) (string, error) {
 	claim, err := ValidateToken(tokenString)
 	if err != nil {
 		return "", err
+	}
+	// Enforce system appId for system tokens
+	if claim.AppID != "system" {
+		return "", jwt.ErrSignatureInvalid
 	}
 	return claim.Username, nil
 }

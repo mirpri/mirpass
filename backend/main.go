@@ -24,6 +24,7 @@ func main() {
 	mux.HandleFunc("/verify/info", handlers.GetVerificationInfoHandler)
 	mux.HandleFunc("/apps/info", handlers.AppPublicInfoHandler)
 	mux.HandleFunc("/user/info", handlers.UserPublicInfoHandler)
+	mux.HandleFunc("/token/verify", handlers.VerifyTokenHandler)
 	mux.HandleFunc("/blob/", handlers.ServeBlobHandler)
 
 	// Protected routes

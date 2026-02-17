@@ -731,7 +731,7 @@ function IntegrationGuideTab({ app }: { app: AppDetails }) {
       <div>
         <Title level={3}>Integration Guide</Title>
         <Paragraph>
-          Select the authentication flow that best suits your application.
+          Select the authentication flow that best suits your application. For a more detailed guide, please refer to <a href="https://github.com/mirpri/mirpass/tree/master/guide" target="_blank">Guide</a>.
         </Paragraph>
         <Tabs items={items} />
       </div>
@@ -744,7 +744,7 @@ function AuthCodeFlowGuide({ app }: { app: AppDetails }) {
   if (backendUrl.endsWith("/")) {
     backendUrl = backendUrl.slice(0, -1);
   }
-  
+
   const { message } = App.useApp();
   const [redirectUri, setRedirectUri] = useState<string>(
     "",
@@ -923,15 +923,15 @@ function AuthCodeFlowGuide({ app }: { app: AppDetails }) {
         </div>
       </div>
       <Paragraph className="text-sm text-gray-500">
-          Response (Success):
-        </Paragraph>
-        <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs font-mono">
-          {`{
+        Response (Success):
+      </Paragraph>
+      <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs font-mono">
+        {`{
   "access_token": "...",
   "token_type": "Bearer",
   "expires_in": 3600
 }`}
-        </div>
+      </div>
     </div>
   );
 }
