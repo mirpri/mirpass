@@ -39,7 +39,6 @@ function AuthorizePage() {
   } = useAppStore();
 
   const urlSessionId = searchParams.get("session_id");
-  const urlFrom = searchParams.get("from");
   const urlUserCode = searchParams.get("user_code");
 
   // Prioritize URL params
@@ -55,6 +54,9 @@ function AuthorizePage() {
         setSsoSessionId(urlSessionId);
       if (setSsoType) setSsoType("auth_code");
     }
+    if (!token && storeSessionId) {
+      navigate(`/login`, { replace: true });
+    }
   }, [urlSessionId, storeSessionId, setSsoSessionId, setSsoType]);
 
   // Sync Device Code
@@ -64,22 +66,6 @@ function AuthorizePage() {
       if (setSsoUserCode) setSsoUserCode(urlUserCode);
     }
   }, [urlUserCode, setSsoType, setSsoUserCode]);
-
-  // Auth & Session Check
-  useEffect(() => {
-    // If not authenticated, we must redirect
-    if (!token && (ssoSessionId || urlUserCode)) {
-      // Not authenticated, redirect to logic with params
-      const fromParam = urlFrom ? `&from=${encodeURIComponent(urlFrom)}` : "";
-      const qParams = [];
-      if (ssoSessionId) qParams.push(`session_id=${ssoSessionId}`);
-      if (urlUserCode) qParams.push(`user_code=${urlUserCode}`);
-
-      const qStr =
-        qParams.length > 0 ? `?${qParams.join("&")}${fromParam}` : "";
-      navigate(`/login${qStr}`, { replace: true });
-    }
-  }, [token, ssoSessionId, urlUserCode, urlFrom, navigate, ssoDetails]);
 
   // Fetch Details
   useEffect(() => {
@@ -141,6 +127,11 @@ function AuthorizePage() {
       setConfirming(false);
       setDenying(false);
     }
+  };
+
+  const handleChangeAccount = () => {
+    logout();
+    navigate("/login", { replace: true });
   };
 
   if (!ssoDetails && fetchingDetails) {
@@ -230,7 +221,7 @@ function AuthorizePage() {
 
   if (ssoDetails.status === "pending") {
     return (
-      <Card className="max-w-md w-full shadow-2xl">
+      <Card className="max-w-sm w-full shadow-2xl">
         <Space
           orientation="vertical"
           size="large"
@@ -283,7 +274,7 @@ function AuthorizePage() {
             Continue to {ssoDetails.appName}
           </Button>
           <div>
-            <Button type="text" onClick={logout}>
+            <Button type="text" onClick={handleChangeAccount}>
               Change Account
             </Button>
             <Divider type="vertical" />

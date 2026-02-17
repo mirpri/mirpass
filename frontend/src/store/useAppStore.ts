@@ -115,10 +115,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       const {data} = await api.get(
         `/authorize/request/by-user-code?userCode=${get().ssoUserCode}`,
       );
-      set({ ssoDetails: data.data, ssoSessionId: data.data.sessionId });
+      set({ ssoDetails: data.data, ssoSessionId: data.data.sessionId});
     } else if (currentSid) {
       const {data} = await api.get(`/authorize/request?sessionId=${currentSid}`);
-      set({ ssoDetails: data.data, ssoSessionId: data.data.sessionId });
+      set({ ssoDetails: data.data });
     } else {
        return;
     }
