@@ -66,6 +66,7 @@ func main() {
 
 	mux.Handle("/apps/update", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.UpdateAppHandler)))
 	mux.Handle("/apps/delete", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.DeleteAppHandler)))
+	mux.Handle("/apps/device-code/toggle", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.UpdateDeviceCodeEnabledHandler)))
 	mux.Handle("/apps/stats", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.GetAppStatsHandler)))
 	mux.Handle("/apps/history", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.GetAppHistoryHandler)))
 

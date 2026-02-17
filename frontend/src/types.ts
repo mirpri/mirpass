@@ -34,6 +34,7 @@ export interface AppDetails {
   role: string; // Current user's role in this app
   logoUrl?: string;
   suspendUntil?: string | null;
+  deviceCodeEnabled: boolean;
   createdAt?: string;
 }
 

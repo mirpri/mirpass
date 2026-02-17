@@ -54,13 +54,14 @@ type AppPublicInfo struct {
 }
 
 type Application struct {
-	ID           string  `json:"id"`
-	Name         string  `json:"name"`
-	Description  string  `json:"description"`
-	LogoURL      string  `json:"logoUrl,omitempty"`
-	SuspendUntil *string `json:"suspendUntil,omitempty"`
-	CreatedAt    string  `json:"createdAt"`
-	Role         string  `json:"role,omitempty"`
+	ID                string  `json:"id"`
+	Name              string  `json:"name"`
+	Description       string  `json:"description"`
+	LogoURL           string  `json:"logoUrl,omitempty"`
+	SuspendUntil      *string `json:"suspendUntil,omitempty"`
+	DeviceCodeEnabled bool    `json:"deviceCodeEnabled"`
+	CreatedAt         string  `json:"createdAt"`
+	Role              string  `json:"role,omitempty"`
 }
 
 type APIKey struct {

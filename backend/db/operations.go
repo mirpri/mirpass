@@ -640,9 +640,10 @@ func GetApplication(appID string) (*types.Application, error) {
 	var createdAt sql.NullString
 	var logoUrl sql.NullString
 	var suspendUntil sql.NullString
+	var deviceCodeEnabled sql.NullBool
 
-	err := database.QueryRow("SELECT id, name, description, logo_url, suspend_until, created_at FROM applications WHERE id = ?", appID).
-		Scan(&app.ID, &app.Name, &app.Description, &logoUrl, &suspendUntil, &createdAt)
+	err := database.QueryRow("SELECT id, name, description, logo_url, suspend_until, device_code_enabled, created_at FROM applications WHERE id = ?", appID).
+		Scan(&app.ID, &app.Name, &app.Description, &logoUrl, &suspendUntil, &deviceCodeEnabled, &createdAt)
 	if err != nil {
 		return nil, err
 	}
@@ -651,6 +652,11 @@ func GetApplication(appID string) (*types.Application, error) {
 	if suspendUntil.Valid {
 		s := suspendUntil.String
 		app.SuspendUntil = &s
+	}
+	if deviceCodeEnabled.Valid {
+		app.DeviceCodeEnabled = deviceCodeEnabled.Bool
+	} else {
+		app.DeviceCodeEnabled = true
 	}
 	return &app, nil
 }
@@ -752,6 +758,12 @@ func UpdateAppInfo(appID, name, description, logoUrl string) error {
 func UpdateAppSuspension(appID string, suspendUntil *string) error {
 	query := "UPDATE applications SET suspend_until = ? WHERE id = ?"
 	_, err := database.Exec(query, suspendUntil, appID)
+	return err
+}
+
+func UpdateDeviceCodeEnabled(appID string, enabled bool) error {
+	query := "UPDATE applications SET device_code_enabled = ? WHERE id = ?"
+	_, err := database.Exec(query, enabled, appID)
 	return err
 }
 

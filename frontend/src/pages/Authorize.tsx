@@ -223,7 +223,7 @@ function AuthorizePage() {
 
   if (ssoDetails.status === "pending") {
     return (
-      <Card className="max-w-sm w-full shadow-2xl">
+      <Card className="max-w-md w-full shadow-2xl">
         <Space
           orientation="vertical"
           size="large"
@@ -239,9 +239,15 @@ function AuthorizePage() {
               {ssoDetails.appName}
             </Title>
             <Text type="secondary">wants to access your account</Text>
+            {storeSsoType === "device_code" && (
+              <Text type="warning" className="mt-4">
+                Make sure you trust the device you are connecting to.
+              </Text>
+            )
+            }
           </div>
 
-          <Divider className="my-2" />
+          <Divider style={{margin: 0}} />
 
           <div className="text-left bg-gray-50 dark:bg-gray-800 p-4 rounded-lg mb-4">
             <Text
@@ -269,14 +275,13 @@ function AuthorizePage() {
             <ArrowRight />
             Continue to {ssoDetails.appName}
           </Button>
-          <div className="mb-4">
+          <div>
             <Button type="text" onClick={logout}>
               Change Account
             </Button>
             <Divider type="vertical" />
             <Button
               type="text"
-              danger
               onClick={() => handleConfirmSSO(false)}
               loading={confirming}
             >
@@ -296,7 +301,7 @@ function AuthorizePage() {
         <Text className="block mb-6">
           There was an error logging in to {ssoDetails.appName}.
           <br />
-          Please try again or contact support.
+          Please try again.
         </Text>
         <Button type="default" onClick={() => window.close()}>
           Close Window

@@ -300,6 +300,41 @@ func UpdateAppHandler(w http.ResponseWriter, r *http.Request) {
 	WriteSuccessResponse(w, "App updated", nil)
 }
 
+func UpdateDeviceCodeEnabledHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	claims, err := utils.ExtractClaims(r)
+	if err != nil {
+		WriteErrorResponse(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	var req struct {
+		AppID   string `json:"appId"`
+		Enabled bool   `json:"enabled"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		WriteErrorResponse(w, http.StatusBadRequest, "Invalid request")
+		return
+	}
+
+	isAdmin, err := db.IsAppAdmin(claims.Username, req.AppID)
+	if err != nil || !isAdmin {
+		WriteErrorResponse(w, http.StatusForbidden, "Forbidden")
+		return
+	}
+
+	if err := db.UpdateDeviceCodeEnabled(req.AppID, req.Enabled); err != nil {
+		WriteErrorResponse(w, http.StatusInternalServerError, "Could not update device code settings")
+		return
+	}
+
+	WriteSuccessResponse(w, "Device code flow setting updated", nil)
+}
+
 func GetAppStatsHandler(w http.ResponseWriter, r *http.Request) {
 	appID := r.URL.Query().Get("id")
 	if appID == "" {

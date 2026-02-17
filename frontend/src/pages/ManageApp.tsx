@@ -22,6 +22,7 @@ import {
   DatePicker,
   Alert,
   Upload,
+  Switch,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -93,9 +94,9 @@ function ManageAppPage() {
       children: <StatsTab app={app} />,
     },
     {
-      key: "trusted_uris",
-      label: "Trusted URIs",
-      children: <TrustedUrisTab app={app} />,
+      key: "security",
+      label: "Security",
+      children: <SecurityTab app={app} />,
     },
     {
       key: "members",
@@ -150,19 +151,27 @@ function ManageAppPage() {
   );
 }
 
-// --- Trusted URIs Tab ---
+// --- Security Tab ---
 
-function TrustedUrisTab({ app }: { app: AppDetails }) {
+function SecurityTab({ app }: { app: AppDetails }) {
   const { message } = App.useApp();
   const [uris, setUris] = useState<TrustedUri[]>([]);
   const [loading, setLoading] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [newUri, setNewUri] = useState("");
+  const [deviceCodeEnabled, setDeviceCodeEnabled] = useState(
+    app.deviceCodeEnabled ?? true
+  );
+  const [updatingDeviceCode, setUpdatingDeviceCode] = useState(false);
 
   useEffect(() => {
     fetchUris();
   }, [app.id]);
+
+  useEffect(() => {
+    setDeviceCodeEnabled(app.deviceCodeEnabled ?? true);
+  }, [app.deviceCodeEnabled]);
 
   const fetchUris = async () => {
     setLoading(true);
@@ -214,6 +223,28 @@ function TrustedUrisTab({ app }: { app: AppDetails }) {
     }
   };
 
+  const handleToggleDeviceCode = async (enabled: boolean) => {
+    setUpdatingDeviceCode(true);
+    try {
+      await api.post("/apps/device-code/toggle", {
+        appId: app.id,
+        enabled,
+      });
+      setDeviceCodeEnabled(enabled);
+      message.success(
+        `Device code flow ${enabled ? "enabled" : "disabled"}`
+      );
+    } catch (e: any) {
+      const msg =
+        e.response?.data?.message ||
+        "Failed to update device code settings";
+      message.error(msg);
+      setDeviceCodeEnabled(!enabled);
+    } finally {
+      setUpdatingDeviceCode(false);
+    }
+  };
+
   const columns = [
     {
       title: "Name",
@@ -252,7 +283,9 @@ function TrustedUrisTab({ app }: { app: AppDetails }) {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <Text>Manage redirect URIs allowed by Authorization Code flow.</Text>
+        <div>
+          <Text>Manage redirect URIs allowed by Authorization Code flow.</Text>
+        </div>
         {app.role !== "external" && (
           <Button
             type="primary"
@@ -271,6 +304,29 @@ function TrustedUrisTab({ app }: { app: AppDetails }) {
         loading={loading}
         pagination={false}
       />
+
+      {app.role !== "external" && (
+        <Card size="small">
+          <Space direction="vertical" style={{ width: "100%" }}>
+            <div className="flex justify-between items-center">
+              <div>
+                <Text strong>Device Code Flow</Text>
+                <br />
+                <Text type="secondary" style={{ fontSize: "12px" }}>
+                  Allow this application to use Device Code flow for
+                  authentication.
+                </Text>
+              </div>
+              <Switch
+                checked={deviceCodeEnabled}
+                onChange={handleToggleDeviceCode}
+                loading={updatingDeviceCode}
+                disabled={app.role === "external"}
+              />
+            </div>
+          </Space>
+        </Card>
+      )}
 
       <Modal
         title="Add Trusted URI"
@@ -660,7 +716,7 @@ function IntegrationGuideTab({ app }: { app: AppDetails }) {
   const items = [
     {
       key: "authcode",
-      label: "Authorization Code Flow (Recommended)",
+      label: "Authorization Code Flow",
       children: <AuthCodeFlowGuide app={app} />,
     },
     {
@@ -843,7 +899,7 @@ function AuthCodeFlowGuide({ app }: { app: AppDetails }) {
         </div>
       </div>
       <Alert
-        title={"The redirected_uri must match one of the app's registered trusted URIs."}
+        title={"The redirected_uri must match one of the app's registered trusted URIs. Add trusted URIs in the Security tab."}
         type="warning"
         showIcon
       />
@@ -958,8 +1014,8 @@ function DeviceCodeFlowGuide({ app }: { app: AppDetails }) {
     <div className="max-w-3xl space-y-8">
       <div>
         <Alert
-          message="Suitable for CLI / Limited Input Devices"
-          description="Device Flow allows users to sign in on a secondary device using a short code or link. Only use this if your app cannot securely handle redirects or has limited input capabilities."
+          title="Suitable for CLI / Limited Input Devices"
+          description="Device Flow allows users to sign in on a secondary device using a short code or link. Only use this if your app cannot securely handle redirects or has limited input capabilities. Turned off by default for security reasons, enable in security tab if needed."
           type="info"
           showIcon
         />

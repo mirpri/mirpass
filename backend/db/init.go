@@ -98,6 +98,7 @@ func InitDB() error {
 	       description TEXT DEFAULT NULL,
 		   logo_url VARCHAR(511) DEFAULT NULL,
 		   suspend_until TIMESTAMP NULL,
+		   device_code_enabled BOOLEAN DEFAULT FALSE,
 	       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	   )`); err != nil {
 		return fmt.Errorf("create applications table: %w", err)

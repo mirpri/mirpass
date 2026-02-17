@@ -50,6 +50,11 @@ func DeviceFlowInitiateHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if !app.DeviceCodeEnabled {
+		WriteErrorResponse(w, 400, "Device code flow is disabled for this application")
+		return
+	}
+
 	sessionId := utils.GenerateToken()
 	deviceCode := utils.GenerateToken()
 	userCode := utils.GenerateUserCode()
