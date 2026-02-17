@@ -1,5 +1,5 @@
 import { useState, useEffect, Suspense, lazy } from "react";
-import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import { ConfigProvider, App as AntdApp, theme } from "antd";
 import { LoadingView } from "./components/LoadingView";
 
@@ -18,8 +18,7 @@ import Nav from "./components/Nav";
 import { useAppStore } from "./store/useAppStore";
 
 function App() {
-  const navigate = useNavigate();
-  const { fetchProfile, ssoSessionId, token, setToken, logout } = useAppStore();
+  const { fetchProfile, token, logout } = useAppStore();
   const { message } = AntdApp.useApp();
   const [isDarkMode, setIsDarkMode] = useState(
     window.matchMedia &&
@@ -34,14 +33,6 @@ function App() {
     mediaQuery.addEventListener("change", handleChange);
     return () => mediaQuery.removeEventListener("change", handleChange);
   }, []);
-
-  const handleLogin = (newToken: string) => {
-    setToken(newToken);
-    // Only redirect to dashboard if NOT in an SSO flow
-    if (!ssoSessionId) {
-      navigate("/dashboard", { replace: true });
-    }
-  };
 
   const isAuthed = Boolean(token);
 
@@ -81,7 +72,6 @@ function App() {
                   path="/login"
                   element={
                     <LoginPage
-                      onLogin={handleLogin}
                       isAuthenticated={isAuthed}
                     />
                   }

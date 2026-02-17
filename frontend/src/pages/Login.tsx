@@ -34,44 +34,29 @@ type LoginResponse = {
 };
 
 type Props = {
-  onLogin: (token: string) => void;
   isAuthenticated: boolean;
 };
 
-function LoginPage({ onLogin, isAuthenticated }: Props) {
+function LoginPage({ isAuthenticated }: Props) {
   const { message } = App.useApp();
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   
   const [searchParams, setSearchParams] = useSearchParams();
   const {
-    ssoSessionId: storeSsoId,
-    setSsoSessionId,
+    ssoSessionId, setToken
   } = useAppStore();
-
-  const urlSsoId = searchParams.get("sso");
-  const urlFrom = searchParams.get("from");
-
-  // Keep store in sync but don't depend on store for local logic too heavily to avoid loops
-  useEffect(() => {
-    if (urlSsoId) {
-      setSsoSessionId(urlSsoId);
-    }
-  }, [urlSsoId, setSsoSessionId]);
-
-  const ssoSessionId = urlSsoId || storeSsoId;
 
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
       if (ssoSessionId) {
-        const fromParam = urlFrom ? `&from=${encodeURIComponent(urlFrom)}` : "";
-        navigate(`/authorize?sso=${ssoSessionId}${fromParam}`, { replace: true });
+        navigate(`/auth`, { replace: true });
       } else {
         navigate("/dashboard", { replace: true });
       }
     }
-  }, [isAuthenticated, ssoSessionId, urlFrom, navigate]);
+  }, [isAuthenticated, ssoSessionId, navigate]);
 
   useEffect(() => {
     if (searchParams.get("verified") === "true") {
@@ -97,14 +82,7 @@ function LoginPage({ onLogin, isAuthenticated }: Props) {
       }
 
       message.success(data?.message || "Logged in");
-      onLogin(token);
-      
-      // Manual navigation check after successful login
-      if (ssoSessionId) {
-         const fromParam = urlFrom ? `&from=${encodeURIComponent(urlFrom)}` : "";
-         navigate(`/authorize?sso=${ssoSessionId}${fromParam}`, { replace: true });
-      }
-      
+      setToken(token);
     } catch (error: unknown) {
       const err = error as ErrorResponse;
       message.error(
