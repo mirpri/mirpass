@@ -1,0 +1,42 @@
+{
+  "login": {
+    "email-verified-you-can-log-in-now": "Email verified. You can log in now.",
+    "login": "Log in",
+    "sign-in-to-continue-to-external-app": "Sign in to continue to external app",
+    "login-to-continue-to-your-dashboard": "Login to continue to your dashboard",
+    "please-enter-your-username": "Please enter your username",
+    "please-enter-your-password": "Please enter your password",
+    "new-here": "New here?",
+    "create-an-account": "Create an account",
+    "forgot-password": "Forgot Password?"
+  },
+  "nav": {
+    "home": "Home",
+    "change-language": "Change language",
+    "language-auto": "Auto",
+    "log-out": "Log out"
+  },
+  "username": "Username",
+  "sign-in": "Sign in",
+  "reg": {
+    "registration-successful-please-verify-your-email": "Registration successful. Please verify your email.",
+    "registration-failed": "Registration failed",
+    "create-your-account": "Create your account",
+    "fill-in-the-form-below-to-create-your-account": "Fill in the form below to create your account",
+    "please-enter-a-username": "Please enter a username",
+    "username-must-be-at-least-5-characters": "Username must be at least 5 characters",
+    "username-cannot-exceed-15-characters": "Username cannot exceed 15 characters",
+    "can-only-contain-lowercase-letters-numbers-and-underscores": "Can only contain lowercase letters, numbers, and underscores",
+    "please-enter-a-valid-email": "Please enter a valid email",
+    "please-enter-a-password": "Please enter a password",
+    "password-must-be-at-least-8-characters": "Password must be at least 8 characters",
+    "confirm-password": "Confirm password",
+    "please-confirm-your-password": "Please confirm your password",
+    "passwords-do-not-match": "Passwords do not match",
+    "create-account": "Create account",
+    "already-have-an-account": "Already have an account?"
+  },
+  "sign-up": "Sign up",
+  "email": "Email",
+  "password": "Password"
+}

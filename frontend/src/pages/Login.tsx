@@ -17,6 +17,7 @@ import api from "../api/client";
 import { useAppStore } from "../store/useAppStore";
 import { sha256 } from "../utils/crypto";
 import type { ErrorResponse } from "../types";
+import { useTranslation } from "react-i18next";
 
 const { Title, Text } = Typography;
 
@@ -38,6 +39,7 @@ type Props = {
 };
 
 function LoginPage({ isAuthenticated }: Props) {
+  const { t } = useTranslation();
   const { message } = App.useApp();
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -60,7 +62,7 @@ function LoginPage({ isAuthenticated }: Props) {
 
   useEffect(() => {
     if (searchParams.get("verified") === "true") {
-      message.success("Email verified. You can log in now.");
+      message.success(t('login.email-verified-you-can-log-in-now'));
       const next = new URLSearchParams(searchParams);
       next.delete("verified");
       setSearchParams(next, { replace: true });
@@ -98,20 +100,20 @@ function LoginPage({ isAuthenticated }: Props) {
       <Space orientation="vertical" size="large" className="w-full">
         <Space orientation="vertical" size={4}>
           <Title level={3} className="m-0">
-            Login
+            {t('login.login')}
           </Title>
           <Text type="secondary">
             {ssoSessionId
-              ? "Sign in to continue to external app"
-              : "Login to continue to your dashboard"}
+              ? t('login.sign-in-to-continue-to-external-app')
+              : t('login.login-to-continue-to-your-dashboard')}
           </Text>
         </Space>
 
         <Form layout="vertical" onFinish={handleFinish} requiredMark={false}>
           <Form.Item
-            label="Username"
+            label={t('username')}
             name="username"
-            rules={[{ required: true, message: "Please enter your username" }]}
+            rules={[{ required: true, message: t('login.please-enter-your-username') }]}
           >
             <Input
               size="large"
@@ -123,7 +125,7 @@ function LoginPage({ isAuthenticated }: Props) {
           <Form.Item
             label="Password"
             name="password"
-            rules={[{ required: true, message: "Please enter your password" }]}
+            rules={[{ required: true, message: t('login.please-enter-your-password') }]}
           >
             <Input.Password
               size="large"
@@ -141,16 +143,16 @@ function LoginPage({ isAuthenticated }: Props) {
               block
               loading={loading}
             >
-              Sign in
+              {t('sign-in')}
             </Button>
           </Form.Item>
         </Form>
 
         <Space orientation="vertical" size={4}>   
         <Text type="secondary">
-          New here? <Link to="/register">Create an account</Link>
+          {t('login.new-here')} <Link to="/register">{t('login.create-an-account')}</Link>
         </Text>
-        <Link to="/forget">Forgot Password?</Link>
+        <Link to="/forget">{t('login.forgot-password')}</Link>
         </Space>
       </Space>
     </Card>
