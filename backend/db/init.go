@@ -140,7 +140,7 @@ func InitDB() error {
 			code_challenge_method ENUM('S256', 'plain'),
 			redirect_uri      VARCHAR(512),
 			auth_code         VARCHAR(128),
-			state			 VARCHAR(50),
+			state			 VARCHAR(255),
 
 			status            ENUM(
 								'pending',
@@ -189,21 +189,21 @@ func ConnectDB() {
 
 	// Ensure DB and tables exist
 	if err := InitDB(); err != nil {
-		log.Fatal("DB init failed: ", err)
+		log.Println("DB init failed: ", err)
 	}
 
 	// Connect to target database
 	db, err := sql.Open("mysql", cfg.FormatDSN())
 	if err != nil {
-		log.Fatal("Error opening database: ", err)
+		log.Println("Error opening database: ", err)
 	}
 
 	if err = db.Ping(); err != nil {
-		log.Fatal("Error pinging database: ", err)
+		log.Println("Error pinging database: ", err)
 	}
 
 	if err = runMigration(db); err != nil {
-		log.Fatal("Error running migrations: ", err)
+		log.Println("Error running migrations: ", err)
 	}
 
 	log.Println("Successfully connected to the database")

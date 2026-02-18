@@ -340,7 +340,7 @@ func AuthCodeFlowHandler(w http.ResponseWriter, r *http.Request) {
 	sessionId := utils.GenerateToken()
 	err = db.CreateAuthCodeSession(req.ClientID, sessionId, req.RedirectURI, req.CodeChallenge, req.CodeChallengeMethod, req.State)
 	if err != nil {
-		log.Fatal("Error creating auth code session:", err)
+		log.Println("Error creating auth code session:", err)
 		http.Error(w, "server error", http.StatusInternalServerError)
 		return
 	}

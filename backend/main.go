@@ -95,5 +95,5 @@ func main() {
 
 	// Wrap the mux with the CORS middleware
 	log.Println("Server starting on port " + strconv.Itoa(config.AppConfig.Port))
-	log.Fatal(http.ListenAndServe(":"+strconv.Itoa(config.AppConfig.Port), handlers.CORSMiddleware(mux)))
+	log.Println(http.ListenAndServe(":"+strconv.Itoa(config.AppConfig.Port), handlers.CORSMiddleware(mux)))
 }
