@@ -32,6 +32,7 @@ import {
   UserAddOutlined,
   UploadOutlined,
   ReloadOutlined,
+  CopyOutlined,
 } from "@ant-design/icons";
 import { BanIcon } from "lucide-react";
 import ImgCrop from "antd-img-crop";
@@ -161,17 +162,75 @@ function SecurityTab({ app }: { app: AppDetails }) {
   const [newName, setNewName] = useState("");
   const [newUri, setNewUri] = useState("");
   const [deviceCodeEnabled, setDeviceCodeEnabled] = useState(
-    app.deviceCodeEnabled ?? true
+    app.deviceCodeEnabled ?? true,
   );
   const [updatingDeviceCode, setUpdatingDeviceCode] = useState(false);
 
+  // Secrets Management
+  const [secrets, setSecrets] = useState<any[]>([]);
+  const [loadingSecrets, setLoadingSecrets] = useState(false);
+  const [showSecretModal, setShowSecretModal] = useState(false);
+  const [newSecretData, setNewSecretData] = useState<{
+    secret: string;
+    id: number;
+  } | null>(null);
+  const [topModalOpen, setTopModalOpen] = useState(false);
+  const [secretName, setSecretName] = useState("");
+
   useEffect(() => {
     fetchUris();
+    if (app.role !== "external") {
+      fetchSecrets();
+    }
   }, [app.id]);
 
   useEffect(() => {
     setDeviceCodeEnabled(app.deviceCodeEnabled ?? true);
   }, [app.deviceCodeEnabled]);
+
+  const fetchSecrets = async () => {
+    setLoadingSecrets(true);
+    try {
+      const { data } = await api.get<{ data: any[] }>(
+        `/apps/secrets?id=${app.id}`,
+      );
+      setSecrets(data.data || []);
+    } catch (e) {
+      // ignore
+    } finally {
+      setLoadingSecrets(false);
+    }
+  };
+
+  const handleCreateSecret = async () => {
+    if (!secretName.trim()) {
+      message.error("Please enter a name for the secret");
+      return;
+    }
+    try {
+      const { data } = await api.post("/apps/secrets/create", {
+        appId: app.id,
+        name: secretName,
+      });
+      setNewSecretData(data.data);
+      setShowSecretModal(true);
+      setTopModalOpen(false);
+      setSecretName("");
+      fetchSecrets();
+    } catch (e: any) {
+      message.error(e.response?.data?.message || "Failed to create secret");
+    }
+  };
+
+  const handleDeleteSecret = async (secretId: number) => {
+    try {
+      await api.post("/apps/secrets/delete", { appId: app.id, secretId });
+      message.success("Secret deleted");
+      fetchSecrets();
+    } catch (e: any) {
+      message.error(e.response?.data?.message || "Failed to delete secret");
+    }
+  };
 
   const fetchUris = async () => {
     setLoading(true);
@@ -217,8 +276,7 @@ function SecurityTab({ app }: { app: AppDetails }) {
       message.success("Trusted URI removed");
       fetchUris();
     } catch (e: any) {
-      const msg =
-        e.response?.data?.message || "Failed to remove trusted URI";
+      const msg = e.response?.data?.message || "Failed to remove trusted URI";
       message.error(msg);
     }
   };
@@ -231,13 +289,10 @@ function SecurityTab({ app }: { app: AppDetails }) {
         enabled,
       });
       setDeviceCodeEnabled(enabled);
-      message.success(
-        `Device code flow ${enabled ? "enabled" : "disabled"}`
-      );
+      message.success(`Device code flow ${enabled ? "enabled" : "disabled"}`);
     } catch (e: any) {
       const msg =
-        e.response?.data?.message ||
-        "Failed to update device code settings";
+        e.response?.data?.message || "Failed to update device code settings";
       message.error(msg);
       setDeviceCodeEnabled(!enabled);
     } finally {
@@ -280,21 +335,153 @@ function SecurityTab({ app }: { app: AppDetails }) {
     },
   ];
 
+  const secretColumns = [
+    {
+      title: "Description",
+      dataIndex: "name",
+      key: "name",
+      render: (text?: string) =>
+        text || <Text type="secondary">No description</Text>,
+    },
+    {
+      title: "Created",
+      dataIndex: "createdAt",
+      key: "createdAt",
+      render: (text: string) => formatDateTime(text),
+    },
+    {
+      title: "Last Used",
+      dataIndex: "lastUsedAt",
+      key: "lastUsedAt",
+      render: (text?: string) =>
+        text ? formatDateTime(text) : <Text type="secondary">Never</Text>,
+    },
+    {
+      title: "Action",
+      key: "action",
+      render: (_: any, record: any) => (
+        <Popconfirm
+          title="Delete client secret?"
+          description="This action cannot be undone."
+          onConfirm={() => handleDeleteSecret(record.id)}
+          okText="Delete"
+          cancelText="Cancel"
+        >
+          <Button type="text" danger icon={<DeleteOutlined />} />
+        </Popconfirm>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="mb-4">
+        <Text type="secondary">Client ID</Text>
+        <Input.Group compact>
+          <Input
+            style={{ width: "calc(100% - 32px)" }}
+            value={app.id}
+            readOnly
+          />
+          <Button
+            icon={<CopyOutlined />}
+            onClick={() => {
+              navigator.clipboard.writeText(app.id);
+              message.success("Client ID copied");
+            }}
+          />
+        </Input.Group>
+      </div>
+
+      <div className="flex justify-between items-center mt-6">
+        <Text>Manage client secrets for confidential client flows.</Text>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={() => setTopModalOpen(true)}
+          disabled={app.role === "external"}
+        >
+          New Client Secret
+        </Button>
+      </div>
+
+      <Table
+        dataSource={secrets}
+        columns={secretColumns}
+        rowKey="id"
+        pagination={false}
+        loading={loadingSecrets}
+      />
+
+      <Modal
+        title="Generate New Client Secret"
+        open={topModalOpen}
+        onCancel={() => setTopModalOpen(false)}
+        onOk={handleCreateSecret}
+        okText="Generate"
+      >
+        <Form layout="vertical">
+          <Form.Item
+            label="Description"
+            required
+            help="Give this secret a name (e.g. 'Production Server', 'Dev Test')"
+          >
+            <Input
+              value={secretName}
+              onChange={(e) => setSecretName(e.target.value)}
+              placeholder="My App Secret"
+              onPressEnter={handleCreateSecret}
+              autoFocus
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title="Client Secret Generated"
+        open={showSecretModal}
+        footer={[
+          <Button
+            key="ok"
+            type="primary"
+            onClick={() => setShowSecretModal(false)}
+          >
+            Done
+          </Button>,
+        ]}
+        closable={false}
+        maskClosable={false}
+      >
+        <Text type="warning">
+          Make sure to copy this client secret now. You won't be able to see it
+          again!
+        </Text>
+        <Space.Compact className="w-full mt-4">
+          <Input readOnly value={newSecretData?.secret} />
+          <Button
+            icon={<CopyOutlined />}
+            onClick={() => {
+              if (newSecretData?.secret) {
+                navigator.clipboard.writeText(newSecretData.secret);
+                message.success("Copied!");
+              }
+            }}
+          />
+        </Space.Compact>
+      </Modal>
+
+      <div className="flex justify-between items-center mt-6">
         <div>
           <Text>Manage redirect URIs allowed by Authorization Code flow.</Text>
         </div>
-        {app.role !== "external" && (
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => setCreateModalOpen(true)}
-          >
-            Add URI
-          </Button>
-        )}
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={() => setCreateModalOpen(true)}
+          disabled={app.role === "external"}
+        >
+          Add URI
+        </Button>
       </div>
 
       <Table
@@ -305,28 +492,26 @@ function SecurityTab({ app }: { app: AppDetails }) {
         pagination={false}
       />
 
-      {app.role !== "external" && (
-        <Card size="small">
-          <Space direction="vertical" style={{ width: "100%" }}>
-            <div className="flex justify-between items-center">
-              <div>
-                <Text strong>Device Code Flow</Text>
-                <br />
-                <Text type="secondary" style={{ fontSize: "12px" }}>
-                  Allow this application to use Device Code flow for
-                  authentication.
-                </Text>
-              </div>
-              <Switch
-                checked={deviceCodeEnabled}
-                onChange={handleToggleDeviceCode}
-                loading={updatingDeviceCode}
-                disabled={app.role === "external"}
-              />
+      <Card size="small">
+        <Space direction="vertical" style={{ width: "100%" }}>
+          <div className="flex justify-between items-center">
+            <div>
+              <Text strong>Device Code Flow</Text>
+              <br />
+              <Text type="secondary" style={{ fontSize: "12px" }}>
+                Allow this application to use Device Code flow for
+                authentication.
+              </Text>
             </div>
-          </Space>
-        </Card>
-      )}
+            <Switch
+              checked={deviceCodeEnabled}
+              onChange={handleToggleDeviceCode}
+              loading={updatingDeviceCode}
+              disabled={app.role === "external"}
+            />
+          </div>
+        </Space>
+      </Card>
 
       <Modal
         title="Add Trusted URI"
@@ -731,7 +916,15 @@ function IntegrationGuideTab({ app }: { app: AppDetails }) {
       <div>
         <Title level={3}>Integration Guide</Title>
         <Paragraph>
-          Select the authentication flow that best suits your application. For a more detailed guide, please refer to <a href="https://github.com/mirpri/mirpass/tree/master/guide" target="_blank">Guide</a>.
+          Select the authentication flow that best suits your application. For a
+          more detailed guide, please refer to{" "}
+          <a
+            href="https://github.com/mirpri/mirpass/tree/master/guide"
+            target="_blank"
+          >
+            Guide
+          </a>
+          .
         </Paragraph>
         <Tabs items={items} />
       </div>
@@ -746,19 +939,24 @@ function AuthCodeFlowGuide({ app }: { app: AppDetails }) {
   }
 
   const { message } = App.useApp();
-  const [redirectUri, setRedirectUri] = useState<string>(
-    "",
-  );
+  const [redirectUri, setRedirectUri] = useState<string>("");
   const [state, setState] = useState<string>(generateRandomString(16));
   const [verifier, setVerifier] = useState<string>(generateRandomString(43));
   const [challenge, setChallenge] = useState<string>("");
+  const [usePkce, setUsePkce] = useState(true);
+  const [clientSecret, setClientSecret] = useState<string>("");
 
   const [authCode, setAuthCode] = useState<string>("");
   const [tokenResult, setTokenResult] = useState<any>(null);
+  const [userInfo, setUserInfo] = useState<any>(null);
 
   useEffect(() => {
-    sha256(verifier).then(setChallenge);
-  }, [verifier]);
+    if (usePkce) {
+      sha256(verifier).then(setChallenge);
+    } else {
+      setChallenge("");
+    }
+  }, [verifier, usePkce]);
 
   const regenerateParams = () => {
     const v = generateRandomString(43);
@@ -772,9 +970,12 @@ function AuthCodeFlowGuide({ app }: { app: AppDetails }) {
       client_id: app.id,
       redirect_uri: redirectUri,
       state: state,
-      code_challenge: challenge,
-      code_challenge_method: "S256",
     });
+    if (usePkce) {
+      params.append("code_challenge", challenge);
+      params.append("code_challenge_method", "S256");
+    }
+
     const url = `${config.API_URL}/oauth2/authorize?${params.toString()}`;
     window.open(url, "_blank");
     message.info(
@@ -787,13 +988,21 @@ function AuthCodeFlowGuide({ app }: { app: AppDetails }) {
       message.error("Please enter the authorization code");
       return;
     }
+    const payload: any = {
+      grant_type: "authorization_code",
+      client_id: app.id,
+      code: authCode,
+    };
+    if (usePkce) {
+      payload.code_verifier = verifier;
+    } else {
+      if (clientSecret) {
+        payload.client_secret = clientSecret;
+      }
+    }
+
     try {
-      const { data } = await api.post("/oauth2/token", {
-        grant_type: "authorization_code",
-        client_id: app.id,
-        code: authCode,
-        code_verifier: verifier,
-      });
+      const { data } = await api.post("/oauth2/token", payload);
       setTokenResult(data);
       message.success("Token exchanged successfully!");
     } catch (error: any) {
@@ -803,11 +1012,33 @@ function AuthCodeFlowGuide({ app }: { app: AppDetails }) {
     }
   };
 
+  const handleGetUserInfo = async () => {
+    if (!tokenResult?.access_token) return;
+    try {
+      // We can't use the api client directly because it attaches the dashboard user's token
+      // We need to use the new access token.
+      const res = await fetch(`${config.API_URL}/myprofile`, {
+        headers: {
+          Authorization: `Bearer ${tokenResult.access_token}`,
+        },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUserInfo(data);
+        message.success("User info fetched");
+      } else {
+        message.error("Failed to fetch user info");
+      }
+    } catch (e) {
+      message.error("Error fetching user info");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Alert
         title="Recommended for Web / Mobile Apps"
-        description="Authorization Code Flow with PKCE is the most secure method for authenticating users in public clients. Use this as long as your app can securely handle redirects."
+        description="Authorization Code Flow is the most secure method for authenticating users. PKCE is recommended for public clients."
         type="info"
         showIcon
       />
@@ -816,7 +1047,15 @@ function AuthCodeFlowGuide({ app }: { app: AppDetails }) {
         direction="vertical"
         className="w-full bg-gray-50 dark:bg-gray-900/20 p-4 rounded border border-gray-200 dark:border-gray-700 mt-4"
       >
-        <Title level={4}>Test Authorization Code Flow</Title>
+        <div className="flex justify-between items-center">
+          <Title level={4} style={{ margin: 0 }}>
+            Test Authorization Code Flow
+          </Title>
+          <Space>
+            <Text>Use PKCE</Text>
+            <Switch checked={usePkce} onChange={setUsePkce} />
+          </Space>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -834,20 +1073,39 @@ function AuthCodeFlowGuide({ app }: { app: AppDetails }) {
             <Text strong>State (Random)</Text>
             <Input value={state} disabled />
           </div>
-          <div>
-            <Text strong>Code Verifier (PKCE)</Text>
-            <Space.Compact style={{ width: "100%" }}>
-              <Input value={verifier} disabled />
-              <Button icon={<ReloadOutlined />} onClick={regenerateParams} />
-            </Space.Compact>
-          </div>
-          <div className="col-span-1 md:col-span-2">
-            <Text strong>Code Challenge (S256(Verifier))</Text>
-            <Input value={challenge} disabled />
-          </div>
+          {usePkce ? (
+            <>
+              <div>
+                <Text strong>Code Verifier (PKCE)</Text>
+                <Space.Compact style={{ width: "100%" }}>
+                  <Input value={verifier} disabled />
+                  <Button
+                    icon={<ReloadOutlined />}
+                    onClick={regenerateParams}
+                  />
+                </Space.Compact>
+              </div>
+              <div className="col-span-1 md:col-span-2">
+                <Text strong>Code Challenge (S256(Verifier))</Text>
+                <Input value={challenge} disabled />
+              </div>
+            </>
+          ) : (
+            <div>
+              <Text strong>Client Secret</Text>
+              <Input
+                value={clientSecret}
+                onChange={(e) => setClientSecret(e.target.value)}
+              />
+            </div>
+          )}
         </div>
 
-        <Button type="primary" onClick={handleAuthorize} disabled={!challenge}>
+        <Button
+          type="primary"
+          onClick={handleAuthorize}
+          disabled={usePkce && !challenge}
+        >
           Simulate authorization request
         </Button>
 
@@ -871,8 +1129,22 @@ function AuthCodeFlowGuide({ app }: { app: AppDetails }) {
             <Text strong className="text-green-600">
               Token Response:
             </Text>
-            <div className="mt-2 bg-gray-100 dark:bg-gray-800 p-3 rounded text-sm text-gray-600 dark:text-gray-300 font-mono overflow-x-auto">
+            <div className="my-2 bg-gray-100 dark:bg-gray-800 p-3 rounded text-sm text-gray-600 dark:text-gray-300 font-mono overflow-x-auto">
               {JSON.stringify(tokenResult, null, 2)}
+            </div>
+            <Button onClick={handleGetUserInfo}>
+              Fetch User Info with this Token
+            </Button>
+          </div>
+        )}
+
+        {userInfo && (
+          <div className="mt-2 bg-blue-50 dark:bg-blue-900/20 p-4 rounded border border-blue-200">
+            <Text strong className="text-blue-600">
+              User Info:
+            </Text>
+            <div className="mt-2 bg-gray-100 dark:bg-gray-800 p-3 rounded text-sm text-gray-600 dark:text-gray-300 font-mono overflow-x-auto">
+              {JSON.stringify(userInfo, null, 2)}
             </div>
           </div>
         )}
@@ -892,14 +1164,20 @@ function AuthCodeFlowGuide({ app }: { app: AppDetails }) {
           &redirect_uri={encodeURIComponent(redirectUri)}
           <br />
           &state={state}
-          <br />
-          &code_challenge={challenge}
-          <br />
-          &code_challenge_method=S256
+          {usePkce && (
+            <>
+              <br />
+              &code_challenge={challenge}
+              <br />
+              &code_challenge_method=S256
+            </>
+          )}
         </div>
       </div>
       <Alert
-        title={"The redirected_uri must match one of the app's registered trusted URIs. Add trusted URIs in the Security tab."}
+        title={
+          "The redirected_uri must match one of the app's registered trusted URIs. Add trusted URIs in the Security tab."
+        }
         type="warning"
         showIcon
       />
@@ -917,13 +1195,42 @@ function AuthCodeFlowGuide({ app }: { app: AppDetails }) {
           {`{
   "grant_type": "authorization_code",
   "client_id": "${app.id}",
-  "code": "${authCode || "AUTHORIZATION_CODE"}",
-  "code_verifier": "${verifier}"
+  "code": "${authCode || "AUTHORIZATION_CODE"}"${
+    usePkce
+      ? `,
+  "code_verifier": "${verifier}"`
+      : clientSecret
+        ? `,
+  "client_secret": "YOUR_SECRET"`
+        : ""
+  }
 }`}
         </div>
       </div>
+
+      <div className="mt-6">
+        <Title level={4}>3. Get User Profile</Title>
+        <Paragraph>Use the access token to get user information.</Paragraph>
+        <div className="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed">
+          <span className="text-purple-400">GET</span> {backendUrl}
+          /myprofile
+          <br />
+          <span className="text-blue-300">Authorization:</span> Bearer{" "}
+          {tokenResult?.access_token || "ACCESS_TOKEN"}
+        </div>
+        <Paragraph className="text-sm text-gray-500">Response:</Paragraph>
+        <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs font-mono">
+          {`{
+  "username": "user123",
+  "email": "user@example.com",
+  "nickname": "User Name",
+  "avatarUrl": "..."
+}`}
+        </div>
+      </div>
+
       <Paragraph className="text-sm text-gray-500">
-        Response (Success):
+        Token Response (Success):
       </Paragraph>
       <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs font-mono">
         {`{

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"mirpass-backend/config"
-	"strings"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
@@ -116,13 +115,6 @@ func InitDB() error {
 		return fmt.Errorf("create trusted_uris table: %w", err)
 	}
 
-	// Backward compatibility for old schemas without name column
-	if _, err = adminConn.Exec("ALTER TABLE trusted_uris ADD COLUMN name VARCHAR(255) DEFAULT NULL"); err != nil {
-		if !strings.Contains(strings.ToLower(err.Error()), "duplicate column") {
-			return fmt.Errorf("alter trusted_uris add name: %w", err)
-		}
-	}
-
 	// Create OAuth2 sessions table
 	if _, err = adminConn.Exec(`CREATE TABLE IF NOT EXISTS oauth_sessions (
 			session_id        VARCHAR(128) PRIMARY KEY,
@@ -179,6 +171,19 @@ func InitDB() error {
 	)`)
 	if err != nil {
 		return fmt.Errorf("create blobs table: %w", err)
+	}
+
+	// Create Application Secrets table
+	if _, err = adminConn.Exec(`CREATE TABLE IF NOT EXISTS app_secrets (
+		id INT AUTO_INCREMENT PRIMARY KEY,
+		app_id VARCHAR(127) NOT NULL,
+		name VARCHAR(255) DEFAULT NULL,
+		secret_hash VARCHAR(255) NOT NULL,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		last_used_at TIMESTAMP NULL,
+		FOREIGN KEY (app_id) REFERENCES applications(id) ON DELETE CASCADE
+	)`); err != nil {
+		return fmt.Errorf("create app_secrets table: %w", err)
 	}
 
 	return nil

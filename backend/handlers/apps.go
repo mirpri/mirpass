@@ -130,7 +130,7 @@ func AddAppTrustedURIHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isAdmin, err := db.IsAppAdmin(claims.Username, req.AppID)
+	isAdmin, err := db.IsAppAdminExplicit(claims.Username, req.AppID)
 	if err != nil || !isAdmin {
 		WriteErrorResponse(w, http.StatusForbidden, "Forbidden")
 		return
@@ -180,7 +180,7 @@ func DeleteAppTrustedURIHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isAdmin, err := db.IsAppAdmin(claims.Username, req.AppID)
+	isAdmin, err := db.IsAppAdminExplicit(claims.Username, req.AppID)
 	if err != nil || !isAdmin {
 		WriteErrorResponse(w, http.StatusForbidden, "Forbidden")
 		return
@@ -193,6 +193,106 @@ func DeleteAppTrustedURIHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	WriteSuccessResponse(w, "Trusted URI deleted", nil)
+}
+
+func ListAppSecretsHandler(w http.ResponseWriter, r *http.Request) {
+	appID := r.URL.Query().Get("id")
+	if appID == "" {
+		WriteErrorResponse(w, http.StatusBadRequest, "App ID is required")
+		return
+	}
+
+	claims, err := utils.ExtractClaims(r)
+	if err != nil {
+		WriteErrorResponse(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	isAdmin, err := db.IsAppAdmin(claims.Username, appID)
+	if err != nil || !isAdmin {
+		WriteErrorResponse(w, http.StatusForbidden, "Forbidden")
+		return
+	}
+
+	secrets, err := db.ListAppSecrets(appID)
+	if err != nil {
+		WriteErrorResponse(w, http.StatusInternalServerError, "Could not fetch secrets")
+		return
+	}
+
+	WriteSuccessResponse(w, "App secrets", secrets)
+}
+
+func CreateAppSecretHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		AppID string `json:"appId"`
+		Name  string `json:"name"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		WriteErrorResponse(w, http.StatusBadRequest, "Invalid request")
+		return
+	}
+
+	claims, err := utils.ExtractClaims(r)
+	if err != nil {
+		WriteErrorResponse(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	isAdmin, err := db.IsAppAdminExplicit(claims.Username, req.AppID)
+	if err != nil || !isAdmin {
+		WriteErrorResponse(w, http.StatusForbidden, "Forbidden")
+		return
+	}
+
+	result, err := db.CreateAppSecret(req.AppID, req.Name)
+	if err != nil {
+		WriteErrorResponse(w, http.StatusInternalServerError, "Could not create secret")
+		return
+	}
+
+	WriteSuccessResponse(w, "Secret created", result)
+}
+
+func DeleteAppSecretHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		AppID    string `json:"appId"`
+		SecretID int64  `json:"secretId"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		WriteErrorResponse(w, http.StatusBadRequest, "Invalid request")
+		return
+	}
+
+	claims, err := utils.ExtractClaims(r)
+	if err != nil {
+		WriteErrorResponse(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	isAdmin, err := db.IsAppAdminExplicit(claims.Username, req.AppID)
+	if err != nil || !isAdmin {
+		WriteErrorResponse(w, http.StatusForbidden, "Forbidden")
+		return
+	}
+
+	err = db.DeleteAppSecret(req.SecretID, req.AppID)
+	if err != nil {
+		WriteErrorResponse(w, http.StatusInternalServerError, "Could not delete secret")
+		return
+	}
+
+	WriteSuccessResponse(w, "Secret deleted", nil)
 }
 
 func UpdateAppHandler(w http.ResponseWriter, r *http.Request) {

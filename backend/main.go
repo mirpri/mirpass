@@ -65,6 +65,10 @@ func main() {
 	mux.Handle("/apps/uris/add", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.AddAppTrustedURIHandler)))
 	mux.Handle("/apps/uris/delete", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.DeleteAppTrustedURIHandler)))
 
+	mux.Handle("/apps/secrets", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.ListAppSecretsHandler)))
+	mux.Handle("/apps/secrets/create", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.CreateAppSecretHandler)))
+	mux.Handle("/apps/secrets/delete", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.DeleteAppSecretHandler)))
+
 	mux.Handle("/apps/update", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.UpdateAppHandler)))
 	mux.Handle("/apps/delete", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.DeleteAppHandler)))
 	mux.Handle("/apps/device-code/toggle", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.UpdateDeviceCodeEnabledHandler)))
@@ -88,6 +92,9 @@ func main() {
 	// Auth Code Flow Consent Handler
 	mux.HandleFunc("/oauth2/authorize", handlers.AuthCodeFlowHandler)
 	mux.HandleFunc("/authorize/consent/redirect", handlers.AuthCodeFlowConsentHandler)
+
+	// OIDC Discovery
+	mux.HandleFunc("/.well-known/openid-configuration", handlers.OIDCConfigurationHandler)
 
 	// Root routes
 	mux.Handle("/root/user/role", handlers.AuthSysMiddleware(handlers.RequireRoot("system", http.HandlerFunc(handlers.RootUpdateRole))))

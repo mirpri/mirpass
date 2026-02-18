@@ -64,6 +64,21 @@ type Application struct {
 	Role              string  `json:"role,omitempty"`
 }
 
+type AppSecret struct {
+	ID         int64  `json:"id"`
+	Name       string `json:"name,omitempty"`
+	CreatedAt  string `json:"createdAt"`
+	LastUsedAt string `json:"lastUsedAt,omitempty"`
+	// Secret is never returned here
+}
+
+type CreateSecretResponse struct {
+	ID        int64  `json:"id"`
+	Secret    string `json:"secret"` // Returned only once
+	Name      string `json:"name,omitempty"`
+	CreatedAt string `json:"createdAt"`
+}
+
 type APIKey struct {
 	ID        int64  `json:"id"`
 	AppID     string `json:"appId"`

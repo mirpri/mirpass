@@ -35,6 +35,7 @@ export interface AppDetails {
   logoUrl?: string;
   suspendUntil?: string | null;
   deviceCodeEnabled: boolean;
+  clientSecret?: string;
   createdAt?: string;
 }
 
@@ -51,6 +52,20 @@ export interface AppMember {
   role: string; // 'admin' | 'root' | ...
   joinedAt: string;
 }
+
+export type AppSecret = {
+  id: number;
+  name?: string;
+  createdAt: string;
+  lastUsedAt?: string;
+};
+
+export type AppSecretCreated = {
+  id: number;
+  secret: string;
+  name?: string;
+  createdAt: string;
+};
 
 export interface APIKey {
   id: number;

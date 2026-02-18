@@ -608,6 +608,8 @@ func GetAppRole(username string, app string) (string, error) {
 func CreateApp(name, description, owner string) (string, error) {
 	// Generate ID
 	id := utils.GenerateID()
+	// Generate Secret
+	secret := utils.GenerateToken() // Using GenerateToken as a secret
 
 	tx, err := database.Begin()
 	if err != nil {
@@ -615,7 +617,7 @@ func CreateApp(name, description, owner string) (string, error) {
 	}
 
 	// Insert App
-	_, err = tx.Exec("INSERT INTO applications (id, name, description) VALUES (?, ?, ?)", id, name, description)
+	_, err = tx.Exec("INSERT INTO applications (id, name, description, client_secret) VALUES (?, ?, ?, ?)", id, name, description, secret)
 	if err != nil {
 		tx.Rollback()
 		return "", err
@@ -641,7 +643,9 @@ func GetApplication(appID string) (*types.Application, error) {
 	var logoUrl sql.NullString
 	var suspendUntil sql.NullString
 	var deviceCodeEnabled sql.NullBool
+	// ClientSecret is deprecated in this struct
 
+	// We ignore client_secret column now
 	err := database.QueryRow("SELECT id, name, description, logo_url, suspend_until, device_code_enabled, created_at FROM applications WHERE id = ?", appID).
 		Scan(&app.ID, &app.Name, &app.Description, &logoUrl, &suspendUntil, &deviceCodeEnabled, &createdAt)
 	if err != nil {
@@ -659,6 +663,67 @@ func GetApplication(appID string) (*types.Application, error) {
 		app.DeviceCodeEnabled = true
 	}
 	return &app, nil
+}
+
+func CreateAppSecret(appID string, name string) (*types.CreateSecretResponse, error) {
+	secret := utils.GenerateApiKey()
+	hash := utils.Sha256(secret) // Storing hash
+
+	res, err := database.Exec("INSERT INTO app_secrets (app_id, name, secret_hash) VALUES (?, ?, ?)", appID, name, hash)
+	if err != nil {
+		return nil, err
+	}
+	id, _ := res.LastInsertId()
+
+	return &types.CreateSecretResponse{
+		ID:        id,
+		Secret:    secret,
+		Name:      name,
+		CreatedAt: time.Now().UTC().Format(time.RFC3339),
+	}, nil
+}
+
+func ListAppSecrets(appID string) ([]types.AppSecret, error) {
+	rows, err := database.Query("SELECT id, name, created_at, last_used_at FROM app_secrets WHERE app_id = ? ORDER BY created_at DESC", appID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var secrets []types.AppSecret
+	for rows.Next() {
+		var s types.AppSecret
+		var createdAt sql.NullString
+		var lastUsedAt sql.NullString
+		var name sql.NullString
+
+		if err := rows.Scan(&s.ID, &name, &createdAt, &lastUsedAt); err != nil {
+			return nil, err
+		}
+		s.Name = name.String
+		s.CreatedAt = createdAt.String
+		s.LastUsedAt = lastUsedAt.String
+		secrets = append(secrets, s)
+	}
+	return secrets, nil
+}
+
+func DeleteAppSecret(secretID int64, appID string) error {
+	_, err := database.Exec("DELETE FROM app_secrets WHERE id = ? AND app_id = ?", secretID, appID)
+	return err
+}
+
+func ValidateAppSecret(appID string, plainSecret string) bool {
+	hash := utils.Sha256(plainSecret)
+	var id int64
+	err := database.QueryRow("SELECT id FROM app_secrets WHERE app_id = ? AND secret_hash = ?", appID, hash).Scan(&id)
+	if err == nil {
+		// Update last used
+		database.Exec("UPDATE app_secrets SET last_used_at = CURRENT_TIMESTAMP WHERE id = ?", id)
+		return true
+	}
+
+	return false
 }
 
 func IsAppAdmin(username, appID string) (bool, error) {

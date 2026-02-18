@@ -166,9 +166,16 @@ func AuthCodeFlowTokenHandler(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Code         string `json:"code"`
 		ClientID     string `json:"client_id"`
+		ClientSecret string `json:"client_secret"`
 		CodeVerifier string `json:"code_verifier"`
 	}
 	err := json.NewDecoder(r.Body).Decode(&req)
+	// Allow client_id to be missing from body if available in Basic Auth
+	username, _, ok := r.BasicAuth()
+	if req.ClientID == "" && ok {
+		req.ClientID = username
+	}
+
 	if err != nil || req.Code == "" || req.ClientID == "" {
 		WriteErrorResponse(w, 400, "Invalid request body")
 		return
@@ -185,21 +192,49 @@ func AuthCodeFlowTokenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	switch session.CodeChallengeMethod {
-	case "S256":
-		hashedVerifier := utils.Sha256(req.CodeVerifier)
-		if hashedVerifier != session.CodeChallenge {
-			WriteErrorResponse(w, 400, "Invalid code_verifier")
+	if session.CodeChallenge != "" {
+		if req.CodeVerifier == "" {
+			WriteErrorResponse(w, 400, "code_verifier required for this request")
 			return
 		}
-	case "plain":
-		if req.CodeVerifier != session.CodeChallenge {
-			WriteErrorResponse(w, 400, "Invalid code_verifier")
+
+		switch session.CodeChallengeMethod {
+		case "S256":
+			hashedVerifier := utils.Sha256(req.CodeVerifier)
+			if hashedVerifier != session.CodeChallenge {
+				WriteErrorResponse(w, 400, "Invalid code_verifier")
+				return
+			}
+		case "plain":
+			if req.CodeVerifier != session.CodeChallenge {
+				WriteErrorResponse(w, 400, "Invalid code_verifier")
+				return
+			}
+		default:
+			WriteErrorResponse(w, 500, "Internal Server Error")
 			return
 		}
-	default:
-		WriteErrorResponse(w, 400, "Unsupported code_challenge_method")
-		return
+	} else {
+		// No PKCE, require client secret
+		// Check for client secret in body
+		clientSecret := req.ClientSecret
+		if clientSecret == "" {
+			// Check for client secret in Basic Auth header
+			_, password, ok := r.BasicAuth()
+			if ok {
+				clientSecret = password
+			}
+		}
+
+		if clientSecret == "" {
+			WriteErrorResponse(w, 401, "client_secret is required when not using PKCE")
+			return
+		}
+
+		if !db.ValidateAppSecret(req.ClientID, clientSecret) {
+			WriteErrorResponse(w, 401, "Invalid client_secret")
+			return
+		}
 	}
 
 	accessToken, err := utils.GenerateJWTToken(session.ClientID, session.Username, time.Hour*24*7) // TODO: let app set token expiry
@@ -337,6 +372,13 @@ func AuthCodeFlowHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.CodeChallengeMethod == "" {
+		req.CodeChallengeMethod = "plain"
+	} else if req.CodeChallengeMethod != "plain" && req.CodeChallengeMethod != "S256" {
+		http.Error(w, "unsupported code_challenge_method", http.StatusBadRequest)
+		return
+	}
+
 	sessionId := utils.GenerateToken()
 	err = db.CreateAuthCodeSession(req.ClientID, sessionId, req.RedirectURI, req.CodeChallenge, req.CodeChallengeMethod, req.State)
 	if err != nil {
@@ -347,6 +389,32 @@ func AuthCodeFlowHandler(w http.ResponseWriter, r *http.Request) {
 
 	redirectUrl := config.AppConfig.FrontendURL + "/auth?session_id=" + sessionId
 	http.Redirect(w, r, redirectUrl, http.StatusFound)
+}
+
+func OIDCConfigurationHandler(w http.ResponseWriter, r *http.Request) {
+	baseURL := config.AppConfig.BackendURL
+	// Ensure no trailing slash
+	baseURL = strings.TrimSuffix(baseURL, "/")
+
+	resp := map[string]interface{}{
+		"issuer":                                baseURL,
+		"authorization_endpoint":                baseURL + "/oauth2/authorize",
+		"token_endpoint":                        baseURL + "/oauth2/token",
+		"userinfo_endpoint":                     baseURL + "/myprofile",
+		"device_authorization_endpoint":         baseURL + "/oauth2/devicecode",
+		"jwks_uri":                              "",                        // No JWKS URI as we use symmetric keys (HS256) for now
+		"response_types_supported":              []string{"code", "token"}, // Added token for implicit if we support it, but we don't really support it yet implicitly. Let's keep code only for now.
+		"subject_types_supported":               []string{"public"},
+		"id_token_signing_alg_values_supported": []string{"HS256"},
+		"scopes_supported":                      []string{"openid", "profile", "email"},
+		"token_endpoint_auth_methods_supported": []string{"client_secret_basic", "client_secret_post", "none"},
+		"claims_supported":                      []string{"sub", "iss", "exp", "iat", "username", "nickname", "avatarUrl", "email"},
+		"code_challenge_methods_supported":      []string{"plain", "S256"},
+		"grant_types_supported":                 []string{"authorization_code", "urn:ietf:params:oauth:grant-type:device_code"},
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }
 
 func AuthCodeFlowConsentHandler(w http.ResponseWriter, r *http.Request) {

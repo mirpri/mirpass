@@ -1,15 +1,32 @@
 # Auth Code Flow
 
 ## Authorization Request
+
+MirPass supports both PKCE (Proof Key for Code Exchange) and Confidential Client (Client Secret) flows.
+
+### PKCE Flow (Recommended for Native/SPA)
+
 Redirect user to:
 ```http
 https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize?
-client_id=9pvG8HgeZ1mCKxeq3rI-Z
+client_id=...
 &response_type=code
-&redirect_uri=http%3A%2F%2Flocalhost%2Fmyapp%2F
-&state=12345
-&code_challenge=YTFjNjI1OWYzMzA3MTI4ZDY2Njg5M2RkNmVjNDE5YmEyZGRhOGYyM2IzNjdmZWFhMTQ1ODg3NDcxY2Nl
+...
+&code_challenge=...
 &code_challenge_method=S256
+```
+
+### Confidential Client Flow (Server-side Apps)
+
+If you cannot use PKCE, you can omit `code_challenge` and instead provide `client_secret` when exchanging the code for a token.
+
+Redirect user to:
+```http
+https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize?
+client_id=...
+&response_type=code
+&redirect_uri=...
+&state=...
 ```
 
 | Parameter             | Required/optional | Description                                     |
@@ -17,9 +34,39 @@ client_id=9pvG8HgeZ1mCKxeq3rI-Z
 | client_id             | required          | The Application ID.                             |
 | response_type         | required          | Must be `code`.                                 |
 | redirect_uri          | required          | Where authentication responses can be sent and received by your app. |
-| code_challenge        | required          | Used to secure authorization code grants by using Proof Key for Code Exchange (PKCE).|
-| code_challenge_method | recommended       | The method used to encode the `code_verifier` for the code_challenge parameter. This SHOULD be `S256`, only use `plain` if the client can't support SHA256. If excluded, code_challenge is assumed to be plaintext.|
-| state                 | recommended       | An opaque value used by the client to maintain state between the request and callback. The authorization server includes this value when redirecting the user-agent back to the client. The parameter SHOULD be used for preventing cross-site request forgery |
+| code_challenge        | optional          | Used to secure authorization code grants by using Proof Key for Code Exchange (PKCE). Required if client_secret is not used.|
+| code_challenge_method | optional          | The method used to encode the `code_verifier`. SHOULD be `S256`.|
+| state                 | recommended       | An opaque value used by the client to maintain state. |
+
+### Token Exchange (POST)
+
+**Endpoint:** `/oauth2/token`
+
+**Headers:**
+`Content-Type: application/json`
+
+**Body (PKCE):**
+```json
+{
+  "grant_type": "authorization_code",
+  "client_id": "...",
+  "code": "...",
+  "code_verifier": "...",
+  "redirect_uri": "..."
+}
+```
+
+**Body (Confidential Client):**
+```json
+{
+  "grant_type": "authorization_code",
+  "client_id": "...",
+  "client_secret": "...",
+  "code": "...",
+  "redirect_uri": "..."
+}
+```
+*Note: `client_secret` can also be passed via HTTP Basic Auth header.*
 
 ### Node.js Example
 
