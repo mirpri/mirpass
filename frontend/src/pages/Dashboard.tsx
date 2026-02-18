@@ -48,6 +48,7 @@ import { sha256 } from "../utils/crypto";
 import { LoadingView } from "../components/LoadingView";
 import { FailedView } from "../components/FailedView";
 import { AnyAvatar, MyAvatar } from "../components/Avatars";
+import { useTranslation } from "react-i18next";
 
 const { Title, Text } = Typography;
 
@@ -59,6 +60,7 @@ function DashboardPage() {
     updateProfile,
     isLoadingProfile,
   } = useAppStore();
+  const { t } = useTranslation();
   const { message } = App.useApp();
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
   const [loginHistory, setLoginHistory] = useState<LoginHistoryItem[]>([]);
@@ -247,9 +249,9 @@ function DashboardPage() {
       <Flex justify="space-between" align="center" wrap>
         <Space orientation="vertical" size={4}>
           <Title level={3} className="m-0">
-            Dashboard
+            {t('dash.dashboard')}
           </Title>
-          <Text type="secondary">Manage your profile and credentials</Text>
+          <Text type="secondary">{t('dash.manage-your-profile-and-credentials')}</Text>
         </Space>
       </Flex>
 
@@ -280,7 +282,7 @@ function DashboardPage() {
               <Space align="center" size={12}>
                 <TagIcon className="text-primary-500" size={16} />
                 <Text strong className="text-base">
-                  Nickname
+                  {t('dash.nickname')}
                 </Text>
               </Space>
               <div className="mt-[14px]">
@@ -289,7 +291,7 @@ function DashboardPage() {
                     <Input
                       value={nicknameInput}
                       onChange={(event) => setNicknameInput(event.target.value)}
-                      placeholder="Set a nickname"
+                      placeholder={t('dash.set-a-nickname')}
                       className="min-w-[190px]"
                     />
                     <Button
@@ -307,14 +309,14 @@ function DashboardPage() {
                 ) : (
                   <Space align="center">
                     <Text type="secondary">
-                      {profile?.nickname || "No nickname set"}
+                      {profile?.nickname || t('dash.no-nickname-set')}
                     </Text>
                     <Button
                       type="link"
                       icon={<EditOutlined />}
                       onClick={() => toggleEditing("nickname", true)}
                     >
-                      Update
+                      {t('dash.update')}
                     </Button>
                   </Space>
                 )}
@@ -324,7 +326,7 @@ function DashboardPage() {
               <Space align="center" size={12}>
                 <UserCircle className="text-primary-500" size={16} />
                 <Text strong className="text-base">
-                  Avatar
+                  {t('dash.avatar')}
                 </Text>
               </Space>
               <div className="mt-[14px]">
@@ -356,11 +358,11 @@ function DashboardPage() {
                           const f = file as File;
                           setSelectedFile(f);
                           setAvatarInput(URL.createObjectURL(f));
-                          message.info("Image selected. Click check to save.");
+                          message.info(t('dash.image-selected-click-check-to-save'));
                           onSuccess?.("ok");
                         }}
                       >
-                        <Button icon={<UploadOutlined />}>Select</Button>
+                        <Button icon={<UploadOutlined />}>{t('dash.select')}</Button>
                       </Upload>
                     </ImgCrop>
                   </Space>
@@ -368,15 +370,15 @@ function DashboardPage() {
                   <Space wrap align="center">
                     <Text type="secondary">
                       {profile?.avatarUrl
-                        ? "Custom URL linked"
-                        : "No avatar set"}
+                        ? t('dash.custom-url-linked')
+                        : t('dash.no-avatar-set')}
                     </Text>
                     <Button
                       type="link"
                       icon={<EditOutlined />}
                       onClick={() => toggleEditing("avatar", true)}
                     >
-                      Update
+                      {t('dash.update')}
                     </Button>
                   </Space>
                 )}
@@ -387,12 +389,12 @@ function DashboardPage() {
               <Space align="center" size={12}>
                 <MailIcon className="text-primary-500" size={16} />
                 <Text strong className="text-base">
-                  Email
+                  {t('email')}
                 </Text>
               </Space>
               <div className="mt-[14px]">
                 <Text type="secondary" className="mr-4">
-                  {profile?.email || "No Email"}
+                  {profile?.email || t('dash.no-email')}
                 </Text>
                 <Button
                   type="link"
@@ -400,7 +402,7 @@ function DashboardPage() {
                   onClick={() => setIsEmailModalOpen(true)}
                   className="pl-0"
                 >
-                  Change Email
+                  {t('dash.change-email')}
                 </Button>
               </div>
             </div>
@@ -409,7 +411,7 @@ function DashboardPage() {
               <Space align="center" size={12}>
                 <KeyRound className="text-primary-500" size={16} />
                 <Text strong className="text-base">
-                  Password
+                  {t('password')}
                 </Text>
               </Space>
               <div className="mt-[14px]">
@@ -418,10 +420,10 @@ function DashboardPage() {
                   onClick={() => setIsPasswordModalOpen(true)}
                   className="pl-0"
                 >
-                  Change Password
+                  {t('dash.change-password')}
                 </Button>
                 <Link to="/forget" className="ml-4">
-                  Forgot Password
+                  {t('dash.forgot-password')}
                 </Link>
               </div>
             </div>
@@ -430,7 +432,7 @@ function DashboardPage() {
               <Space align="center" size={12}>
                 <AppWindowIcon className="text-primary-500" size={16} />
                 <Text strong className="text-base">
-                  My Applications
+                  {t('dash.my-applications')}
                 </Text>
               </Space>
               <div className="mt-[14px] flex flex-wrap gap-2">
@@ -457,7 +459,7 @@ function DashboardPage() {
                 <Link to="/apps/create">
                   <Button type="dashed">
                     <PlusIcon size={14} />
-                    Create New App
+                    {t('dash.create-new-app')}
                   </Button>
                 </Link>
               </div>
@@ -473,7 +475,7 @@ function DashboardPage() {
         <Space align="center" size={12}>
           <AppWindowIcon className="text-primary-500" size={16} />
           <Text strong className="text-base">
-            Applications Logged Into
+            {t('dash.applications-logged-into')}
           </Text>
         </Space>
 
@@ -490,7 +492,7 @@ function DashboardPage() {
                     <Text strong>{app.app}</Text>
                   </Flex>
                   <div className="text-xs text-gray-500">
-                    Last Login: <br />
+                    {t('dash.last-login')} <br />
                     {formatDateTime(app.time)}
                   </div>
                 </div>
@@ -499,7 +501,7 @@ function DashboardPage() {
           ))}
           {appsSummary.length === 0 && (
             <Text type="secondary" className="pl-4">
-              No login history found.
+              {t('dash.no-login-history-found')}
             </Text>
           )}
         </Row>
@@ -510,13 +512,13 @@ function DashboardPage() {
           <Space align="center" size={12}>
             <ClockIcon className="text-primary-500" size={16} />
             <Text strong className="text-base">
-              Login History
+              {t('dash.login-history')}
             </Text>
           </Space>
           <DatePicker
             value={selectedDate}
             onChange={setSelectedDate}
-            placeholder="Select Date"
+            placeholder={t('dash.select-date')}
             allowClear
           />
         </Flex>
@@ -526,15 +528,15 @@ function DashboardPage() {
           rowKey={(record) => record.time + record.app + Math.random()}
           pagination={{ pageSize: 5 }}
           size="small"
-          locale={{ emptyText: "No history found" }}
+          locale={{ emptyText: t('dash.no-history-found') }}
           columns={[
             {
-              title: "Application",
+              title: t('application'),
               dataIndex: "app",
               key: "appName",
             },
             {
-              title: "Time",
+              title: t('time'),
               dataIndex: "time",
               key: "time",
               render: (text: string) => formatDateTime(text),
@@ -544,7 +546,7 @@ function DashboardPage() {
       </Space>
 
       <Modal
-        title="Change Password"
+        title={t('dash.change-password')}
         open={isPasswordModalOpen}
         onOk={handlePasswordChange}
         onCancel={() => {
@@ -555,19 +557,19 @@ function DashboardPage() {
         <Form form={passwordForm} layout="vertical">
           <Form.Item
             name="currentPassword"
-            label="Current Password"
+            label={t('dash.current-password')}
             rules={[
-              { required: true, message: "Please enter your current password" },
+              { required: true, message: t('dash.please-enter-your-current-password') },
             ]}
           >
             <Input.Password />
           </Form.Item>
           <Form.Item
             name="newPassword"
-            label="New Password"
+            label={t('dash.new-password')}
             rules={[
-              { required: true, message: "Please enter a new password" },
-              { min: 8, message: "Password must be at least 8 characters" },
+              { required: true, message: t('dash.please-enter-a-new-password') },
+              { min: 8, message: t('reg.password-must-be-at-least-8-characters') },
             ]}
           >
             <Input.Password />
@@ -576,7 +578,7 @@ function DashboardPage() {
       </Modal>
 
       <Modal
-        title="Change Email"
+        title={t('dash.change-email')}
         open={isEmailModalOpen}
         onOk={handleEmailChange}
         onCancel={() => {
@@ -587,19 +589,19 @@ function DashboardPage() {
         <Form form={emailForm} layout="vertical">
           <Form.Item
             name="newEmail"
-            label="New Email"
+            label={t('dash.new-email')}
             rules={[
-              { required: true, message: "Please enter your new email" },
-              { type: "email", message: "Please enter a valid email" },
+              { required: true, message: t('dash.please-enter-your-new-email') },
+              { type: "email", message: t('reg.please-enter-a-valid-email') },
             ]}
           >
             <Input />
           </Form.Item>
           <Form.Item
             name="password"
-            label="Current Password"
+            label={t('dash.current-password')}
             rules={[
-              { required: true, message: "Please enter your current password" },
+              { required: true, message: t('dash.please-enter-your-current-password') },
             ]}
           >
             <Input.Password />

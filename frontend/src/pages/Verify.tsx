@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button, Card, Result, Spin, message } from "antd";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api from "../api/client";
+import { useTranslation } from "react-i18next";
 
 type VerifyResponse = {
   status: number;
@@ -20,6 +21,7 @@ function VerifyPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const ranRef = useRef(false);
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (ranRef.current) return;
@@ -70,12 +72,12 @@ function VerifyPage() {
     }
   };
 
-  const getTaskDescription = (t: string) => {
-      switch(t) {
-          case "register": return "Verify your email address for account registration";
-          case "change_email": return "Confirm change of email address";
-          case "reset_password": return "Confirm password reset";
-          default: return "confirm this action";
+  const getTaskDescription = (task: string) => {
+      switch(task) {
+          case "register": return t('verify.verify-your-email-address-for-account-registration');
+          case "change_email": return t('verify.change-email-address');
+          case "reset_password": return t('verify.reset-your-password');
+          default: return t('verify.verification-task');
       }
   };
   const content = () => {
@@ -83,7 +85,7 @@ function VerifyPage() {
       return (
         <Result
           status="info"
-          title="Checking link..."
+          title={t('verify.checking-link')}
           extra={<Spin size="large" />}
         />
       );
@@ -93,11 +95,11 @@ function VerifyPage() {
         return (
           <Result
             status="info"
-            title="Last step"
-            subTitle={`Please click below to confirm ${getTaskDescription(task)}`}
+            title={t('verify.last-step')}
+            subTitle={t('verify.please-click-below-to-confirm') + getTaskDescription(task)}
             extra={
               <Button type="primary" size="large" onClick={handleVerify}>
-                Verify Now
+                {t('verify.verify-now')}
               </Button>
             }
           />
@@ -114,19 +116,19 @@ function VerifyPage() {
     }
 
     if (status === "success") {
-      const type = task === "reset_password" ? "Password reset" : "Verified";
+      const titleString = task === "reset_password" ? t('verify.password-reset-successfully') : t('verify.verified-successfully');
       return (
         <Result
           status="success"
-          title={`${type} successfully`}
-          subTitle="You can now sign in with your updated credentials"
+          title={titleString}
+          subTitle={t('verify.you-can-now-sign-in-with-your-updated-credentials')}
           extra={
             <Button
               type="primary"
               onClick={() => navigate("/login", { replace: true })}
               size="large"
             >
-              Go to login
+              {t('verify.go-to-login')}
             </Button>
           }
         />
@@ -136,11 +138,11 @@ function VerifyPage() {
     return (
       <Result
         status="error"
-        title="Verification failed"
-        subTitle={errorMsg || "The verification link is invalid or expired."}
+        title={t('verify.verification-failed')}
+        subTitle={errorMsg || t('verify.the-verification-link-is-invalid-or-expired')}
         extra={
           <Button type="primary" onClick={() => navigate("/login") } size="large">
-            Back to login
+            {t('verify.back-to-login')}
           </Button>
         }
       />
