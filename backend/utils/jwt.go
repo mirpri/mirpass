@@ -22,6 +22,27 @@ func GenerateJWTToken(appID, username string, exp time.Duration) (string, error)
 	return token.SignedString([]byte(config.AppConfig.JWTSecret))
 }
 
+func GenerateIDToken(appID, username string, nonce string) (string, error) {
+	claims := jwt.MapClaims{
+		"iss": config.AppConfig.BackendURL,
+		"sub": username,
+		"aud": appID,
+		"exp": jwt.NewNumericDate(time.Now().UTC().Add(time.Hour)),
+		"iat": jwt.NewNumericDate(time.Now().UTC()),
+	}
+	if nonce != "" {
+		claims["nonce"] = nonce
+	}
+
+	// Get private key from keys manager
+	privKey := GetRSAPrivateKey()
+
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+
+	// Sign and get the complete encoded token as a string using the private key
+	return token.SignedString(privKey)
+}
+
 func GenerateSysToken(userID string) (string, error) {
 	return GenerateJWTToken("system", userID, time.Hour*24*7)
 }

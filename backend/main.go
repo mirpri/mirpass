@@ -29,6 +29,7 @@ func main() {
 
 	// Protected routes
 	mux.Handle("/myprofile", handlers.AuthMiddleware(http.HandlerFunc(handlers.MyInfoHandler)))
+	mux.Handle("/userinfo", handlers.AuthMiddleware(http.HandlerFunc(handlers.UserInfoHandler)))
 	mux.Handle("/myusername", handlers.AuthMiddleware(http.HandlerFunc(handlers.MyUsernameHandler)))
 	mux.Handle("/profile/nickname", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.UpdateNicknameHandler)))
 	mux.Handle("/profile/avatar", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.UpdateAvatarHandler)))

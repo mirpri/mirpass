@@ -90,9 +90,9 @@ const authServerUrl = 'https://mirpass-api.puppygoapp.com';
 async function deviceFlow() {
     try {
         // Step 1: Request Device Code
-        const deviceResponse = await axios.post(`${authServerUrl}/oauth2/devicecode`, {
+        const deviceResponse = await axios.post(`${authServerUrl}/oauth2/devicecode`, new URLSearchParams({
             client_id: clientId
-        });
+        }));
 
         const { device_code, user_code, verification_uri, interval, expires_in } = deviceResponse.data;
 
@@ -106,11 +106,11 @@ async function deviceFlow() {
             await new Promise(resolve => setTimeout(resolve, pollInterval));
 
             try {
-                const tokenResponse = await axios.post(`${authServerUrl}/oauth2/token`, {
+                const tokenResponse = await axios.post(`${authServerUrl}/oauth2/token`, new URLSearchParams({
                     client_id: clientId,
                     grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
                     device_code: device_code
-                });
+                }));
 
                 const { access_token } = tokenResponse.data;
                 console.log('Access Token:', access_token);
@@ -124,7 +124,7 @@ async function deviceFlow() {
                 console.log('Token Info:', verifyResponse.data);
 
                 // 2. Use token to get User Info
-                const userResponse = await axios.get(`${authServerUrl}/myprofile`, {
+                const userResponse = await axios.get(`${authServerUrl}/userinfo`, {
                     headers: { Authorization: `Bearer ${access_token}` }
                 });
 
@@ -151,7 +151,7 @@ deviceFlow();
 ## Implementation Details
 
 ### Using the Token
-To access protected resources (like `/myprofile` or `/myusername`), include the Access Token in the **Authorization** header:
+To access protected resources (like `/userinfo`), include the Access Token in the **Authorization** header:
 
 ```http
 Authorization: Bearer <YOUR_ACCESS_TOKEN>

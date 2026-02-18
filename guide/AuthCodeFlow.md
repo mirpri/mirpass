@@ -43,28 +43,24 @@ client_id=...
 **Endpoint:** `/oauth2/token`
 
 **Headers:**
-`Content-Type: application/json`
+`Content-Type: application/x-www-form-urlencoded`
 
 **Body (PKCE):**
-```json
-{
-  "grant_type": "authorization_code",
-  "client_id": "...",
-  "code": "...",
-  "code_verifier": "...",
-  "redirect_uri": "..."
-}
+```
+grant_type=authorization_code
+&client_id=...
+&code=...
+&code_verifier=...
+&redirect_uri=...
 ```
 
 **Body (Confidential Client):**
-```json
-{
-  "grant_type": "authorization_code",
-  "client_id": "...",
-  "client_secret": "...",
-  "code": "...",
-  "redirect_uri": "..."
-}
+```
+grant_type=authorization_code
+&client_id=...
+&client_secret=...
+&code=...
+&redirect_uri=...
 ```
 *Note: `client_secret` can also be passed via HTTP Basic Auth header.*
 
@@ -122,7 +118,7 @@ app.get('/login', (req, res) => {
         `client_id=${clientId}&` +
         `response_type=code&` +
         `redirect_uri=${encodeURIComponent(redirectUri)}&` +
-        `state=${state}&` +
+        `state=${encodeURIComponent(state)}&` +
         `code_challenge=${challenge}&` +
         `code_challenge_method=S256`;
         
@@ -135,13 +131,13 @@ app.get('/callback', async (req, res) => {
     // Validate state here if needed
 
     try {
-        const response = await axios.post(`${authServerUrl}/oauth2/token`, {
+        const response = await axios.post(`${authServerUrl}/oauth2/token`, new URLSearchParams({
             client_id: clientId,
             grant_type: 'authorization_code',
             redirect_uri: redirectUri,
             code: code,
             code_verifier: sessionVerifier // Send the original verifier
-        });
+        }));
 
         const { access_token } = response.data;
         
@@ -155,7 +151,7 @@ app.get('/callback', async (req, res) => {
 
         // 2. Use token to get User Info
         // Include the token in the Authorization header: "Bearer <token>"
-        const userResponse = await axios.get(`${authServerUrl}/myprofile`, {
+        const userResponse = await axios.get(`${authServerUrl}/userinfo`, {
             headers: { Authorization: `Bearer ${access_token}` }
         });
 
@@ -182,10 +178,21 @@ app.listen(3000, () => console.log('Server running on port 3000'));
 - **state**: An opaque value used to maintain state between the request and the callback. **Recommended length: 16+ characters**.
 
 ### Using the Token
-To access protected resources (like `/myprofile` or `/myusername`), include the Access Token in the **Authorization** header:
+To access protected resources (like `/userinfo`), include the Access Token in the **Authorization** header:
 
 ```http
 Authorization: Bearer <YOUR_ACCESS_TOKEN>
+```
+
+Response:
+```json
+{
+  "sub": "user123",
+  "email": "user@example.com",
+  "preferred_username": "user123",
+  "nickname": "User Name",
+  "avatar_url": "..."
+}
 ```
 
 ### Verifying the Token

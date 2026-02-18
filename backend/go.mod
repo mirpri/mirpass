@@ -14,6 +14,8 @@ require (
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 )
 
+require github.com/go-jose/go-jose/v4 v4.1.3 // indirect
+
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/joho/godotenv v1.5.1

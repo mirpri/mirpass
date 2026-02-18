@@ -1002,7 +1002,10 @@ function AuthCodeFlowGuide({ app }: { app: AppDetails }) {
     }
 
     try {
-      const { data } = await api.post("/oauth2/token", payload);
+      const { data } = await api.post(
+        "/oauth2/token",
+        new URLSearchParams(payload)
+      );
       setTokenResult(data);
       message.success("Token exchanged successfully!");
     } catch (error: any) {
@@ -1017,7 +1020,7 @@ function AuthCodeFlowGuide({ app }: { app: AppDetails }) {
     try {
       // We can't use the api client directly because it attaches the dashboard user's token
       // We need to use the new access token.
-      const res = await fetch(`${config.API_URL}/myprofile`, {
+      const res = await fetch(`${config.API_URL}/userinfo`, {
         headers: {
           Authorization: `Bearer ${tokenResult.access_token}`,
         },
@@ -1163,7 +1166,7 @@ function AuthCodeFlowGuide({ app }: { app: AppDetails }) {
           <br />
           &redirect_uri={encodeURIComponent(redirectUri)}
           <br />
-          &state={state}
+          &state={encodeURIComponent(state)}
           {usePkce && (
             <>
               <br />
@@ -1189,22 +1192,25 @@ function AuthCodeFlowGuide({ app }: { app: AppDetails }) {
           <span className="text-purple-400">POST</span> {backendUrl}
           /oauth2/token
           <br />
-          <span className="text-blue-300">Content-Type:</span> application/json
+          <span className="text-blue-300">Content-Type:</span> application/x-www-form-urlencoded
           <br />
           <br />
-          {`{
-  "grant_type": "authorization_code",
-  "client_id": "${app.id}",
-  "code": "${authCode || "AUTHORIZATION_CODE"}"${
-    usePkce
-      ? `,
-  "code_verifier": "${verifier}"`
-      : clientSecret
-        ? `,
-  "client_secret": "YOUR_SECRET"`
-        : ""
-  }
-}`}
+          grant_type=authorization_code
+          <br />
+          &client_id={app.id}
+          <br />
+          &code={authCode || "AUTHORIZATION_CODE"}
+          {usePkce ? (
+            <>
+              <br />
+              &code_verifier={verifier}
+            </>
+          ) : clientSecret ? (
+            <>
+              <br />
+              &client_secret=YOUR_SECRET
+            </>
+          ) : null}
         </div>
       </div>
 
@@ -1213,7 +1219,7 @@ function AuthCodeFlowGuide({ app }: { app: AppDetails }) {
         <Paragraph>Use the access token to get user information.</Paragraph>
         <div className="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed">
           <span className="text-purple-400">GET</span> {backendUrl}
-          /myprofile
+          /userinfo
           <br />
           <span className="text-blue-300">Authorization:</span> Bearer{" "}
           {tokenResult?.access_token || "ACCESS_TOKEN"}
@@ -1221,10 +1227,11 @@ function AuthCodeFlowGuide({ app }: { app: AppDetails }) {
         <Paragraph className="text-sm text-gray-500">Response:</Paragraph>
         <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs font-mono">
           {`{
-  "username": "user123",
+  "sub": "user123",
   "email": "user@example.com",
+  "preferred_username": "user123",
   "nickname": "User Name",
-  "avatarUrl": "..."
+  "avatar_url": "..."
 }`}
         </div>
       </div>
@@ -1261,9 +1268,10 @@ function DeviceCodeFlowGuide({ app }: { app: AppDetails }) {
     setPollStatus("Initiating...");
     try {
       // Use Device Code Flow
-      const { data } = await api.post("/oauth2/devicecode", {
-        client_id: app.id,
-      });
+      const { data } = await api.post(
+        "/oauth2/devicecode",
+        new URLSearchParams({ client_id: app.id })
+      );
 
       setDeviceCodeData(data);
       setPollStatus("Waiting for user authorization...");
@@ -1287,11 +1295,14 @@ function DeviceCodeFlowGuide({ app }: { app: AppDetails }) {
 
     const doPoll = async () => {
       try {
-        const { data } = await api.post("/oauth2/token", {
-          client_id: app.id,
-          device_code: deviceCodeData.device_code,
-          grant_type: "urn:ietf:params:oauth:grant-type:device_code",
-        });
+        const { data } = await api.post(
+          "/oauth2/token",
+          new URLSearchParams({
+            client_id: app.id,
+            device_code: deviceCodeData.device_code,
+            grant_type: "urn:ietf:params:oauth:grant-type:device_code",
+          })
+        );
 
         // Success
         setPollResult(data);
@@ -1399,10 +1410,10 @@ function DeviceCodeFlowGuide({ app }: { app: AppDetails }) {
           <span className="text-purple-400">POST</span> {backendUrl}
           /oauth2/devicecode
           <br />
-          <span className="text-blue-300">Content-Type:</span> application/json
+          <span className="text-blue-300">Content-Type:</span> application/x-www-form-urlencoded
           <br />
           <br />
-          {`{ "client_id": "${app.id}" }`}
+          client_id={app.id}
         </div>
         <Paragraph className="mt-2 text-sm text-gray-500">Response:</Paragraph>
         <div className="mt-2 bg-gray-100 dark:bg-gray-800 p-3 rounded text-sm text-gray-600 dark:text-gray-300 font-mono">
@@ -1427,14 +1438,14 @@ function DeviceCodeFlowGuide({ app }: { app: AppDetails }) {
           <span className="text-purple-400">POST</span> {backendUrl}
           /oauth2/token
           <br />
-          <span className="text-blue-300">Content-Type:</span> application/json
+          <span className="text-blue-300">Content-Type:</span> application/x-www-form-urlencoded
           <br />
           <br />
-          {`{
-  "client_id": "${app.id}",
-  "device_code": "...",
-  "grant_type": "urn:ietf:params:oauth:grant-type:device_code"
-}`}
+          client_id={app.id}
+          <br />
+          &device_code=...
+          <br />
+          &grant_type=urn:ietf:params:oauth:grant-type:device_code
         </div>
         <Paragraph className="mt-2 text-sm text-gray-500">
           Response (Pending):

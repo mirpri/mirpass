@@ -181,3 +181,33 @@ func VerifyTokenHandler(w http.ResponseWriter, r *http.Request) {
 
 	WriteSuccessResponse(w, "Token verified successfully", resp)
 }
+
+func UserInfoHandler(w http.ResponseWriter, r *http.Request) {
+	username := GetUsernameFromContext(r.Context())
+	if username == "" {
+		WriteOauthErrorResponse(w, "access_denied") // OIDC error format
+		return
+	}
+
+	user, err := db.GetUserByUsername(username)
+	if err != nil {
+		WriteOauthErrorResponse(w, "invalid_request")
+		return
+	}
+
+	name := user.Nickname
+	if name == "" {
+		name = user.Username
+	}
+
+	claims := map[string]interface{}{
+		"sub":                user.Username,
+		"nickname":           name,
+		"preferred_username": user.Username,
+		"email":              user.Email,
+		"avatar_url":         FormatUrl(user.AvatarURL),
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(claims)
+}

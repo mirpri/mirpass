@@ -1,9 +1,7 @@
 package handlers
 
 import (
-	"bytes"
 	"encoding/json"
-	"io"
 	"log"
 	"mirpass-backend/config"
 	"mirpass-backend/db"
@@ -27,16 +25,18 @@ func WriteOauthErrorResponse(w http.ResponseWriter, message string) {
 }
 
 func DeviceFlowInitiateHandler(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		ClientID string `json:"client_id"`
+	if err := r.ParseForm(); err != nil {
+		WriteErrorResponse(w, 400, "Invalid request")
+		return
 	}
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil || req.ClientID == "" {
-		WriteErrorResponse(w, 400, "Invalid request body")
+	clientID := r.Form.Get("client_id")
+
+	if clientID == "" {
+		WriteErrorResponse(w, 400, "client_id is required")
 		return
 	}
 
-	app, err := db.GetApplication(req.ClientID)
+	app, err := db.GetApplication(clientID)
 	if err != nil {
 		WriteErrorResponse(w, 400, "Invalid client_id")
 		return
@@ -65,38 +65,31 @@ func DeviceFlowInitiateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := map[string]string{
+	resp := map[string]interface{}{
 		"device_code":               deviceCode,
 		"user_code":                 userCode,
 		"verification_uri":          config.AppConfig.FrontendURL + "/auth",
 		"verification_uri_complete": config.AppConfig.FrontendURL + "/auth?user_code=" + userCode,
-		"interval":                  "5",   // 5 seconds
-		"expires_in":                "900", // 15 minutes
+		"interval":                  5,   // 5 seconds
+		"expires_in":                900, // 15 minutes
 	}
 	WriteOauthSuccessResponse(w, resp)
 }
 
 func GetTokenHandler(w http.ResponseWriter, r *http.Request) {
-	bodyBytes, err := io.ReadAll(r.Body)
-	if err != nil {
-		log.Print("GetTokenHandler:", err)
-		WriteErrorResponse(w, 400, "Invalid request body")
-		return
-	}
-	// Restore request body for sub-handlers
-	r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
-
-	var req struct {
-		GrantType string `json:"grant_type"`
-	}
-	err = json.Unmarshal(bodyBytes, &req)
-	if err != nil || req.GrantType == "" {
-		log.Print("GetTokenHandler - invalid JSON:", err)
-		WriteErrorResponse(w, 400, "Invalid request body")
+	if err := r.ParseForm(); err != nil {
+		log.Print("GetTokenHandler - ParseForm:", err)
+		WriteErrorResponse(w, 400, "Invalid request")
 		return
 	}
 
-	switch req.GrantType {
+	grantType := r.Form.Get("grant_type")
+	if grantType == "" {
+		WriteErrorResponse(w, 400, "Missing grant_type")
+		return
+	}
+
+	switch grantType {
 	case "urn:ietf:params:oauth:grant-type:device_code":
 		DeviceFlowPollHandler(w, r)
 	case "authorization_code":
@@ -107,21 +100,24 @@ func GetTokenHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func DeviceFlowPollHandler(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		ClientID   string `json:"client_id"`
-		DeviceCode string `json:"device_code"`
-	}
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil || req.DeviceCode == "" {
-		log.Println("Error decoding request body:", err)
-		WriteErrorResponse(w, 400, "Invalid request body")
+	clientID := r.Form.Get("client_id")
+	deviceCode := r.Form.Get("device_code")
+
+	if deviceCode == "" {
+		WriteErrorResponse(w, 400, "Invalid request: missing device_code")
 		return
 	}
 
-	session, err := db.GetSessionByDeviceCode(req.DeviceCode)
+	session, err := db.GetSessionByDeviceCode(deviceCode)
 	if err != nil || session.Status == "consumed" {
 		log.Println("Error fetching session for device code:", err)
 		WriteErrorResponse(w, 400, "Invalid device_code")
+		return
+	}
+
+	// Validate client_id if provided
+	if clientID != "" && session.ClientID != clientID {
+		WriteErrorResponse(w, 400, "client_id mismatch")
 		return
 	}
 
@@ -149,10 +145,18 @@ func DeviceFlowPollHandler(w http.ResponseWriter, r *http.Request) {
 			WriteErrorResponse(w, 500, "Failed to generate access token")
 			return
 		}
-		res := map[string]string{
+
+		idToken, err := utils.GenerateIDToken(session.ClientID, session.Username, "")
+		if err != nil {
+			WriteErrorResponse(w, 500, "Failed to generate ID token")
+			return
+		}
+
+		res := map[string]interface{}{
 			"token_type":   "Bearer",
 			"access_token": accessToken,
-			"expires_in":   "604800", // 7 days in seconds
+			"id_token":     idToken,
+			"expires_in":   604800, // 7 days in seconds
 		}
 		db.UpdateSessionStatus(session.SessionID, "consumed", "")
 		db.AddHistory(session.Username, session.ClientID)
@@ -163,50 +167,48 @@ func DeviceFlowPollHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func AuthCodeFlowTokenHandler(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Code         string `json:"code"`
-		ClientID     string `json:"client_id"`
-		ClientSecret string `json:"client_secret"`
-		CodeVerifier string `json:"code_verifier"`
-	}
-	err := json.NewDecoder(r.Body).Decode(&req)
+	code := r.Form.Get("code")
+	clientID := r.Form.Get("client_id")
+	clientSecret := r.Form.Get("client_secret")
+	codeVerifier := r.Form.Get("code_verifier")
+
 	// Allow client_id to be missing from body if available in Basic Auth
 	username, _, ok := r.BasicAuth()
-	if req.ClientID == "" && ok {
-		req.ClientID = username
+	if clientID == "" && ok {
+		clientID = username
 	}
 
-	if err != nil || req.Code == "" || req.ClientID == "" {
-		WriteErrorResponse(w, 400, "Invalid request body")
+	if code == "" || clientID == "" {
+		WriteErrorResponse(w, 400, "Invalid request: missing code or client_id")
 		return
 	}
 
-	session, err := db.GetAuthCodeSessionByCode(req.Code)
+	session, err := db.GetAuthCodeSessionByCode(code)
 	if err != nil || session.Status != "authorized" {
 		WriteErrorResponse(w, 400, "Invalid code")
 		return
 	}
 
-	if session.ClientID != req.ClientID {
+	if session.ClientID != clientID {
 		WriteErrorResponse(w, 400, "client_id does not match")
 		return
 	}
 
 	if session.CodeChallenge != "" {
-		if req.CodeVerifier == "" {
+		if codeVerifier == "" {
 			WriteErrorResponse(w, 400, "code_verifier required for this request")
 			return
 		}
 
 		switch session.CodeChallengeMethod {
 		case "S256":
-			hashedVerifier := utils.Sha256(req.CodeVerifier)
+			hashedVerifier := utils.Sha256(codeVerifier)
 			if hashedVerifier != session.CodeChallenge {
 				WriteErrorResponse(w, 400, "Invalid code_verifier")
 				return
 			}
 		case "plain":
-			if req.CodeVerifier != session.CodeChallenge {
+			if codeVerifier != session.CodeChallenge {
 				WriteErrorResponse(w, 400, "Invalid code_verifier")
 				return
 			}
@@ -216,8 +218,7 @@ func AuthCodeFlowTokenHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// No PKCE, require client secret
-		// Check for client secret in body
-		clientSecret := req.ClientSecret
+		// Check for client secret in body (already got it)
 		if clientSecret == "" {
 			// Check for client secret in Basic Auth header
 			_, password, ok := r.BasicAuth()
@@ -231,7 +232,7 @@ func AuthCodeFlowTokenHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if !db.ValidateAppSecret(req.ClientID, clientSecret) {
+		if !db.ValidateAppSecret(clientID, clientSecret) {
 			WriteErrorResponse(w, 401, "Invalid client_secret")
 			return
 		}
@@ -242,10 +243,18 @@ func AuthCodeFlowTokenHandler(w http.ResponseWriter, r *http.Request) {
 		WriteErrorResponse(w, 500, "Failed to generate access token")
 		return
 	}
-	res := map[string]string{
+
+	idToken, err := utils.GenerateIDToken(session.ClientID, session.Username, "")
+	if err != nil {
+		WriteErrorResponse(w, 500, "Failed to generate ID token")
+		return
+	}
+
+	res := map[string]interface{}{
 		"token_type":   "Bearer",
 		"access_token": accessToken,
-		"expires_in":   "604800", // 7 days in seconds
+		"id_token":     idToken,
+		"expires_in":   604800, // 7 days in seconds
 	}
 	db.UpdateSessionStatus(session.SessionID, "consumed", "")
 	db.AddHistory(session.Username, session.ClientID)
@@ -391,6 +400,12 @@ func AuthCodeFlowHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, redirectUrl, http.StatusFound)
 }
 
+func JWKSHandler(w http.ResponseWriter, r *http.Request) {
+	jwks := utils.GetJWKS()
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(jwks)
+}
+
 func OIDCConfigurationHandler(w http.ResponseWriter, r *http.Request) {
 	baseURL := config.AppConfig.BackendURL
 	// Ensure no trailing slash
@@ -402,10 +417,10 @@ func OIDCConfigurationHandler(w http.ResponseWriter, r *http.Request) {
 		"token_endpoint":                        baseURL + "/oauth2/token",
 		"userinfo_endpoint":                     baseURL + "/myprofile",
 		"device_authorization_endpoint":         baseURL + "/oauth2/devicecode",
-		"jwks_uri":                              "",                        // No JWKS URI as we use symmetric keys (HS256) for now
-		"response_types_supported":              []string{"code", "token"}, // Added token for implicit if we support it, but we don't really support it yet implicitly. Let's keep code only for now.
+		"jwks_uri":                              baseURL + "/.well-known/jwks.json",
+		"response_types_supported":              []string{"code", "token", "id_token"}, // Added token for implicit if we support it, but we don't really support it yet implicitly. Let's keep code only for now.
 		"subject_types_supported":               []string{"public"},
-		"id_token_signing_alg_values_supported": []string{"HS256"},
+		"id_token_signing_alg_values_supported": []string{"RS256"},
 		"scopes_supported":                      []string{"openid", "profile", "email"},
 		"token_endpoint_auth_methods_supported": []string{"client_secret_basic", "client_secret_post", "none"},
 		"claims_supported":                      []string{"sub", "iss", "exp", "iat", "username", "nickname", "avatarUrl", "email"},
