@@ -16,6 +16,7 @@ import { ArrowRight, CircleCheck, CircleX, XCircle } from "lucide-react";
 import { AnyAvatar, MyAvatar } from "../components/Avatars";
 import { LoadingView } from "../components/LoadingView";
 import api from "../api/client";
+import { useTranslation } from "react-i18next";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -23,6 +24,7 @@ function AuthorizePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { message } = App.useApp();
+  const { t } = useTranslation();
 
   const {
     ssoDetails,
@@ -118,7 +120,7 @@ function AuthorizePage() {
     }
     try {
       await ssoConfirm(approve);
-      if (approve) message.success(`Logged in to ${ssoDetails?.appName}`);
+      if (approve) message.success("Logged in to " + ssoDetails?.appName);
       else message.info("Login cancelled");
       if (setSsoSessionId) setSsoSessionId(null);
     } catch (e) {
@@ -140,8 +142,8 @@ function AuthorizePage() {
 
   if (!ssoDetails) {
     return (
-      <Card className="max-w-sm w-full shadow-2xl" title="Connect a Device">
-        <Paragraph>Enter the code displayed on your device.</Paragraph>
+      <Card className="max-w-sm w-full shadow-2xl" title={t('auth.connect-a-device')}>
+        <Paragraph>{t('auth.enter-the-code-displayed-on-your-device')}</Paragraph>
         <Form
           layout="vertical"
           onFinish={(values) => {
@@ -160,8 +162,8 @@ function AuthorizePage() {
         >
           <Form.Item
             name="code"
-            label="Device Code"
-            rules={[{ required: true, message: "Please enter the code" }]}
+            label={t('auth.device-code')}
+            rules={[{ required: true, message: t('auth.please-enter-the-code') }]}
           >
             <Input
               placeholder="ABCD1234"
@@ -174,7 +176,7 @@ function AuthorizePage() {
             />
           </Form.Item>
           <Button type="primary" htmlType="submit" block size="large">
-            Continue
+            {t('continue')}
           </Button>
         </Form>
       </Card>
@@ -188,12 +190,12 @@ function AuthorizePage() {
           <CircleCheck className="text-green-500 mb-4 mx-auto" size={64} />
           <Title level={3}>Success!</Title>
           <Text className="block mb-6">
-            You have logged in to {ssoDetails.appName}.
+            {t('auth.you-have-logged-in-to')} {ssoDetails.appName}.
             <br />
-            You can close this window now.
+            {t('auth.you-can-close-this-window-now')}
           </Text>
           <Button type="default" onClick={() => window.close()}>
-            Close Window
+            {t('auth.close-window')}
           </Button>
         </div>
       </Card>
@@ -205,14 +207,14 @@ function AuthorizePage() {
       <Card className="max-w-sm w-full shadow-2xl">
         <div className="text-center py-8">
           <CircleX className="mb-4 mx-auto" size={64} />
-          <Title level={3}>Canceled</Title>
+          <Title level={3}>{t('auth.canceled')}</Title>
           <Text className="block mb-6">
-            Log in to {ssoDetails.appName} was cancelled.
+            {t('auth.log-in-to')} {ssoDetails.appName} {t('auth.was-cancelled')}
             <br />
-            You can close this window now.
+            {t('auth.you-can-close-this-window-now')}
           </Text>
           <Button type="default" onClick={() => window.close()}>
-            Close Window
+            {t('auth.close-window')}
           </Button>
         </div>
       </Card>
@@ -236,10 +238,10 @@ function AuthorizePage() {
             <Title level={3} className="m-0">
               {ssoDetails.appName}
             </Title>
-            <Text type="secondary">wants to access your account</Text>
+            <Text type="secondary">{t('auth.wants-to-access-your-account')}</Text>
             {storeSsoType === "device_code" && (
               <Text type="warning" className="mt-4">
-                Make sure you trust the device you are connecting to.
+                {t('auth.make-sure-you-trust-the-device-you-are-connecting-to')}
               </Text>
             )
             }
@@ -252,7 +254,7 @@ function AuthorizePage() {
               type="secondary"
               className="text-xs uppercase font-bold tracking-wider"
             >
-              Signed in as
+              {t('auth.signed-in-as')}
             </Text>
             <div className="flex items-center gap-3 mt-2">
               <MyAvatar />
@@ -271,11 +273,11 @@ function AuthorizePage() {
             loading={confirming}
           >
             <ArrowRight />
-            Continue to {ssoDetails.appName}
+            {t('auth.continue-to')} {ssoDetails.appName}
           </Button>
           <div>
             <Button type="text" onClick={handleChangeAccount}>
-              Change Account
+              {t('auth.change-account')}
             </Button>
             <Divider type="vertical" />
             <Button
@@ -283,7 +285,7 @@ function AuthorizePage() {
               onClick={() => handleConfirmSSO(false)}
               loading={denying}
             >
-              Cancel
+              {t('cancel')}
             </Button>
           </div>
         </Space>
@@ -297,12 +299,12 @@ function AuthorizePage() {
         <XCircle className=" text-red-500 mb-4 mx-auto" size={64} />
         <Title level={3}>Error!</Title>
         <Text className="block mb-6">
-          There was an error logging in to {ssoDetails.appName}.
+          {t('auth.there-was-an-error-logging-in-to')} {ssoDetails.appName}.
           <br />
-          Please try again.
+          {t('auth.please-try-again')}
         </Text>
         <Button type="default" onClick={() => window.close()}>
-          Close Window
+          {t('auth.close-window')}
         </Button>
       </div>
     </Card>
