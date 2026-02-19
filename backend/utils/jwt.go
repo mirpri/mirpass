@@ -38,7 +38,7 @@ func GenerateIDToken(appID, username string, nonce string) (string, error) {
 	privKey := GetRSAPrivateKey()
 
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
-
+	token.Header["kid"] = GetSigningKeyID()
 	// Sign and get the complete encoded token as a string using the private key
 	return token.SignedString(privKey)
 }

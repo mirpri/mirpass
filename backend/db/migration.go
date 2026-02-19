@@ -33,5 +33,10 @@ func runMigration(db *sql.DB) error {
 		return fmt.Errorf("assigning root role: %w", err)
 	}
 
+	_, err = db.Exec(`ALTER TABLE admins ADD CONSTRAINT fk_admins_appid FOREIGN KEY (app) REFERENCES applications(id) ON DELETE CASCADE`)
+	if err != nil {
+		return fmt.Errorf("adding foreign key constraint to admins: %w", err)
+	}
+
 	return nil
 }

@@ -1,10 +1,8 @@
 package utils
 
 import (
-	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
-	"encoding/base64"
 	"log"
 	"sync"
 
@@ -16,6 +14,8 @@ var (
 	jwks          *jose.JSONWebKeySet
 	keysMutex     sync.RWMutex
 )
+
+const signingKeyID = "mirpass-rs256-1"
 
 // InitKeys initializes RSA keys for OIDC signing
 func InitKeys() {
@@ -34,13 +34,9 @@ func InitKeys() {
 
 	jwk := jose.JSONWebKey{
 		Key:       &rsaPrivateKey.PublicKey,
+		KeyID:     signingKeyID,
 		Algorithm: "RS256",
 		Use:       "sig",
-	}
-
-	thumbprint, err := jwk.Thumbprint(crypto.SHA256)
-	if err == nil {
-		jwk.KeyID = base64.RawURLEncoding.EncodeToString(thumbprint)
 	}
 
 	jwks = &jose.JSONWebKeySet{
@@ -76,4 +72,9 @@ func GetRSAPrivateKey() *rsa.PrivateKey {
 		keysMutex.RUnlock()
 	}
 	return currentPrivateKey
+}
+
+// GetSigningKeyID returns the Key ID of the current signing key
+func GetSigningKeyID() string {
+	return signingKeyID
 }

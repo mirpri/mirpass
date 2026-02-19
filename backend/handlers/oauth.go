@@ -415,10 +415,10 @@ func OIDCConfigurationHandler(w http.ResponseWriter, r *http.Request) {
 		"issuer":                                baseURL,
 		"authorization_endpoint":                baseURL + "/oauth2/authorize",
 		"token_endpoint":                        baseURL + "/oauth2/token",
-		"userinfo_endpoint":                     baseURL + "/myprofile",
+		"userinfo_endpoint":                     baseURL + "/userinfo",
 		"device_authorization_endpoint":         baseURL + "/oauth2/devicecode",
 		"jwks_uri":                              baseURL + "/.well-known/jwks.json",
-		"response_types_supported":              []string{"code", "token", "id_token"}, // Added token for implicit if we support it, but we don't really support it yet implicitly. Let's keep code only for now.
+		"response_types_supported":              []string{"code", "token", "id_token"},
 		"subject_types_supported":               []string{"public"},
 		"id_token_signing_alg_values_supported": []string{"RS256"},
 		"scopes_supported":                      []string{"openid", "profile", "email"},

@@ -910,6 +910,10 @@ function IntegrationGuideTab({ app }: { app: AppDetails }) {
       children: <DeviceCodeFlowGuide app={app} />,
     },
   ];
+  let backendUrl = config.API_URL;
+  if (backendUrl.endsWith("/")) {
+    backendUrl = backendUrl.slice(0, -1);
+  }
 
   return (
     <div className="max-w-4xl space-y-8">
@@ -923,6 +927,16 @@ function IntegrationGuideTab({ app }: { app: AppDetails }) {
             target="_blank"
           >
             Guide
+          </a>
+          .
+        </Paragraph>
+        <Paragraph>
+          Discovery document is available at{" "}
+          <a
+            href={`${backendUrl}/.well-known/openid-configuration`}
+            target="_blank"
+          >
+            {backendUrl}/.well-known/openid-configuration
           </a>
           .
         </Paragraph>

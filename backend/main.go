@@ -5,12 +5,14 @@ import (
 	"mirpass-backend/config"
 	"mirpass-backend/db"
 	"mirpass-backend/handlers"
+	"mirpass-backend/utils"
 	"net/http"
 	"strconv"
 )
 
 func main() {
 	config.LoadConfig()
+	utils.InitKeys()
 	db.ConnectDB()
 	mux := http.NewServeMux()
 
@@ -96,6 +98,7 @@ func main() {
 
 	// OIDC Discovery
 	mux.HandleFunc("/.well-known/openid-configuration", handlers.OIDCConfigurationHandler)
+	mux.HandleFunc("/.well-known/jwks.json", handlers.JWKSHandler)
 
 	// Root routes
 	mux.Handle("/root/user/role", handlers.AuthSysMiddleware(handlers.RequireRoot("system", http.HandlerFunc(handlers.RootUpdateRole))))

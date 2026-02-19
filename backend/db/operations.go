@@ -569,7 +569,7 @@ func GetAdminApps(username string) ([]types.AppRole, error) {
 	query := `
 		SELECT a.app, COALESCE(app_tbl.name, a.app), app_tbl.logo_url, a.role 
 		FROM admins a 
-		LEFT JOIN applications app_tbl ON a.app = app_tbl.id 
+		JOIN applications app_tbl ON a.app = app_tbl.id 
 		WHERE a.username = ?`
 
 	rows, err := database.Query(query, username)
@@ -608,8 +608,6 @@ func GetAppRole(username string, app string) (string, error) {
 func CreateApp(name, description, owner string) (string, error) {
 	// Generate ID
 	id := utils.GenerateID()
-	// Generate Secret
-	secret := utils.GenerateToken() // Using GenerateToken as a secret
 
 	tx, err := database.Begin()
 	if err != nil {
@@ -617,7 +615,7 @@ func CreateApp(name, description, owner string) (string, error) {
 	}
 
 	// Insert App
-	_, err = tx.Exec("INSERT INTO applications (id, name, description, client_secret) VALUES (?, ?, ?, ?)", id, name, description, secret)
+	_, err = tx.Exec("INSERT INTO applications (id, name, description) VALUES (?, ?, ?)", id, name, description)
 	if err != nil {
 		tx.Rollback()
 		return "", err

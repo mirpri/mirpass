@@ -77,19 +77,6 @@ func InitDB() error {
 		return fmt.Errorf("create verifications table: %w", err)
 	}
 
-	// Create admins table
-	if _, err = adminConn.Exec(`CREATE TABLE IF NOT EXISTS admins (
-	       id INT AUTO_INCREMENT PRIMARY KEY,
-	       username VARCHAR(255) NOT NULL,
-		   app VARCHAR(255) NOT NULL DEFAULT 'system',
-	       role ENUM('admin', 'root') NOT NULL,
-	       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-           UNIQUE KEY user_app (username, app),
-           FOREIGN KEY (username) REFERENCES users(username) ON DELETE CASCADE
-	   )`); err != nil {
-		return fmt.Errorf("create admins table: %w", err)
-	}
-
 	// Create Application table
 	if _, err = adminConn.Exec(`CREATE TABLE IF NOT EXISTS applications (
 	       id VARCHAR(127) PRIMARY KEY,
@@ -101,6 +88,25 @@ func InitDB() error {
 	       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	   )`); err != nil {
 		return fmt.Errorf("create applications table: %w", err)
+	}
+
+	// Create system app if not exists
+	if _, err = adminConn.Exec(`INSERT IGNORE INTO applications (id, name, description) VALUES ('system', 'System', 'System Application')`); err != nil {
+		return fmt.Errorf("create system app: %w", err)
+	}
+
+	// Create admins table
+	if _, err = adminConn.Exec(`CREATE TABLE IF NOT EXISTS admins (
+	       id INT AUTO_INCREMENT PRIMARY KEY,
+	       username VARCHAR(255) NOT NULL,
+		   app VARCHAR(255) NOT NULL DEFAULT 'system',
+	       role ENUM('admin', 'root') NOT NULL,
+	       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+           UNIQUE KEY user_app (username, app),
+           FOREIGN KEY (username) REFERENCES users(username) ON DELETE CASCADE,
+           FOREIGN KEY (app) REFERENCES applications(id) ON DELETE CASCADE
+	   )`); err != nil {
+		return fmt.Errorf("create admins table: %w", err)
 	}
 
 	// Create trusted_uris table
