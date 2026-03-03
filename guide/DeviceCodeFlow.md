@@ -157,6 +157,25 @@ To access protected resources (like `/userinfo`), include the Access Token in th
 Authorization: Bearer <YOUR_ACCESS_TOKEN>
 ```
 
+Alternatively, you can easily get the current user's profile information by calling the `/myprofile` endpoint:
+
+```http
+GET https://mirpass-api.puppygoapp.com/myprofile
+Authorization: Bearer <YOUR_ACCESS_TOKEN>
+```
+
+Response:
+```json
+{
+  "message": "User info retrieved successfully",
+  "data": {
+    "username": "user123",
+    "nickname": "User Name",
+    "avatarUrl": "..."
+  }
+}
+```
+
 ### Verifying the Token
 To validate a token and retrieve its associated `appId` and `username` server-side, use the verification endpoint:
 

@@ -8,10 +8,11 @@ MirPass supports both PKCE (Proof Key for Code Exchange) and Confidential Client
 
 Redirect user to:
 ```http
-https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize?
+https://mirpass-api.puppygoapp.com/oauth2/authorize?
 client_id=...
 &response_type=code
-...
+&redirect_uri=...
+&state=...
 &code_challenge=...
 &code_challenge_method=S256
 ```
@@ -22,7 +23,7 @@ If you cannot use PKCE, you can omit `code_challenge` and instead provide `clien
 
 Redirect user to:
 ```http
-https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize?
+https://mirpass-api.puppygoapp.com/oauth2/authorize?
 client_id=...
 &response_type=code
 &redirect_uri=...
@@ -192,6 +193,25 @@ Response:
   "preferred_username": "user123",
   "nickname": "User Name",
   "avatar_url": "..."
+}
+```
+
+Alternatively, you can easily get the current user's profile information by calling the `/myprofile` endpoint:
+
+```http
+GET https://mirpass-api.puppygoapp.com/myprofile
+Authorization: Bearer <YOUR_ACCESS_TOKEN>
+```
+
+Response:
+```json
+{
+  "message": "User info retrieved successfully",
+  "data": {
+    "username": "user123",
+    "nickname": "User Name",
+    "avatarUrl": "..."
+  }
 }
 ```
 
