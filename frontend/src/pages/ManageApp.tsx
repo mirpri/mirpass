@@ -1018,7 +1018,7 @@ function AuthCodeFlowGuide({ app }: { app: AppDetails }) {
     try {
       const { data } = await api.post(
         "/oauth2/token",
-        new URLSearchParams(payload)
+        new URLSearchParams(payload),
       );
       setTokenResult(data);
       message.success("Token exchanged successfully!");
@@ -1206,7 +1206,8 @@ function AuthCodeFlowGuide({ app }: { app: AppDetails }) {
           <span className="text-purple-400">POST</span> {backendUrl}
           /oauth2/token
           <br />
-          <span className="text-blue-300">Content-Type:</span> application/x-www-form-urlencoded
+          <span className="text-blue-300">Content-Type:</span>{" "}
+          application/x-www-form-urlencoded
           <br />
           <br />
           grant_type=authorization_code
@@ -1225,6 +1226,17 @@ function AuthCodeFlowGuide({ app }: { app: AppDetails }) {
               &client_secret=YOUR_SECRET
             </>
           ) : null}
+        </div>
+
+        <Paragraph className="text-sm text-gray-500">
+          Token Response (Success):
+        </Paragraph>
+        <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs font-mono">
+          {`{
+  "access_token": "...",
+  "token_type": "Bearer",
+  "expires_in": 3600
+}`}
         </div>
       </div>
 
@@ -1248,17 +1260,6 @@ function AuthCodeFlowGuide({ app }: { app: AppDetails }) {
   "avatar_url": "..."
 }`}
         </div>
-      </div>
-
-      <Paragraph className="text-sm text-gray-500">
-        Token Response (Success):
-      </Paragraph>
-      <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs font-mono">
-        {`{
-  "access_token": "...",
-  "token_type": "Bearer",
-  "expires_in": 3600
-}`}
       </div>
     </div>
   );
@@ -1284,7 +1285,7 @@ function DeviceCodeFlowGuide({ app }: { app: AppDetails }) {
       // Use Device Code Flow
       const { data } = await api.post(
         "/oauth2/devicecode",
-        new URLSearchParams({ client_id: app.id })
+        new URLSearchParams({ client_id: app.id }),
       );
 
       setDeviceCodeData(data);
@@ -1315,7 +1316,7 @@ function DeviceCodeFlowGuide({ app }: { app: AppDetails }) {
             client_id: app.id,
             device_code: deviceCodeData.device_code,
             grant_type: "urn:ietf:params:oauth:grant-type:device_code",
-          })
+          }),
         );
 
         // Success
@@ -1424,7 +1425,8 @@ function DeviceCodeFlowGuide({ app }: { app: AppDetails }) {
           <span className="text-purple-400">POST</span> {backendUrl}
           /oauth2/devicecode
           <br />
-          <span className="text-blue-300">Content-Type:</span> application/x-www-form-urlencoded
+          <span className="text-blue-300">Content-Type:</span>{" "}
+          application/x-www-form-urlencoded
           <br />
           <br />
           client_id={app.id}
@@ -1452,7 +1454,8 @@ function DeviceCodeFlowGuide({ app }: { app: AppDetails }) {
           <span className="text-purple-400">POST</span> {backendUrl}
           /oauth2/token
           <br />
-          <span className="text-blue-300">Content-Type:</span> application/x-www-form-urlencoded
+          <span className="text-blue-300">Content-Type:</span>{" "}
+          application/x-www-form-urlencoded
           <br />
           <br />
           client_id={app.id}

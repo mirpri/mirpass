@@ -440,11 +440,11 @@ function DashboardPage() {
                   <Link
                     key={app.appId}
                     to={
-                      app.name === "system" ? "/manage" : `/manage/${app.appId}`
+                      app.appId === "system" ? "/manage" : `/manage/${app.appId}`
                     }
                   >
                     <Button>
-                      {app.name === "system" ? (
+                      {app.appId === "system" ? (
                         <ShieldIcon size={14} />
                       ) : (
                         <AnyAvatar

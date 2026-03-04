@@ -568,7 +568,7 @@ function AdminPage() {
     try {
       const { data: appsData } = await api.get<{ data: AppRole[] }>("/myapps");
       const apps = appsData.data || [];
-      const sys = apps.find((a) => a.name === "system");
+      const sys = apps.find((a) => a.appId === "system");
 
       if (!sys || (sys.role !== "admin" && sys.role !== "root")) {
         message.error("Unauthorized access");

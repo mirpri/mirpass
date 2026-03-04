@@ -122,7 +122,12 @@ func UpdateSessionStatus(sessionId string, status string, username string) error
 		return nil
 	}
 
-	_, err = database.Exec(`UPDATE oauth_sessions SET status = ?, username = ? WHERE session_id = ?`, status, username, sessionId)
+	if username != "" {
+		_, err = database.Exec(`UPDATE oauth_sessions SET status = ?, username = ? WHERE session_id = ?`, status, username, sessionId)
+		return err
+	}
+
+	_, err = database.Exec(`UPDATE oauth_sessions SET status = ? WHERE session_id = ?`, status, sessionId)
 	return err
 }
 
