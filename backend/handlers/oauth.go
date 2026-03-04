@@ -140,6 +140,11 @@ func DeviceFlowPollHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if session.Status == "authorized" {
+		if session.Username == "" {
+			WriteErrorResponse(w, 500, "Invalid authorized session: missing username")
+			return
+		}
+
 		accessToken, err := utils.GenerateJWTToken(session.ClientID, session.Username, time.Hour*24*7) // TODO: let app set token expiry
 		if err != nil {
 			WriteErrorResponse(w, 500, "Failed to generate access token")
@@ -284,6 +289,19 @@ func SessionDetailsByUsercodeHandler(w http.ResponseWriter, r *http.Request) {
 
 func OAuthConsentHandler(w http.ResponseWriter, r *http.Request) {
 	username := GetUsernameFromContext(r.Context())
+	if username == "" {
+		claims, err := utils.ExtractClaims(r)
+		if err != nil {
+			WriteErrorResponse(w, http.StatusUnauthorized, "Unauthorized")
+			return
+		}
+		username = claims.Username
+		if username == "" {
+			WriteErrorResponse(w, http.StatusUnauthorized, "Unauthorized")
+			return
+		}
+	}
+
 	var req struct {
 		SessionID string `json:"sessionId"`
 		Approve   bool   `json:"approve"`

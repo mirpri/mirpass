@@ -15,12 +15,16 @@ func CreateDeviceFlowSession(clientId string, sessionId string, deviceCode strin
 }
 
 func GetSessionByDeviceCode(deviceCode string) (*types.DeviceFlowSession, error) {
-	row := database.QueryRow(`SELECT client_id, session_id, device_code, user_code, status, expires_at, last_poll FROM oauth_sessions WHERE device_code = ?`, deviceCode)
+	row := database.QueryRow(`SELECT client_id, session_id, username, device_code, user_code, status, expires_at, last_poll FROM oauth_sessions WHERE device_code = ?`, deviceCode)
 
 	var s types.DeviceFlowSession
-	err := row.Scan(&s.ClientID, &s.SessionID, &s.DeviceCode, &s.UserCode, &s.Status, &s.ExpiresAt, &s.LastPoll)
+	var username sql.NullString
+	err := row.Scan(&s.ClientID, &s.SessionID, &username, &s.DeviceCode, &s.UserCode, &s.Status, &s.ExpiresAt, &s.LastPoll)
 	if err != nil {
 		return nil, err
+	}
+	if username.Valid {
+		s.Username = username.String
 	}
 	t, err := time.Parse(time.RFC3339, s.ExpiresAt)
 	if err != nil || time.Now().After(t) {
