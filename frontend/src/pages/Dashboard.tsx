@@ -208,6 +208,7 @@ function DashboardPage() {
   const [emailForm] = Form.useForm();
 
   const handlePasswordChange = async () => {
+    setLoadingKey("password");
     try {
       const values = await passwordForm.validateFields();
       await api.post("/profile/password", {
@@ -220,10 +221,13 @@ function DashboardPage() {
     } catch (error: any) {
       const err = error as ErrorResponse;
       message.error(err.response?.data?.error || "Failed to update password");
+    } finally {
+      setLoadingKey(null);
     }
   };
 
   const handleEmailChange = async () => {
+    setLoadingKey("email");
     try {
       const values = await emailForm.validateFields();
       await api.post("/profile/email/change", {
@@ -238,6 +242,8 @@ function DashboardPage() {
       message.error(
         err.response?.data?.error || "Failed to request email change",
       );
+    } finally {
+      setLoadingKey(null);
     }
   };
 
@@ -549,6 +555,7 @@ function DashboardPage() {
         title={t('dash.change-password')}
         open={isPasswordModalOpen}
         onOk={handlePasswordChange}
+        okButtonProps={{ loading: loadingKey === "password" }}
         onCancel={() => {
           setIsPasswordModalOpen(false);
           passwordForm.resetFields();
@@ -581,6 +588,7 @@ function DashboardPage() {
         title={t('dash.change-email')}
         open={isEmailModalOpen}
         onOk={handleEmailChange}
+        okButtonProps={{ loading: loadingKey === "email" }}
         onCancel={() => {
           setIsEmailModalOpen(false);
           emailForm.resetFields();

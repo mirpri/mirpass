@@ -56,9 +56,6 @@ function AuthorizePage() {
         setSsoSessionId(urlSessionId);
       if (setSsoType) setSsoType("auth_code");
     }
-    if (!token && storeSessionId) {
-      navigate(`/login`, { replace: true });
-    }
   }, [urlSessionId, storeSessionId, setSsoSessionId, setSsoType]);
 
   // Sync Device Code
@@ -68,6 +65,57 @@ function AuthorizePage() {
       if (setSsoUserCode) setSsoUserCode(urlUserCode);
     }
   }, [urlUserCode, setSsoType, setSsoUserCode]);
+
+  // For unauthenticated device flow, resolve session first, then redirect to login
+  useEffect(() => {
+    if (token) {
+      return;
+    }
+
+    if (storeSessionId) {
+      navigate(`/login`, { replace: true });
+      return;
+    }
+
+    if (!urlUserCode) {
+      return;
+    }
+
+    let cancelled = false;
+    setFetchingDetails(true);
+    fetchSsoDetails()
+      .then(() => {
+        if (!cancelled) {
+          navigate(`/login`, { replace: true });
+        }
+      })
+      .catch((error) => {
+        if (cancelled) {
+          return;
+        }
+        console.error("Failed to resolve session from user code", error);
+        const err = error as ErrorResponse;
+        message.error(
+          err.response?.data?.error || "Failed to resolve session from user code",
+        );
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setFetchingDetails(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    token,
+    storeSessionId,
+    urlUserCode,
+    fetchSsoDetails,
+    navigate,
+    message,
+  ]);
 
   // Fetch Details
   useEffect(() => {
@@ -86,7 +134,14 @@ function AuthorizePage() {
           setFetchingDetails(false);
         });
     }
-  }, []);
+  }, [
+    token,
+    ssoSessionId,
+    urlUserCode,
+    fetchSsoDetails,
+    message,
+    setSsoSessionId,
+  ]);
 
   const handleConfirmSSO = async (approve: boolean) => {
     if (!ssoDetails || !ssoSessionId) {
@@ -122,7 +177,10 @@ function AuthorizePage() {
       await ssoConfirm(approve);
       if (approve) message.success("Logged in to " + ssoDetails?.appName);
       else message.info("Login cancelled");
-      if (setSsoSessionId) setSsoSessionId(null);
+      if (!approve) {
+        if (setSsoSessionId) setSsoSessionId(null);
+        if (setSsoUserCode) setSsoUserCode(null);
+      }
     } catch (e) {
       message.error("Failed to confirm login");
     } finally {
