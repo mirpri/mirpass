@@ -9,7 +9,7 @@ export default function AboutPage() {
   const navigate = useNavigate();
 
   return (
-    <Card className="max-w-3xl w-full shadow-xl">
+    <Card className="max-w-3xl w-full">
       <Space orientation="vertical" size="large" className="w-full">
         <div className="flex items-center justify-between">
           <Title level={2} style={{ margin: 0 }}>

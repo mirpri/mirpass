@@ -200,7 +200,7 @@ function AuthorizePage() {
 
   if (!ssoDetails) {
     return (
-      <Card className="max-w-sm w-full shadow-2xl" title={t('auth.connect-a-device')}>
+      <Card className="max-w-sm w-full" title={t('auth.connect-a-device')}>
         <Paragraph>{t('auth.enter-the-code-displayed-on-your-device')}</Paragraph>
         <Form
           layout="vertical"
@@ -243,7 +243,7 @@ function AuthorizePage() {
 
   if (ssoDetails.status === "authorized" || ssoDetails.status === "consumed") {
     return (
-      <Card className="max-w-sm w-full shadow-2xl">
+      <Card className="max-w-sm w-full">
         <div className="text-center py-8">
           <CircleCheck className="text-green-500 mb-4 mx-auto" size={64} />
           <Title level={3}>Success!</Title>
@@ -262,7 +262,7 @@ function AuthorizePage() {
 
   if (ssoDetails.status === "denied") {
     return (
-      <Card className="max-w-sm w-full shadow-2xl">
+      <Card className="max-w-sm w-full">
         <div className="text-center py-8">
           <CircleX className="mb-4 mx-auto" size={64} />
           <Title level={3}>{t('auth.canceled')}</Title>
@@ -281,7 +281,7 @@ function AuthorizePage() {
 
   if (ssoDetails.status === "pending") {
     return (
-      <Card className="max-w-sm w-full shadow-2xl">
+      <Card className="max-w-sm w-full">
         <Space
           orientation="vertical"
           size="large"
@@ -352,7 +352,7 @@ function AuthorizePage() {
   }
 
   return (
-    <Card className="max-w-sm w-full shadow-2xl">
+    <Card className="max-w-sm w-full">
       <div className="text-center py-8">
         <XCircle className=" text-red-500 mb-4 mx-auto" size={64} />
         <Title level={3}>Error!</Title>

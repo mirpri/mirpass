@@ -124,7 +124,7 @@ function ManageAppPage() {
 
   return (
     <Card
-      className="max-w-5xl w-full shadow-xl"
+      className="max-w-5xl w-full"
       title="Manage Application"
       extra={
         <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)}>
@@ -867,7 +867,7 @@ function SettingsTab({
       {isRoot && (
         <>
           <Divider />
-          <div className="border border-red-200 dark:border-red-900 p-4 rounded-lg bg-red-50 dark:bg-red-900/20">
+          <div className="border border-red-200 dark:border-red-900 p-4">
             <Title level={5} type="danger">
               Danger Zone
             </Title>

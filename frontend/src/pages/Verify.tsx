@@ -149,7 +149,7 @@ function VerifyPage() {
     );
   };
 
-  return <Card className="max-w-[640px] w-full shadow-2xl">{content()}</Card>;
+  return <Card className="max-w-[640px] w-full">{content()}</Card>;
 }
 
 export default VerifyPage;

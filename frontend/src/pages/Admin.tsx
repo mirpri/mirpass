@@ -621,7 +621,7 @@ function AdminPage() {
   return (
     <Card
       title="System Management"
-      className="shadow-xl w-full max-w-4xl"
+      className="w-full max-w-4xl"
       extra={
         <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)}>
           Back

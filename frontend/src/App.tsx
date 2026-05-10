@@ -53,13 +53,20 @@ function App() {
       theme={{
         algorithm: isDarkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
         token: {
-          colorPrimary: "#3aaeed",
-          borderRadius: 10,
+          colorPrimary: isDarkMode ? "#7dcfff" : "#3097d2",
+          colorBgBase: isDarkMode ? "#1a1b26" : "#e9edf9",
+          colorBgContainer: isDarkMode ? "#24283b" : "#f7f8ff",
+          colorTextBase: isDarkMode ? "#c0caf5" : "#3760bf",
+          colorBorder: isDarkMode ? "#414868" : "#a8b5d5",
+          borderRadius: 2,
+          fontFamily: '"JetBrains Mono", "Fira Code", Consolas, monospace, "PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "WenQuanYi Micro Hei", sans-serif',
         },
       }}
     >
       <AntdApp>
-        <div className="min-h-screen flex flex-col justify-between align-center bg-gray-100 dark:bg-gray-900 dark:text-white">
+        <div
+          className="min-h-screen flex flex-col justify-between align-center"
+        >
           <Nav />
           <div className="flex justify-center align-center p-4">
             <Suspense

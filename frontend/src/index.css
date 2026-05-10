@@ -2,15 +2,37 @@
 @config "../tailwind.config.js";
 
 :root {
-  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: "JetBrains Mono", "Fira Code", Consolas, monospace, "PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "WenQuanYi Micro Hei", sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color: #0f172a;
-  background-color: #f5f5f7;
+  color: var(--tokyo-fg); /* tokyonight day fg */
+  background-color: var(--tokyo-bg); /* tokyonight day bg */
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  --tokyo-bg: #e9edf9;
+  --tokyo-bg-alt: #f7f8ff;
+  --tokyo-fg: #3760bf;
+  --tokyo-border: #a8b5d5;
+
+  --color-tokyo-cyan: #7dcfff;
+  --color-tokyo-blue: #7aa2f7;
+  --color-tokyo-purple: #bb9af7;
+  --color-tokyo-green: #9ece6a;
+  --color-tokyo-red: #f7768e;
+  --color-tokyo-yellow: #e0af68;
+  --color-tokyo-orange: #ff9e64;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --tokyo-bg: #1a1b26;
+    --tokyo-bg-alt: #24283b;
+    --tokyo-fg: #c0caf5;
+    --tokyo-border: #565f89;   
+  }
 }
 
 * {
@@ -20,7 +42,7 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: linear-gradient(135deg, #f4f0ff 0%, #f8fbff 60%, #eef2ff 100%);
+  background-color: var(--tokyo-bg);
 }
 
 #root {

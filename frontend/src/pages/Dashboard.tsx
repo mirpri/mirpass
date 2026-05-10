@@ -251,7 +251,7 @@ function DashboardPage() {
   if (!profile) return <FailedView />;
 
   return (
-    <Card className="max-w-4xl w-full shadow-xl">
+    <Card className="max-w-4xl w-full">
       <Flex justify="space-between" align="center" wrap>
         <Space orientation="vertical" size={4}>
           <Title level={3} className="m-0">
