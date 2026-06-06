@@ -307,7 +307,7 @@ function AuthorizePage() {
 
           <Divider style={{ margin: 0 }} />
 
-          <div className="text-left bg-gray-50 dark:bg-gray-800 p-4 rounded-lg mb-4">
+          <div className="text-left bg-primary-500/10 p-4 mb-4">
             <Text
               type="secondary"
               className="text-xs uppercase font-bold tracking-wider"

@@ -8,7 +8,7 @@ MirPass supports both PKCE (Proof Key for Code Exchange) and Confidential Client
 
 Redirect user to:
 ```http
-https://mirpass-api.puppygoapp.com/oauth2/authorize?
+https://api.pass.mirpri.com/oauth2/authorize?
 client_id=...
 &response_type=code
 &redirect_uri=...
@@ -23,7 +23,7 @@ If you cannot use PKCE, you can omit `code_challenge` and instead provide `clien
 
 Redirect user to:
 ```http
-https://mirpass-api.puppygoapp.com/oauth2/authorize?
+https://api.pass.mirpri.com/oauth2/authorize?
 client_id=...
 &response_type=code
 &redirect_uri=...
@@ -78,7 +78,7 @@ const app = express();
 const clientId = 'YOUR_CLIENT_ID';
 const clientSecret = 'YOUR_CLIENT_SECRET'; // If applicable
 const redirectUri = 'http://localhost:3000/callback';
-const authServerUrl = 'https://mirpass-api.puppygoapp.com';
+const authServerUrl = 'https://api.pass.mirpri.com';
 
 // Helper to generate random string (Use for state and code_verifier)
 function generateRandomString(length) {
@@ -199,7 +199,7 @@ Response:
 Alternatively, you can easily get the current user's profile information by calling the `/myprofile` endpoint:
 
 ```http
-GET https://mirpass-api.puppygoapp.com/myprofile
+GET https://api.pass.mirpri.com/myprofile
 Authorization: Bearer <YOUR_ACCESS_TOKEN>
 ```
 

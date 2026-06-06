@@ -1146,7 +1146,7 @@ function AuthCodeFlowGuide({ app }: { app: AppDetails }) {
             <Text strong className="text-green-600">
               Token Response:
             </Text>
-            <div className="my-2 bg-gray-100 dark:bg-gray-800 p-3 rounded text-sm text-gray-600 dark:text-gray-300 font-mono overflow-x-auto">
+            <div className="my-2 bg-gray-100 dark:bg-gray-900 p-3 rounded text-sm text-gray-600 dark:text-gray-300 font-mono overflow-x-auto">
               {JSON.stringify(tokenResult, null, 2)}
             </div>
             <Button onClick={handleGetUserInfo}>
@@ -1160,7 +1160,7 @@ function AuthCodeFlowGuide({ app }: { app: AppDetails }) {
             <Text strong className="text-blue-600">
               User Info:
             </Text>
-            <div className="mt-2 bg-gray-100 dark:bg-gray-800 p-3 rounded text-sm text-gray-600 dark:text-gray-300 font-mono overflow-x-auto">
+            <div className="mt-2 bg-gray-100 dark:bg-gray-900 p-3 rounded text-sm text-gray-600 dark:text-gray-300 font-mono overflow-x-auto">
               {JSON.stringify(userInfo, null, 2)}
             </div>
           </div>
@@ -1170,7 +1170,7 @@ function AuthCodeFlowGuide({ app }: { app: AppDetails }) {
       <div>
         <Title level={4}>1. Initiate Authorization</Title>
         <Paragraph>Send the user to the authorization endpoint.</Paragraph>
-        <div className="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed">
+        <div className="bg-gray-800 dark:bg-gray-700 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed">
           <span className="text-purple-400">GET</span> {backendUrl}
           /oauth2/authorize
           <br />
@@ -1202,7 +1202,7 @@ function AuthCodeFlowGuide({ app }: { app: AppDetails }) {
       <div className="mt-6">
         <Title level={4}>2. Exchange Code for Token</Title>
         <Paragraph>Exchange the received code for tokens.</Paragraph>
-        <div className="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed">
+        <div className="bg-gray-800 dark:bg-gray-700 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed">
           <span className="text-purple-400">POST</span> {backendUrl}
           /oauth2/token
           <br />
@@ -1231,7 +1231,7 @@ function AuthCodeFlowGuide({ app }: { app: AppDetails }) {
         <Paragraph className="text-sm text-gray-500">
           Token Response (Success):
         </Paragraph>
-        <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs font-mono">
+        <div className="bg-gray-100 dark:bg-gray-900 p-2 rounded text-xs font-mono">
           {`{
   "access_token": "...",
   "token_type": "Bearer",
@@ -1243,7 +1243,7 @@ function AuthCodeFlowGuide({ app }: { app: AppDetails }) {
       <div className="mt-6">
         <Title level={4}>3. Get User Profile</Title>
         <Paragraph>Use the access token to get user information.</Paragraph>
-        <div className="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed">
+        <div className="bg-gray-800 dark:bg-gray-700 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed">
           <span className="text-purple-400">GET</span> {backendUrl}
           /userinfo
           <br />
@@ -1251,7 +1251,7 @@ function AuthCodeFlowGuide({ app }: { app: AppDetails }) {
           {tokenResult?.access_token || "ACCESS_TOKEN"}
         </div>
         <Paragraph className="text-sm text-gray-500">Response:</Paragraph>
-        <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs font-mono">
+        <div className="bg-gray-100 dark:bg-gray-900 p-2 rounded text-xs font-mono">
           {`{
   "sub": "user123",
   "email": "user@example.com",
@@ -1421,7 +1421,7 @@ function DeviceCodeFlowGuide({ app }: { app: AppDetails }) {
       <div>
         <Title level={4}>1. Initiate Device Code Flow</Title>
         <Paragraph>Make a POST request to initiate the flow.</Paragraph>
-        <div className="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed">
+        <div className="bg-gray-800 dark:bg-gray-700 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed">
           <span className="text-purple-400">POST</span> {backendUrl}
           /oauth2/devicecode
           <br />
@@ -1432,7 +1432,7 @@ function DeviceCodeFlowGuide({ app }: { app: AppDetails }) {
           client_id={app.id}
         </div>
         <Paragraph className="mt-2 text-sm text-gray-500">Response:</Paragraph>
-        <div className="mt-2 bg-gray-100 dark:bg-gray-800 p-3 rounded text-sm text-gray-600 dark:text-gray-300 font-mono">
+        <div className="mt-2 bg-gray-100 dark:bg-gray-900 p-3 rounded text-sm text-gray-600 dark:text-gray-300 font-mono">
           {`{
   "device_code": "...",
   "user_code": "WDJBMJHT",
@@ -1450,7 +1450,7 @@ function DeviceCodeFlowGuide({ app }: { app: AppDetails }) {
           Poll the token endpoint using the `device_code` until the user
           authorizes.
         </Paragraph>
-        <div className="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed">
+        <div className="bg-gray-800 dark:bg-gray-700 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed">
           <span className="text-purple-400">POST</span> {backendUrl}
           /oauth2/token
           <br />
@@ -1467,13 +1467,13 @@ function DeviceCodeFlowGuide({ app }: { app: AppDetails }) {
         <Paragraph className="mt-2 text-sm text-gray-500">
           Response (Pending):
         </Paragraph>
-        <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs font-mono mb-2">
+        <div className="bg-gray-100 dark:bg-gray-900 p-2 rounded text-xs font-mono mb-2">
           {`{ "error": "authorization_pending" }`}
         </div>
         <Paragraph className="text-sm text-gray-500">
           Response (Success):
         </Paragraph>
-        <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs font-mono">
+        <div className="bg-gray-100 dark:bg-gray-900 p-2 rounded text-xs font-mono">
           {`{
   "access_token": "...",
   "token_type": "Bearer",

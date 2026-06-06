@@ -9,7 +9,7 @@ From the moment the request is sent, the user has 10 minutes to sign in. This is
 ```http
 // Line breaks are for legibility only.
 
-POST https://mirpass-api.puppygoapp.com/oauth2/devicecode
+POST https://api.pass.mirpri.com/oauth2/devicecode
 Content-Type: application/x-www-form-urlencoded
 
 client_id=00001111-aaaa-2222-bbbb-3333cccc4444
@@ -39,7 +39,7 @@ After the client receives user_code and verification_uri, the values are display
 While the user is authenticating at the verification_uri, the client should be polling the /token endpoint for the requested token using the device_code.
 
 ```HTTP
-POST https://mirpass-api.puppygoapp.com/oauth2/token
+POST https://api.pass.mirpri.com/oauth2/token
 Content-Type: application/x-www-form-urlencoded
 
 grant_type=urn:ietf:params:oauth:grant-type:device_code&
@@ -85,7 +85,7 @@ access_token|JWT|The issued token.
 const axios = require('axios');
 
 const clientId = 'YOUR_CLIENT_ID';
-const authServerUrl = 'https://mirpass-api.puppygoapp.com';
+const authServerUrl = 'https://api.pass.mirpri.com';
 
 async function deviceFlow() {
     try {
@@ -160,7 +160,7 @@ Authorization: Bearer <YOUR_ACCESS_TOKEN>
 Alternatively, you can easily get the current user's profile information by calling the `/myprofile` endpoint:
 
 ```http
-GET https://mirpass-api.puppygoapp.com/myprofile
+GET https://api.pass.mirpri.com/myprofile
 Authorization: Bearer <YOUR_ACCESS_TOKEN>
 ```
 
