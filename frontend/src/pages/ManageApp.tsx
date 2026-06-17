@@ -909,6 +909,11 @@ function IntegrationGuideTab({ app }: { app: AppDetails }) {
       label: "Device Code Flow",
       children: <DeviceCodeFlowGuide app={app} />,
     },
+    {
+      key: "widget",
+      label: "Frontend Script",
+      children: <FrontendWidgetGuide app={app} />,
+    },
   ];
   let backendUrl = config.API_URL;
   if (backendUrl.endsWith("/")) {
@@ -1480,6 +1485,85 @@ function DeviceCodeFlowGuide({ app }: { app: AppDetails }) {
   "expires_in": 3600
 }`}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function FrontendWidgetGuide({ app }: { app: AppDetails }) {
+  const { message } = App.useApp();
+  const frontendUrl = window.location.origin;
+  const [theme, setTheme] = useState("auto");
+  const [appearance, setAppearance] = useState("both");
+
+  return (
+    <div className="max-w-3xl space-y-8">
+      <div>
+        <Alert
+          title="Fastest Integration for Web Apps"
+          description={
+            <span>
+              The MirPass Widget provides a completely drop-in authentication experience. Please refer to the <a href="https://github.com/mirpri/mirpass/tree/master/guide" target="_blank" rel="noreferrer">documentation</a> for more details and advanced usage.
+            </span>
+          }
+          type="info"
+          showIcon
+        />
+        <Space
+          direction="vertical"
+          className="w-full bg-gray-50 dark:bg-gray-900/20 p-4 rounded border border-gray-200 dark:border-gray-700 mt-4"
+        >
+          <Title level={4}>Widget Configuration</Title>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <Text strong>Theme</Text>
+              <Select value={theme} onChange={setTheme} style={{ width: '100%' }}>
+                <Select.Option value="auto">Auto</Select.Option>
+                <Select.Option value="light">Light</Select.Option>
+                <Select.Option value="dark">Dark</Select.Option>
+                <Select.Option value="transparent-light">Transparent Light</Select.Option>
+                <Select.Option value="transparent-dark">Transparent Dark</Select.Option>
+              </Select>
+            </div>
+            <div>
+              <Text strong>Appearance</Text>
+              <Select value={appearance} onChange={setAppearance} style={{ width: '100%' }}>
+                <Select.Option value="both">Both (Avatar &amp; Username)</Select.Option>
+                <Select.Option value="avatar">Avatar Only</Select.Option>
+                <Select.Option value="username">Username Only</Select.Option>
+                <Select.Option value="none">None (Invisible, logic only)</Select.Option>
+              </Select>
+            </div>
+          </div>
+
+          <Title level={5}>Copy this code to your HTML &lt;head&gt; &nbsp;
+            <Button
+              icon={<CopyOutlined />}
+              size="small"
+              onClick={() => {
+                const code = `<script src="${frontendUrl}/mipass-v1.min.js"
+        data-app-id="${app.id}"
+        data-theme="${theme}"
+        data-appearance="${appearance}">
+</script>`;
+                navigator.clipboard.writeText(code);
+                message.success("Copied to clipboard");
+              }}
+            />
+          </Title>
+          <div className="bg-gray-800 dark:bg-gray-700 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed relative group">
+            &lt;script src="{frontendUrl}/mipass-v1.min.js"<br />
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;data-app-id="{app.id}"<br />
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;data-theme="{theme}"<br />
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;data-appearance="{appearance}"&gt;<br />
+            &lt;/script&gt;<br />
+          </div>
+          <Title level={5}>Place this code to where you want to show the widget</Title>
+          <div className="bg-gray-800 dark:bg-gray-700 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed relative group">
+            &lt;div id="mipass"&gt;&lt;/div&gt;
+          </div>
+        </Space>
       </div>
     </div>
   );
