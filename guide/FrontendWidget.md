@@ -21,7 +21,7 @@ To add the MirPass widget to your web app, simply include the script and a targe
 Place the following `<script>` tag in the `<head>` of your HTML document:
 
 ```html
-<script src="https://pass.mirpri.com/public/mirpass-v1.js"
+<script src="https://pass.mirpri.com/mirpass-v1.min.js"
         data-app-id="YOUR_APP_ID">
 </script>
 ```

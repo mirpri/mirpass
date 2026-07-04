@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"mirpass-backend/types"
@@ -804,12 +805,28 @@ func DeleteTrustedURI(uriID int64, appID string) error {
 }
 
 func IsTrustedURI(appID, uri string) (bool, error) {
-	var count int
-	err := database.QueryRow("SELECT COUNT(*) FROM trusted_uris WHERE app_id = ? AND uri = ?", appID, uri).Scan(&count)
+	rows, err := database.Query("SELECT uri FROM trusted_uris WHERE app_id = ?", appID)
 	if err != nil {
 		return false, err
 	}
-	return count > 0, nil
+	defer rows.Close()
+
+	for rows.Next() {
+		var trustedURI string
+		if err := rows.Scan(&trustedURI); err != nil {
+			return false, err
+		}
+		normalizedURI := strings.TrimRight(uri, "/")
+		if strings.HasSuffix(trustedURI, "*") {
+			prefix := strings.TrimSuffix(trustedURI, "*")
+			if strings.HasPrefix(normalizedURI, strings.TrimRight(prefix, "/")) {
+				return true, nil
+			}
+		} else if strings.TrimRight(trustedURI, "/") == normalizedURI {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func UpdateAppInfo(appID, name, description, logoUrl string) error {

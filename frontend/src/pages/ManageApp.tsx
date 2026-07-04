@@ -527,7 +527,7 @@ function SecurityTab({ app }: { app: AppDetails }) {
         <Form layout="vertical">
           <Form.Item label="Name">
             <Input
-              placeholder="e.g. Local dev callback"
+              placeholder="e.g. Dev"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
             />
@@ -541,7 +541,7 @@ function SecurityTab({ app }: { app: AppDetails }) {
           </Form.Item>
         </Form>
         <Paragraph>
-          Enter full URI including scheme. Wildcards(*) are not allowed.
+          Enter full URI including scheme. Wildcard(*) suffix is allowed.
         </Paragraph>
       </Modal>
     </div>
