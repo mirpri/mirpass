@@ -61,6 +61,11 @@ function App() {
           borderRadius: 2,
           fontFamily: '"JetBrains Mono", "Fira Code", Consolas, monospace, "PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "WenQuanYi Micro Hei", sans-serif',
         },
+        components: {
+          Modal: {
+            contentBg: isDarkMode ? "#24283b" : "#f7f8ff",
+          },
+        },
       }}
     >
       <AntdApp>

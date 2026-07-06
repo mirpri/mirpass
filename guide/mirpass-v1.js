@@ -1,5 +1,5 @@
 /**
- * MirPass Embedding Script v1
+ * Mirpass Embedding Script v1
  * Drop-in OAuth2 authentication widget for websites
  *
  * Usage:
@@ -12,6 +12,12 @@
  *   <body>
  *     <div id="mirpass"></div>
  *   </body>
+ *
+ * Theming: override any of these on an ancestor (e.g. :root) — no !important needed:
+ *   --mirpass-primary, --mirpass-primary-text, --mirpass-bg-base,
+ *   --mirpass-bg-container, --mirpass-text-base, --mirpass-border-color,
+ *   --mirpass-hover, --mirpass-error, --mirpass-error-text,
+ *   --mirpass-menu-bg, --mirpass-menu-border, --mirpass-font, --mirpass-radius
  */
 
 (function () {
@@ -63,9 +69,9 @@
   }
 
   /**
-   * MirPass Widget Class
+   * Mirpass Widget Class
    */
-  class MirPassWidget {
+  class MirpassWidget {
     constructor(options) {
       this.appId = options.appId;
       this.redirectUri = options.redirectUri || window.location.href;
@@ -323,59 +329,63 @@
     _getThemeStyles() {
       const themes = {
         'light': `
-          --mirpass-primary: var(--mirpass-primary, #3097d2);
-          --mirpass-primary-text: var(--mirpass-primary-text, #fff);
-          --mirpass-bg-base: var(--mirpass-bg-base, #e9edf9);
-          --mirpass-bg-container: var(--mirpass-bg-container, #f7f8ff);
-          --mirpass-text-base: var(--mirpass-text-base, #3760bf);
-          --mirpass-border-color: var(--mirpass-border-color, #a8b5d5);
-          --mirpass-hover: var(--mirpass-hover, #e0e6f5);
-          --mirpass-error: var(--mirpass-error, #f7768e);
-          --mirpass-error-text: var(--mirpass-error-text, #1a1b26);
+          --mp-primary: var(--mirpass-primary, #3097d2);
+          --mp-primary-text: var(--mirpass-primary-text, #fff);
+          --mp-bg-base: var(--mirpass-bg-base, #e9edf9);
+          --mp-bg-container: var(--mirpass-bg-container, #f7f8ff);
+          --mp-text-base: var(--mirpass-text-base, #3760bf);
+          --mp-border-color: var(--mirpass-border-color, #a8b5d5);
+          --mp-hover: var(--mirpass-hover, #e0e6f5);
+          --mp-error: var(--mirpass-error, #f7768e);
+          --mp-error-text: var(--mirpass-error-text, #1a1b26);
+          --mp-menu-bg: var(--mirpass-menu-bg, var(--mp-bg-container));
+          --mp-menu-border: var(--mirpass-menu-border, var(--mp-border-color));
         `,
         'dark': `
-          --mirpass-primary: var(--mirpass-primary, #7dcfff);
-          --mirpass-primary-text: var(--mirpass-primary-text, #1a1b26);
-          --mirpass-bg-base: var(--mirpass-bg-base, #1a1b26);
-          --mirpass-bg-container: var(--mirpass-bg-container, #24283b);
-          --mirpass-text-base: var(--mirpass-text-base, #c0caf5);
-          --mirpass-border-color: var(--mirpass-border-color, #414868);
-          --mirpass-hover: var(--mirpass-hover, #1f2335);
-          --mirpass-error: var(--mirpass-error, #f7768e);
-          --mirpass-error-text: var(--mirpass-error-text, #1a1b26);
+          --mp-primary: var(--mirpass-primary, #7dcfff);
+          --mp-primary-text: var(--mirpass-primary-text, #1a1b26);
+          --mp-bg-base: var(--mirpass-bg-base, #1a1b26);
+          --mp-bg-container: var(--mirpass-bg-container, #24283b);
+          --mp-text-base: var(--mirpass-text-base, #c0caf5);
+          --mp-border-color: var(--mirpass-border-color, #414868);
+          --mp-hover: var(--mirpass-hover, #1f2335);
+          --mp-error: var(--mirpass-error, #f7768e);
+          --mp-error-text: var(--mirpass-error-text, #1a1b26);
+          --mp-menu-bg: var(--mirpass-menu-bg, var(--mp-bg-container));
+          --mp-menu-border: var(--mirpass-menu-border, var(--mp-border-color));
         `,
         'transparent-light': `
-          --mirpass-primary: var(--mirpass-primary, #3097d2);
-          --mirpass-primary-text: var(--mirpass-primary-text, #fff);
-          --mirpass-bg-base: var(--mirpass-bg-base, transparent);
-          --mirpass-bg-container: var(--mirpass-bg-container, transparent);
-          --mirpass-menu-bg: #f7f8ff;
-          --mirpass-text-base: var(--mirpass-text-base, #3760bf);
-          --mirpass-border-color: var(--mirpass-border-color, transparent);
-          --mirpass-menu-border: #a8b5d5;
-          --mirpass-hover: var(--mirpass-hover, rgba(55, 96, 191, 0.1));
-          --mirpass-error: var(--mirpass-error, transparent);
-          --mirpass-error-text: var(--mirpass-error-text, #f7768e);
+          --mp-primary: var(--mirpass-primary, #3097d2);
+          --mp-primary-text: var(--mirpass-primary-text, #fff);
+          --mp-bg-base: var(--mirpass-bg-base, transparent);
+          --mp-bg-container: var(--mirpass-bg-container, transparent);
+          --mp-text-base: var(--mirpass-text-base, #3760bf);
+          --mp-border-color: var(--mirpass-border-color, transparent);
+          --mp-hover: var(--mirpass-hover, rgba(55, 96, 191, 0.1));
+          --mp-error: var(--mirpass-error, transparent);
+          --mp-error-text: var(--mirpass-error-text, #f7768e);
+          --mp-menu-bg: var(--mirpass-menu-bg, #f7f8ff);
+          --mp-menu-border: var(--mirpass-menu-border, #a8b5d5);
         `,
         'transparent-dark': `
-          --mirpass-primary: var(--mirpass-primary, #7dcfff);
-          --mirpass-primary-text: var(--mirpass-primary-text, #1a1b26);
-          --mirpass-bg-base: var(--mirpass-bg-base, transparent);
-          --mirpass-bg-container: var(--mirpass-bg-container, transparent);
-          --mirpass-menu-bg: #24283b;
-          --mirpass-text-base: var(--mirpass-text-base, #c0caf5);
-          --mirpass-border-color: var(--mirpass-border-color, transparent);
-          --mirpass-menu-border: #414868;
-          --mirpass-hover: var(--mirpass-hover, rgba(192, 202, 245, 0.1));
-          --mirpass-error: var(--mirpass-error, transparent);
-          --mirpass-error-text: var(--mirpass-error-text, #f7768e);
+          --mp-primary: var(--mirpass-primary, #7dcfff);
+          --mp-primary-text: var(--mirpass-primary-text, #1a1b26);
+          --mp-bg-base: var(--mirpass-bg-base, transparent);
+          --mp-bg-container: var(--mirpass-bg-container, transparent);
+          --mp-text-base: var(--mirpass-text-base, #c0caf5);
+          --mp-border-color: var(--mirpass-border-color, transparent);
+          --mp-hover: var(--mirpass-hover, rgba(192, 202, 245, 0.1));
+          --mp-error: var(--mirpass-error, transparent);
+          --mp-error-text: var(--mirpass-error-text, #f7768e);
+          --mp-menu-bg: var(--mirpass-menu-bg, #24283b);
+          --mp-menu-border: var(--mirpass-menu-border, #414868);
         `
       };
 
       const common = `
         #${WIDGET_ID} {
-          --mirpass-font: var(--mirpass-font, "JetBrains Mono", "Fira Code", Consolas, monospace, "PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "WenQuanYi Micro Hei", sans-serif);
-          --mirpass-radius: var(--mirpass-radius, 2px);
+          --mp-font: var(--mirpass-font, "JetBrains Mono", "Fira Code", Consolas, monospace, "PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "WenQuanYi Micro Hei", sans-serif);
+          --mp-radius: var(--mirpass-radius, 2px);
           box-sizing: border-box;
           display: inline-flex;
         }
@@ -418,8 +428,8 @@
         <style>
           ${this._getThemeStyles()}
           #${WIDGET_ID} .mirpass-loading {
-            color: var(--mirpass-text-base);
-            font-family: var(--mirpass-font);
+            color: var(--mp-text-base);
+            font-family: var(--mp-font);
             font-size: 14px;
             display: flex;
             align-items: center;
@@ -427,17 +437,17 @@
             height: 100%;
             width: 100%;
             ${paddingStyle}
-            background: var(--mirpass-bg-container);
-            border: 1px solid var(--mirpass-border-color);
-            border-radius: var(--mirpass-radius);
+            background: var(--mp-bg-container);
+            border: 1px solid var(--mp-border-color);
+            border-radius: var(--mp-radius);
           }
           #${WIDGET_ID} .mirpass-spinner {
             animation: mirpass-spin 1s linear infinite;
             ${marginStyle}
             width: 16px;
             height: 16px;
-            border: 2px solid var(--mirpass-border-color);
-            border-top-color: var(--mirpass-primary);
+            border: 2px solid var(--mp-border-color);
+            border-top-color: var(--mp-primary);
             border-radius: 50%;
           }
           @keyframes mirpass-spin {
@@ -473,16 +483,16 @@
         <style>
           ${this._getThemeStyles()}
           #${WIDGET_ID} .mirpass-btn {
-            background: var(--mirpass-primary);
-            color: var(--mirpass-primary-text);
-            border: 1px solid var(--mirpass-primary);
+            background: var(--mp-primary);
+            color: var(--mp-primary-text);
+            border: 1px solid var(--mp-primary);
             ${btnPadding}
-            border-radius: var(--mirpass-radius);
+            border-radius: var(--mp-radius);
             font-size: 14px;
             font-weight: 500;
             cursor: pointer;
             transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-            font-family: var(--mirpass-font);
+            font-family: var(--mp-font);
             width: 100%;
             height: 100%;
             display: flex;
@@ -540,8 +550,8 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-family: var(--mirpass-font);
-            color: var(--mirpass-text-base);
+            font-family: var(--mp-font);
+            color: var(--mp-text-base);
             height: 100%;
           }
           #${WIDGET_ID} .mirpass-user {
@@ -550,16 +560,16 @@
             justify-content: center;
             gap: 4px;
             padding: 0 2px;
-            background: var(--mirpass-bg-container);
-            border: 1px solid var(--mirpass-border-color);
-            border-radius: var(--mirpass-radius);
+            background: var(--mp-bg-container);
+            border: 1px solid var(--mp-border-color);
+            border-radius: var(--mp-radius);
             cursor: pointer;
             transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
             height: 100%;
             user-select: none;
           }
           #${WIDGET_ID} .mirpass-user:hover {
-            background: var(--mirpass-hover);
+            background: var(--mp-hover);
           }
           #${WIDGET_ID} .mirpass-user:active {
             transform: scale(0.98);
@@ -569,22 +579,22 @@
             height: 30px;
             aspect-ratio: 1 / 1;
             max-height: calc(100% - 4px);
-            border-radius: var(--mirpass-radius);
+            border-radius: var(--mp-radius);
             object-fit: cover;
-            border: 1px solid var(--mirpass-border-color);
+            border: 1px solid var(--mp-border-color);
             margin: 4px 0;
           }
           #${WIDGET_ID} .mirpass-avatar-placeholder {
             width: 24px;
             height: 24px;
-            border-radius: var(--mirpass-radius);
-            background: var(--mirpass-bg-base);
+            border-radius: var(--mp-radius);
+            background: var(--mp-bg-base);
             display: flex;
             align-items: center;
             justify-content: center;
-            color: var(--mirpass-primary);
+            color: var(--mp-primary);
             font-size: 12px;
-            border: 1px solid var(--mirpass-border-color);
+            border: 1px solid var(--mp-border-color);
           }
           #${WIDGET_ID} .mirpass-username {
             font-size: 14px;
@@ -610,9 +620,9 @@
             transform: translateY(0);
           }
           #${WIDGET_ID} .mirpass-menu-inner {
-            background: var(--mirpass-menu-bg, var(--mirpass-bg-container));
-            border: 1px solid var(--mirpass-menu-border, var(--mirpass-border-color));
-            border-radius: var(--mirpass-radius);
+            background: var(--mp-menu-bg);
+            border: 1px solid var(--mp-menu-border);
+            border-radius: var(--mp-radius);
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
             overflow: hidden;
             padding: 4px;
@@ -622,7 +632,7 @@
             align-items: center;
             gap: 8px;
             padding: 8px 10px;
-            color: var(--mirpass-text-base);
+            color: var(--mp-text-base);
             text-decoration: none;
             font-size: 14px;
             font-weight: 500;
@@ -633,16 +643,16 @@
             text-align: left;
             transition: all 0.2s;
             width: 100%;
-            border-radius: calc(var(--mirpass-radius) - 1px);
+            border-radius: calc(var(--mp-radius) - 1px);
           }
           #${WIDGET_ID} .mirpass-menu-item:hover {
-            background: var(--mirpass-hover);
+            background: var(--mp-hover);
           }
           #${WIDGET_ID} .mirpass-menu-item svg {
             width: 16px;
             height: 16px;
             flex-shrink: 0;
-            color: var(--mirpass-primary);
+            color: var(--mp-primary);
             transition: transform 0.2s;
           }
           #${WIDGET_ID} .mirpass-menu-item:hover svg {
@@ -650,7 +660,7 @@
           }
           #${WIDGET_ID} .mirpass-divider {
             height: 1px;
-            background: var(--mirpass-menu-border, var(--mirpass-border-color));
+            background: var(--mp-menu-border);
             margin: 4px 0;
           }
         </style>
@@ -697,12 +707,12 @@
     const theme = script.getAttribute('data-theme') || 'auto';
 
     if (!appId) {
-      console.error('[MirPass] data-app-id attribute is required');
+      console.error('[Mirpass] data-app-id attribute is required');
       return;
     }
 
     // Create global instance
-    window.mirpassWidget = new MirPassWidget({
+    window.mirpassWidget = new MirpassWidget({
       appId: appId,
       redirectUri: redirectUri,
       appearance: appearance,
