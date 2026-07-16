@@ -16,6 +16,7 @@ client_id=...
 &code_challenge=...
 &code_challenge_method=S256
 ```
+User will be redirected back after loging in.
 
 ### Confidential Client Flow (Server-side Apps)
 
@@ -227,15 +228,27 @@ To validate a token and retrieve its associated `appId` and `username` server-si
 }
 ```
 
-**Response:**
+**Success Response (200):**
 ```json
 {
-  "appid": "your-app-id",
-  "username": "linked-username"
+  "status": 200,
+  "message": "Token verified successfully",
+  "data": {
+    "appid": "your-app-id",
+    "username": "linked-username"
+  }
 }
 ```
 
-User will be redirected back after loging in.
+**Error Responses:**
+
+| Status | Condition | Response |
+|--------|-----------|----------|
+| 400 | Invalid JSON body | `{"status": 400, "error": "Invalid request body"}` |
+| 400 | Missing token field | `{"status": 400, "error": "Token is required"}` |
+| 401 | Invalid or expired token | `{"status": 401, "error": "Invalid or expired token"}` |
+| 405 | Wrong HTTP method | `{"status": 405, "error": "Method not allowed"}` |
+
 
 ### Sucess Response
 ```http

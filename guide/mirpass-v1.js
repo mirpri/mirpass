@@ -155,10 +155,19 @@
         return;
       }
 
-      // Check existing session
-      this.userInfo = this._getUserInfo();
-      if (this.userInfo) {
-        this._renderLoggedIn(this.userInfo);
+      // Check existing session - show cached state immediately, verify in background
+      const cachedUser = this._getUserInfo();
+      if (cachedUser) {
+        this.userInfo = cachedUser;
+        this._renderLoggedIn(cachedUser);
+        // Silently verify and refresh user info
+        this._verifySession().then(updatedUser => {
+          if (!updatedUser) {
+            this._renderLoggedOut();
+          } else if (updatedUser !== cachedUser) {
+            this._renderLoggedIn(updatedUser);
+          }
+        });
       } else {
         this._renderLoggedOut();
       }
@@ -268,11 +277,88 @@
     }
 
     /**
-     * Get user info from storage
+     * Get user info from storage (checks token expiry)
      */
     _getUserInfo() {
       const data = localStorage.getItem(this.storageKey);
-      return data ? JSON.parse(data).user_info : null;
+      if (!data) return null;
+
+      const tokenData = JSON.parse(data);
+
+      // Check if token has expired
+      if (tokenData.expires_at && Date.now() >= tokenData.expires_at) {
+        // Token expired, clear storage
+        localStorage.removeItem(this.storageKey);
+        return null;
+      }
+
+      return tokenData.user_info || null;
+    }
+
+    /**
+     * Get stored token data (with expiry check)
+     */
+    _getStoredToken() {
+      const data = localStorage.getItem(this.storageKey);
+      if (!data) return null;
+
+      const tokenData = JSON.parse(data);
+      if (tokenData.expires_at && Date.now() >= tokenData.expires_at) {
+        localStorage.removeItem(this.storageKey);
+        return null;
+      }
+
+      return tokenData;
+    }
+
+    /**
+     * Verify stored token with server and refresh user info
+     */
+    async _verifySession() {
+      const tokenData = this._getStoredToken();
+      if (!tokenData || !tokenData.access_token) return null;
+
+      try {
+        // 1. Verify token is still valid server-side
+        const verifyResponse = await fetch(`${AUTH_SERVER_URL}/token/verify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: tokenData.access_token })
+        });
+
+        if (!verifyResponse.ok) {
+          // Token invalid server-side, clear it
+          localStorage.removeItem(this.storageKey);
+          return null;
+        }
+
+        // 2. Fetch latest user info
+        const userInfoResponse = await fetch(`${AUTH_SERVER_URL}/userinfo`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${tokenData.access_token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!userInfoResponse.ok) {
+          localStorage.removeItem(this.storageKey);
+          return null;
+        }
+
+        this.userInfo = await userInfoResponse.json();
+
+        // Update stored token with fresh user info
+        this._storeToken({
+          ...tokenData,
+          user_info: this.userInfo
+        });
+
+        return this.userInfo;
+      } catch (err) {
+        // On network error, fall back to cached user info
+        return tokenData.user_info || null;
+      }
     }
 
     /**
