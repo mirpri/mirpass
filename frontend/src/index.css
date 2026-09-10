@@ -48,3 +48,12 @@ body {
 #root {
   min-height: 100vh;
 }
+
+.nav-header {
+  background: linear-gradient(
+    to bottom,
+    var(--tokyo-bg) 0%,
+    color-mix(in srgb, var(--tokyo-bg) 78%, transparent) 58%,
+    transparent 100%
+  );
+}

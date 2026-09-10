@@ -478,42 +478,53 @@ function DashboardPage() {
       </Space>
 
 
-      <Space orientation="vertical" style={{ width: "100%" }} className="mb-8">
-        <Space align="center" size={12}>
-          <AppWindowIcon className="text-primary-500" size={16} />
-          <Text strong className="text-base">
-            {t('dash.my-applications')}
-          </Text>
-        </Space>
-        <div className="mt-3.5 flex flex-wrap gap-2">
-          {apps.map((app) => (
-            <Link
-              key={app.appId}
-              to={
-                app.appId === "system" ? "/manage" : `/manage/${app.appId}`
-              }
-            >
-              <Button>
-                {app.appId === "system" ? (
-                  <ShieldIcon size={14} />
-                ) : (
+      {apps.length > 0 ? (
+        <Space orientation="vertical" style={{ width: "100%" }} className="mb-8">
+          <Space align="center" size={12}>
+            <AppWindowIcon className="text-primary-500" size={16} />
+            <Text strong className="text-base">
+              {t('dash.my-applications')}
+            </Text>
+          </Space>
+          <div className="mt-3.5 flex flex-wrap gap-2">
+            {apps
+              .filter((app) => app.appId === "system")
+              .map((app) => (
+                <Link key={app.appId} to="/manage">
+                  <Button>
+                    <ShieldIcon size={14} /> {app.name}
+                  </Button>
+                </Link>
+              ))}
+            {apps.map((app) => (
+              <Link key={app.appId} to={`/manage/${app.appId}`}>
+                <Button>
                   <AnyAvatar
                     size={20}
                     url={{ url: app.logoUrl, text: app.name }}
-                  />
-                )}{" "}
-                {app.name}
+                  />{" "}
+                  {app.name}
+                </Button>
+              </Link>
+            ))}
+            <Link to="/apps/create">
+              <Button type="dashed">
+                <PlusIcon size={14} />
+                {t('dash.create-new-app')}
               </Button>
             </Link>
-          ))}
-          <Link to="/apps/create">
-            <Button type="dashed">
-              <PlusIcon size={14} />
+          </div>
+        </Space>
+      ) : (
+        <div className="mb-8">
+          <Link to="/apps/create" className="w-full max-w-md">
+            <Button type="dashed" size="large" className="w-full">
+              <PlusIcon size={16} />
               {t('dash.create-new-app')}
             </Button>
           </Link>
         </div>
-      </Space>
+      )}
 
       <Space orientation="vertical" style={{ width: "100%" }}>
         <Flex justify="space-between" align="center">

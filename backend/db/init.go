@@ -147,7 +147,7 @@ func InitDB() error {
 								'denied',
 								'expired'
 								) NOT NULL,
-			expires_at        DATETIME DEFAULT ADDDATE(CURRENT_TIMESTAMP, INTERVAL 15 MINUTE),
+			expires_at        DATETIME NOT NULL,
 			created_at        DATETIME DEFAULT CURRENT_TIMESTAMP,
 			updated_at        DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 		);`); err != nil {
@@ -213,9 +213,9 @@ func ConnectDB() {
 		log.Println("Error pinging database: ", err)
 	}
 
-	if err = runMigration(db); err != nil {
-		log.Println("Error running migrations: ", err)
-	}
+	// if err = runMigration(db); err != nil {
+	// 	log.Println("Error running migrations: ", err)
+	// }
 
 	log.Println("Successfully connected to the database")
 	database = db

@@ -9,8 +9,8 @@ import (
 )
 
 func CreateDeviceFlowSession(clientId string, sessionId string, deviceCode string, userCode string) error {
-	_, err := database.Exec(`INSERT INTO oauth_sessions (client_id, session_id, device_code, user_code, flow_type, status)
-	VALUES (?, ?, ?, ?, 'device_code', 'pending')`, clientId, sessionId, deviceCode, userCode)
+	_, err := database.Exec(`INSERT INTO oauth_sessions (client_id, session_id, device_code, user_code, flow_type, status, expires_at)
+	VALUES (?, ?, ?, ?, 'device_code', 'pending', DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 15 MINUTE))`, clientId, sessionId, deviceCode, userCode)
 	return err
 }
 
@@ -132,7 +132,7 @@ func UpdateSessionStatus(sessionId string, status string, username string) error
 }
 
 func CreateAuthCodeSession(clientId string, sessionId string, redirect_uri string, code_challenge string, code_challenge_method string, state string) error {
-	_, err := database.Exec(`INSERT INTO oauth_sessions (client_id, session_id, redirect_uri, code_challenge, code_challenge_method, state, flow_type, status) VALUES (?, ?, ?, ?, ?, ?, 'authorization_code', 'pending')`, clientId, sessionId, redirect_uri, code_challenge, code_challenge_method, state)
+	_, err := database.Exec(`INSERT INTO oauth_sessions (client_id, session_id, redirect_uri, code_challenge, code_challenge_method, state, flow_type, status, expires_at) VALUES (?, ?, ?, ?, ?, ?, 'authorization_code', 'pending', DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 15 MINUTE))`, clientId, sessionId, redirect_uri, code_challenge, code_challenge_method, state)
 	return err
 }
 

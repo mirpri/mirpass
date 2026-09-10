@@ -40,7 +40,9 @@ function Nav() {
   };
 
   return (
-    <div className="flex justify-between align-center p-4">
+    <div
+      className="nav-header sticky top-0 z-50 flex justify-between align-center p-4"
+    >
       <div className="flex flex-1 gap-2">
         <Button
             type="text"

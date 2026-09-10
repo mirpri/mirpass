@@ -1007,8 +1007,8 @@ func GetAppStatsSummary(appID string) (*types.AppStatsSummary, error) {
 			COUNT(DISTINCT username) as active
 		FROM oauth_sessions 
 		WHERE client_id = ? AND status = 'consumed' AND updated_at >= DATE_SUB(UTC_DATE(), INTERVAL 6 DAY)
-		GROUP BY DATE(updated_at)
-		ORDER BY DATE(updated_at) ASC
+		GROUP BY DATE_FORMAT(updated_at, '%Y-%m-%d')
+		ORDER BY DATE_FORMAT(updated_at, '%Y-%m-%d') ASC
 	`
 	rows, err := database.Query(dailyQuery, appID)
 	if err != nil {
@@ -1037,7 +1037,7 @@ func GetAppStatsSummary(appID string) (*types.AppStatsSummary, error) {
 			GROUP BY username
 		) as user_firsts
 		WHERE min_date >= DATE_SUB(UTC_DATE(), INTERVAL 6 DAY)
-		GROUP BY DATE(min_date)
+		GROUP BY DATE_FORMAT(min_date, '%Y-%m-%d')
 	`
 	nuRows, err := database.Query(newUsersQuery, appID)
 	if err == nil {
