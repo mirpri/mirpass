@@ -496,7 +496,9 @@ function DashboardPage() {
                   </Button>
                 </Link>
               ))}
-            {apps.map((app) => (
+            {apps
+              .filter((app) => app.appId !== "system")
+              .map((app) => (
               <Link key={app.appId} to={`/manage/${app.appId}`}>
                 <Button>
                   <AnyAvatar

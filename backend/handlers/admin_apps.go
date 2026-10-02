@@ -37,11 +37,7 @@ func AdminDeleteApp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	appID := r.URL.Query().Get("id")
-	if appID == "" {
-		WriteErrorResponse(w, http.StatusBadRequest, "App ID is required")
-		return
-	}
+	appID := GetAppIDFromContext(r.Context())
 
 	if err := db.DeleteApp(appID); err != nil {
 		WriteErrorResponse(w, http.StatusInternalServerError, "Failed to delete app")

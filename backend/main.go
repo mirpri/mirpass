@@ -53,8 +53,8 @@ func main() {
 
 	// System App Management
 	mux.Handle("/admin/apps", handlers.AuthSysMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminListApps))))
-	mux.Handle("/admin/app/delete", handlers.AuthSysMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminDeleteApp))))
-	mux.Handle("/admin/app/suspend", handlers.AuthSysMiddleware(handlers.RequireAdmin("system", http.HandlerFunc(handlers.AdminSuspendApp))))
+	mux.Handle("/admin/app/delete", handlers.AuthSysMiddleware(handlers.RequireAdmin("system", handlers.AppIDFromQuery(http.HandlerFunc(handlers.AdminDeleteApp)))))
+	mux.Handle("/admin/app/suspend", handlers.AuthSysMiddleware(handlers.RequireAdmin("system", handlers.AppIDFromJSONBody(http.HandlerFunc(handlers.AdminSuspendApp)))))
 
 	// My Apps endpoint
 	mux.Handle("/myapps", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.MyAppsHandler)))
@@ -63,25 +63,25 @@ func main() {
 
 	// App Management
 	mux.Handle("/apps/create", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.CreateAppHandler)))
-	mux.Handle("/apps/details", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.AppDetailsHandler)))
-	mux.Handle("/apps/uris", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.GetAppTrustedURIsHandler)))
-	mux.Handle("/apps/uris/add", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.AddAppTrustedURIHandler)))
-	mux.Handle("/apps/uris/delete", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.DeleteAppTrustedURIHandler)))
+	mux.Handle("/apps/details", handlers.AuthSysMiddleware(handlers.AppIDFromQuery(http.HandlerFunc(handlers.AppDetailsHandler))))
+	mux.Handle("/apps/uris", handlers.AuthSysMiddleware(handlers.AppIDFromQuery(http.HandlerFunc(handlers.GetAppTrustedURIsHandler))))
+	mux.Handle("/apps/uris/add", handlers.AuthSysMiddleware(handlers.AppIDFromJSONBody(http.HandlerFunc(handlers.AddAppTrustedURIHandler))))
+	mux.Handle("/apps/uris/delete", handlers.AuthSysMiddleware(handlers.AppIDFromJSONBody(http.HandlerFunc(handlers.DeleteAppTrustedURIHandler))))
 
-	mux.Handle("/apps/secrets", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.ListAppSecretsHandler)))
-	mux.Handle("/apps/secrets/create", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.CreateAppSecretHandler)))
-	mux.Handle("/apps/secrets/delete", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.DeleteAppSecretHandler)))
+	mux.Handle("/apps/secrets", handlers.AuthSysMiddleware(handlers.AppIDFromQuery(http.HandlerFunc(handlers.ListAppSecretsHandler))))
+	mux.Handle("/apps/secrets/create", handlers.AuthSysMiddleware(handlers.AppIDFromJSONBody(http.HandlerFunc(handlers.CreateAppSecretHandler))))
+	mux.Handle("/apps/secrets/delete", handlers.AuthSysMiddleware(handlers.AppIDFromJSONBody(http.HandlerFunc(handlers.DeleteAppSecretHandler))))
 
-	mux.Handle("/apps/update", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.UpdateAppHandler)))
-	mux.Handle("/apps/delete", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.DeleteAppHandler)))
-	mux.Handle("/apps/device-code/toggle", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.UpdateDeviceCodeEnabledHandler)))
-	mux.Handle("/apps/stats", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.GetAppStatsHandler)))
-	mux.Handle("/apps/history", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.GetAppHistoryHandler)))
+	mux.Handle("/apps/update", handlers.AuthSysMiddleware(handlers.AppIDFromMultipartForm(handlers.AppIDFromJSONBody(http.HandlerFunc(handlers.UpdateAppHandler)))))
+	mux.Handle("/apps/delete", handlers.AuthSysMiddleware(handlers.AppIDFromJSONBody(http.HandlerFunc(handlers.DeleteAppHandler))))
+	mux.Handle("/apps/device-code/toggle", handlers.AuthSysMiddleware(handlers.AppIDFromJSONBody(http.HandlerFunc(handlers.UpdateDeviceCodeEnabledHandler))))
+	mux.Handle("/apps/stats", handlers.AuthSysMiddleware(handlers.AppIDFromQuery(http.HandlerFunc(handlers.GetAppStatsHandler))))
+	mux.Handle("/apps/history", handlers.AuthSysMiddleware(handlers.AppIDFromQuery(http.HandlerFunc(handlers.GetAppHistoryHandler))))
 
-	mux.Handle("/apps/members", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.GetAppMembersHandler)))
-	mux.Handle("/apps/members/add", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.AddAppMemberHandler)))
-	mux.Handle("/apps/members/remove", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.RemoveAppMemberHandler)))
-	mux.Handle("/apps/members/role", handlers.AuthSysMiddleware(http.HandlerFunc(handlers.UpdateAppMemberRoleHandler)))
+	mux.Handle("/apps/members", handlers.AuthSysMiddleware(handlers.AppIDFromQuery(http.HandlerFunc(handlers.GetAppMembersHandler))))
+	mux.Handle("/apps/members/add", handlers.AuthSysMiddleware(handlers.AppIDFromJSONBody(http.HandlerFunc(handlers.AddAppMemberHandler))))
+	mux.Handle("/apps/members/remove", handlers.AuthSysMiddleware(handlers.AppIDFromJSONBody(http.HandlerFunc(handlers.RemoveAppMemberHandler))))
+	mux.Handle("/apps/members/role", handlers.AuthSysMiddleware(handlers.AppIDFromJSONBody(http.HandlerFunc(handlers.UpdateAppMemberRoleHandler))))
 
 	//OAuth2 Routes
 	mux.HandleFunc("/authorize/request", handlers.SessionDetailsHandler)

@@ -47,11 +47,7 @@ func CreateAppHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func AppDetailsHandler(w http.ResponseWriter, r *http.Request) {
-	appID := r.URL.Query().Get("id")
-	if appID == "" {
-		WriteErrorResponse(w, http.StatusBadRequest, "App ID is required")
-		return
-	}
+	appID := GetAppIDFromContext(r.Context())
 
 	claims, err := utils.ExtractClaims(r)
 	if err != nil {
@@ -85,11 +81,7 @@ func AppDetailsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetAppTrustedURIsHandler(w http.ResponseWriter, r *http.Request) {
-	appID := r.URL.Query().Get("id")
-	if appID == "" {
-		WriteErrorResponse(w, http.StatusBadRequest, "App ID is required")
-		return
-	}
+	appID := GetAppIDFromContext(r.Context())
 
 	claims, err := utils.ExtractClaims(r)
 	if err != nil {
@@ -196,11 +188,7 @@ func DeleteAppTrustedURIHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func ListAppSecretsHandler(w http.ResponseWriter, r *http.Request) {
-	appID := r.URL.Query().Get("id")
-	if appID == "" {
-		WriteErrorResponse(w, http.StatusBadRequest, "App ID is required")
-		return
-	}
+	appID := GetAppIDFromContext(r.Context())
 
 	claims, err := utils.ExtractClaims(r)
 	if err != nil {
@@ -307,7 +295,8 @@ func UpdateAppHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var appID, name, description, logoURL string
+	var name, description, logoURL string
+	appID := GetAppIDFromContext(r.Context())
 
 	contentType := r.Header.Get("Content-Type")
 	if strings.HasPrefix(contentType, "multipart/form-data") {
@@ -317,7 +306,6 @@ func UpdateAppHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		appID = r.FormValue("appId")
 		name = r.FormValue("name")
 		description = r.FormValue("description")
 		logoURL = r.FormValue("logoUrl")
@@ -350,7 +338,6 @@ func UpdateAppHandler(w http.ResponseWriter, r *http.Request) {
 			WriteErrorResponse(w, http.StatusBadRequest, "Invalid request")
 			return
 		}
-		appID = req.AppID
 		name = req.Name
 		description = req.Description
 		logoURL = req.LogoURL
@@ -436,11 +423,7 @@ func UpdateDeviceCodeEnabledHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetAppStatsHandler(w http.ResponseWriter, r *http.Request) {
-	appID := r.URL.Query().Get("id")
-	if appID == "" {
-		WriteErrorResponse(w, http.StatusBadRequest, "App ID is required")
-		return
-	}
+	appID := GetAppIDFromContext(r.Context())
 
 	claims, err := utils.ExtractClaims(r)
 	if err != nil {
@@ -465,18 +448,13 @@ func GetAppStatsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetAppHistoryHandler(w http.ResponseWriter, r *http.Request) {
-	appID := r.URL.Query().Get("id")
+	appID := GetAppIDFromContext(r.Context())
 	dateStr := r.URL.Query().Get("date") // Optional
 	offsetStr := r.URL.Query().Get("offset")
 
 	var offset int
 	if offsetStr != "" {
 		fmt.Sscanf(offsetStr, "%d", &offset)
-	}
-
-	if appID == "" {
-		WriteErrorResponse(w, http.StatusBadRequest, "App ID is required")
-		return
 	}
 
 	claims, err := utils.ExtractClaims(r)
@@ -536,11 +514,7 @@ func DeleteAppHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetAppMembersHandler(w http.ResponseWriter, r *http.Request) {
-	appID := r.URL.Query().Get("id")
-	if appID == "" {
-		WriteErrorResponse(w, http.StatusBadRequest, "App ID is required")
-		return
-	}
+	appID := GetAppIDFromContext(r.Context())
 
 	claims, err := utils.ExtractClaims(r)
 	if err != nil {

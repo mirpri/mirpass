@@ -65,6 +65,10 @@ function ManageAppPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    if (appId === "system") {
+      navigate("/manage");
+      return;
+    }
     if (appId) {
       loadApp();
     }
@@ -85,6 +89,7 @@ function ManageAppPage() {
     }
   };
 
+  if (appId === "system") return <LoadingView />;
   if (loading) return <LoadingView />;
   if (!app) return <FailedView />;
 
